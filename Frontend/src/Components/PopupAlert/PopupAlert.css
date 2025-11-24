@@ -1,0 +1,193 @@
+/* Popup Alert Container */
+.popup-alert-container {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.popup-alert-container.top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.popup-alert-container.top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.popup-alert-container.top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.popup-alert-container.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.popup-alert-container.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.popup-alert-container.bottom-center {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Popup Alert */
+.popup-alert {
+  min-width: 300px;
+  max-width: 400px;
+  padding: 16px 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+.popup-alert.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.popup-alert.hide {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+/* Light Mode */
+.popup-light-mode .popup-alert {
+  background-color: white;
+}
+
+/* Dark Mode */
+.popup-dark-mode .popup-alert {
+  background-color: #2d3748;
+}
+
+.popup-light-mode .popup-alert.info {
+  background-color: #bee3f8;
+  color: #2c5282;
+  border-left: 4px solid #4299e1;
+}
+
+.popup-light-mode .popup-alert.success {
+  background-color: #c6f6d5;
+  color: #2f855a;
+  border-left: 4px solid #48bb78;
+}
+
+.popup-light-mode .popup-alert.error {
+  background-color: #fed7d7;
+  color: #c53030;
+  border-left: 4px solid #e53e3e;
+}
+
+.popup-light-mode .popup-alert.warning {
+  background-color: #feebcb;
+  color: #b45309;
+  border-left: 4px solid #ed8936;
+}
+
+.popup-dark-mode .popup-alert.info {
+  background-color: #2a4365;
+  color: #90cdf4;
+  border-left: 4px solid #63b3ed;
+}
+
+.popup-dark-mode .popup-alert.success {
+  background-color: #22543d;
+  color: #9ae6b4;
+  border-left: 4px solid #68d391;
+}
+
+.popup-dark-mode .popup-alert.error {
+  background-color: #742a2a;
+  color: #fc8181;
+  border-left: 4px solid #fc8181;
+}
+
+.popup-dark-mode .popup-alert.warning {
+  background-color: #744210;
+  color: #fbd38d;
+  border-left: 4px solid #f6ad55;
+}
+
+/* Alert Content */
+.popup-alert-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-right: 15px;
+}
+
+.popup-alert-icon {
+  font-weight: bold;
+  margin-right: 12px;
+  font-size: 18px;
+}
+
+.popup-alert-message {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Close Button */
+.popup-alert-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  line-height: 1;
+}
+
+.popup-alert-close:hover {
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .popup-alert-container {
+    width: 100%;
+    padding: 0 15px;
+  }
+  
+  .popup-alert-container.top-right,
+  .popup-alert-container.top-left,
+  .popup-alert-container.top-center,
+  .popup-alert-container.bottom-right,
+  .popup-alert-container.bottom-left,
+  .popup-alert-container.bottom-center {
+    left: 0;
+    right: 0;
+    transform: none;
+  }
+  
+  .popup-alert {
+    min-width: auto;
+    width: 100%;
+    max-width: none;
+  }
+  
+  .popup-alert.show {
+    transform: translateY(0);
+  }
+  
+  .popup-alert.hide {
+    transform: translateY(-20px);
+  }
+}
