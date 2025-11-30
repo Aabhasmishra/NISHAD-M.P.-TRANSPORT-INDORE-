@@ -1,22 +1,11 @@
-const { Client } = require("pg");
 const multer = require("multer");
 const path = require("path");
-require("dotenv").config();
-
-const db = new Client({
-  host: process.env.DB_HOST || "43.230.202.198",
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || "mp_transport",
-  password: process.env.DB_PASSWORD || 'abcde"',
-  database: process.env.DB_NAME || "mp_transport",
-});
+const db = require('./db');
 
 // Configure multer for file uploads
 const upload = multer({ dest: "uploads/" });
 
 async function initialize() {
-  await db.connect();
-
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS "Transporter-details" (

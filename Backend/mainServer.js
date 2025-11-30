@@ -9,6 +9,7 @@ const paymentDB = require("./paymentDB");
 const crossingDB = require("./crossingDB");
 const createDatabaseViewer = require("./databaseViewer");
 require("dotenv").config();
+const db = require('./db');
 
 const app = express();
 app.use(express.json());
@@ -159,3 +160,27 @@ initialize()
   .catch((err) => {
     console.error("Failed to initialize server:", err);
   });
+
+// Graceful shutdown
+async function shutdown(reason) {
+  try {
+    console.log('Shutting down server...', reason || '');
+    await db.close();
+    console.log('Database pool closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  shutdown('unhandledRejection');
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  shutdown('uncaughtException');
+});

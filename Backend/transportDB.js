@@ -1,18 +1,7 @@
-const { Client } = require("pg");
-require("dotenv").config();
+const db = require('./db');
 
-const db = new Client({
-  host: process.env.DB_HOST || "43.230.202.198",
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || "mp_transport",
-  password: process.env.DB_PASSWORD || 'abcde"',
-  database: process.env.DB_NAME || "mp_transport",
-});
-
-// Connect to DB and initialize transport_records table
+// Initialize transport_records table
 async function initialize() {
-  await db.connect();
-
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS transport_records (
