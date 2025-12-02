@@ -47,7 +47,7 @@ const TransactionHistory2 = ({
   const handlePaymentTypeCheck = async () => {
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000//api/transport-records/history?consignor=${encodeURIComponent(consignorName)}&consignee=${encodeURIComponent(consigneeName)}`
+        `http://43.230.202.198:3000/api/transport-records/history?consignor=${encodeURIComponent(consignorName)}&consignee=${encodeURIComponent(consigneeName)}`
       );
       
       if (!response.ok) {
