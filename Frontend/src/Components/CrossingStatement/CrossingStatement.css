@@ -1,0 +1,625 @@
+/* Base Container Styles */
+.crossing-main-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 25px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  min-height: 500px;
+}
+
+.crossing-main-container.light-mode {
+  background-color: #ffffffdd;
+  color: #333333;
+}
+
+.crossing-main-container.dark-mode {
+  background-color: #2d3748;
+  color: #f7fafc;
+}
+
+/* Title Styles */
+.crossing-title {
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.8rem;
+}
+
+.crossing-title.light-mode {
+  color: #333333;
+}
+
+.crossing-title.dark-mode {
+  color: #f7fafc;
+}
+
+/* Search Container Styles */
+.crossing-search-container {
+  margin-bottom: 20px;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.crossing-search-container.light-mode {
+  background-color: #f8f9fa;
+  border: 1px solid #e2e8f0;
+}
+
+.crossing-search-container.dark-mode {
+  background-color: #3c4657;
+  border: 1px solid #4a5568;
+}
+
+.crossing-search-header {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.crossing-search-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.crossing-search-group {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.crossing-search-inputs {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.crossing-search-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.crossing-search-label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.crossing-search-label.light-mode {
+  color: #444;
+}
+
+.crossing-search-label.dark-mode {
+  color: #e2e8f0;
+}
+
+.crossing-search-input, .crossing-search-select {
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 16px;
+  border: 1px solid;
+  height: 42px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.crossing-search-input.light-mode, .crossing-search-select.light-mode {
+  background-color: #ffffff;
+  border-color: #ddd;
+  color: #333333;
+}
+
+.crossing-search-input.dark-mode, .crossing-search-select.dark-mode {
+  background-color: #4a5568;
+  border-color: #4a5568;
+  color: #f7fafc;
+}
+
+.crossing-search-button {
+  padding: 10px 16px;
+  border-radius: 4px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 120px;
+}
+
+.crossing-search-button.light-mode {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.crossing-search-button.dark-mode {
+  background-color: #3182ce;
+  color: white;
+}
+
+.crossing-search-button:hover {
+  opacity: 0.9;
+}
+
+.crossing-search-icon {
+  font-size: 1.2rem;
+}
+
+.crossing-search-preview {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.crossing-preview {
+  padding: 8px 16px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.light-mode .crossing-preview {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.dark-mode .crossing-preview {
+  background-color: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Form Container Styles */
+.crossing-form-container {
+  margin-bottom: 30px;
+}
+
+.crossing-input-box {
+  padding: 20px;
+  border-radius: 6px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.crossing-input-box.light-mode {
+  background-color: #f8f9fa;
+  border: 1px solid #e2e8f0;
+}
+
+.crossing-input-box.dark-mode {
+  background-color: #3c4657;
+  border: 1px solid #4a5568;
+}
+
+.crossing-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.crossing-form-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.crossing-form-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 220px;
+}
+
+.crossing-form-label {
+  flex-shrink: 0;
+  min-width: 100px;
+  font-weight: 600;
+}
+
+.crossing-form-label.light-mode {
+  color: #444;
+}
+
+.crossing-form-label.dark-mode {
+  color: #e2e8f0;
+}
+
+.crossing-form-input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 16px;
+  border: 1px solid;
+  min-height: 40px;
+}
+
+.crossing-form-input.light-mode {
+  background-color: #ffffff;
+  border-color: #ddd;
+  color: #333333;
+}
+
+.crossing-form-input.light-mode:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+  outline: none;
+}
+
+.crossing-form-input.dark-mode {
+  background-color: #4a5568;
+  border-color: #4a5568;
+  color: #f7fafc;
+}
+
+.crossing-form-input.dark-mode:focus {
+  border-color: #63b3ed;
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.3);
+  outline: none;
+}
+
+.crossing-form-value {
+  padding: 10px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  border-radius: 4px;
+}
+
+.crossing-form-value.light-mode {
+  background-color: #f8f9fa;
+  color: #333333;
+}
+
+.crossing-form-value.dark-mode {
+  background-color: #3c4657;
+  color: #f7fafc;
+}
+
+/* Table Styles */
+.crossing-table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.crossing-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
+
+.crossing-table th, .crossing-table td {
+  padding: 12px 15px;
+  text-align: center;
+  border: 1px solid;
+}
+
+.crossing-table.light-mode th,
+.crossing-table.light-mode td {
+  border-color: #e2e8f0;
+}
+
+.crossing-table.dark-mode th,
+.crossing-table.dark-mode td {
+  border-color: #4a5568;
+}
+
+.crossing-table-header.light-mode {
+  background-color: #f0f0f0;
+  color: #333333;
+}
+
+.crossing-table-header.dark-mode {
+  background-color: #3c4657;
+  color: #f7fafc;
+}
+
+.crossing-table-row.light-mode {
+  background-color: #ffffff;
+}
+
+.crossing-table-row.dark-mode {
+  background-color: #2d3748;
+}
+
+.crossing-table-row.light-mode:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.crossing-table-row.dark-mode:nth-child(even) {
+  background-color: #3c4657;
+}
+
+.crossing-table-total-row {
+  font-weight: bold;
+}
+
+.crossing-table-total-row.light-mode {
+  background-color: #e9ecef;
+}
+
+.crossing-table-total-row.dark-mode {
+  background-color: #4a5568;
+}
+
+.crossing-table-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.crossing-table-input.light-mode {
+  background-color: #ffffff;
+  border-color: #ddd;
+  color: #333333;
+}
+
+.crossing-table-input.dark-mode {
+  background-color: #4a5568;
+  border-color: #4a5568;
+  color: #f7fafc;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Button Styles */
+.crossing-add-more-container, .crossing-submit-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  gap: 15px;
+}
+
+.crossing-add-more-button, .crossing-submit-button, .crossing-delete-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crossing-add-more-button.light-mode {
+  background-color: #6c757d;
+  color: white;
+}
+
+.crossing-add-more-button.dark-mode {
+  background-color: #718096;
+  color: white;
+}
+
+.crossing-submit-button.light-mode {
+  background-color: #28a745;
+  color: white;
+}
+
+.crossing-submit-button.dark-mode {
+  background-color: #38a169;
+  color: white;
+}
+
+.crossing-delete-button.light-mode {
+  background-color: #dc3545;
+  color: white;
+}
+
+.crossing-delete-button.dark-mode {
+  background-color: #f56565;
+  color: white;
+}
+
+.crossing-submit-button:disabled, .crossing-delete-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.crossing-delete-row-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #dc3545;
+  font-size: 1.2rem;
+  padding: 5px;
+}
+
+.crossing-delete-row-button.dark-mode {
+  color: #f56565;
+}
+
+/* Loading Styles */
+.crossing-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.crossing-loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: crossing-spin 1s linear infinite;
+}
+
+.crossing-loading-spinner.light-mode {
+  border-color: #4a90e2;
+  border-top-color: transparent;
+}
+
+.crossing-loading-spinner.dark-mode {
+  border-color: #63b3ed;
+  border-top-color: transparent;
+}
+
+@keyframes crossing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.crossing-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.crossing-modal-content {
+  padding: 30px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.crossing-modal-content.light-mode {
+  background-color: #ffffff;
+  color: #333333;
+}
+
+.crossing-modal-content.dark-mode {
+  background-color: #2d3748;
+  color: #f7fafc;
+}
+
+.crossing-modal-content p {
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
+.crossing-modal-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.crossing-modal-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  min-width: 100px;
+}
+
+.crossing-modal-actions button:first-child {
+  background-color: #6c757d;
+  color: white;
+}
+
+.crossing-modal-actions button:last-child {
+  background-color: #dc3545;
+  color: white;
+}
+
+.crossing-modal-actions button:first-child:hover {
+  background-color: #5a6268;
+}
+
+.crossing-modal-actions button:last-child:hover {
+  background-color: #c82333;
+}
+
+@media (max-width: 768px) {
+  .crossing-main-container {
+    padding: 15px 10px;
+  }
+  
+  .crossing-title {
+    font-size: 1.5rem;
+  }
+  
+  .crossing-search-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .crossing-search-field {
+    width: 100%;
+  }
+  
+  .crossing-form-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .crossing-form-group {
+    min-width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .crossing-form-label {
+    min-width: auto;
+    margin-bottom: 5px;
+  }
+  
+  .crossing-form-input,
+  .crossing-form-value {
+    width: 100%;
+  }
+  
+  .crossing-table th, .crossing-table td {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  
+  .crossing-add-more-container, .crossing-submit-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .crossing-add-more-button, .crossing-submit-button, .crossing-delete-button {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .crossing-table {
+    font-size: 0.8rem;
+  }
+  
+  .crossing-table th, .crossing-table td {
+    padding: 6px 4px;
+  }
+  
+  .crossing-modal-content {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .crossing-modal-actions {
+    flex-direction: column;
+  }
+  
+  .crossing-modal-actions button {
+    width: 100%;
+  }
+}

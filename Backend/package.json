@@ -1,0 +1,40 @@
+{
+  "name": "nishad-transport-backend",
+  "version": "1.0.0",
+  "description": "Backend for NISHAD M.P. TRANSPORT INDORE - Transport Management System",
+  "main": "mainServer.js",
+  "scripts": {
+    "start": "node mainServer.js",
+    "dev": "nodemon mainServer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "transport",
+    "management",
+    "backend",
+    "express"
+  ],
+  "author": "Aabhas Mishra",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "crypto": "1.0.1",
+    "dotenv": "^16.3.1",
+    "exceljs": "^4.3.0",
+    "express": "^4.18.2",
+    "fs": "0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^5.7.0",
+    "mongoose": "^7.5.0",
+    "multer": "^2.0.2",
+    "mysql": "^2.18.1",
+    "path": "^0.12.7",
+    "pg": "^8.16.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

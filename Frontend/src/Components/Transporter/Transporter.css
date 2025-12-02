@@ -1,0 +1,558 @@
+/* Light Mode */
+.transporter-main-container.light-mode {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 25px 20px;
+  background-color: #ffffffdd;
+  color: #333333;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Mode */
+.transporter-main-container.dark-mode {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 25px 20px;
+  background-color: #2d3748;
+  color: #f7fafc;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.transporter-title {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.transporter-mode-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* Light Mode Buttons */
+.light-mode .transporter-mode-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  color: #333333;
+  transition: all 0.3s ease;
+}
+
+.light-mode .transporter-mode-button:hover {
+  background-color: #e0e0e0;
+}
+
+.light-mode .transporter-mode-button.transporter-active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+/* Dark Mode Buttons */
+.dark-mode .transporter-mode-button {
+  background-color: #4a5568;
+  border: #4a5568;
+  color: #f7fafc;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .transporter-mode-button:hover {
+  background-color: #3c4858;
+}
+
+.dark-mode .transporter-mode-button.transporter-active {
+  background-color: #4299e1;
+  color: white;
+  border-color: #4299e1;
+}
+
+.transporter-mode-button {
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.transporter-search-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+/* Light Mode Search */
+.light-mode .transporter-search-container {
+  background-color: #f8f9fa;
+}
+
+/* Dark Mode Search */
+.dark-mode .transporter-search-container {
+  background-color: #3c4657;
+}
+
+.transporter-search-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.transporter-input-wrapper {
+  display: flex;
+  position: relative;
+  gap: 10px;
+  width: 300px;
+}
+
+.transporter-input-group {
+  position: relative;
+  flex-grow: 1;
+}
+
+.transporter-form-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px 0 0 4px;
+  font-size: 16px;
+  border-right: none;
+}
+
+/* Light Mode Input */
+.light-mode .transporter-form-input {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  color: #333333;
+}
+
+.light-mode .transporter-form-input:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+/* Dark Mode Input */
+.dark-mode .transporter-form-input {
+  background-color: #4a5568;
+  border: 1px solid #4a5568;
+  color: #f7fafc;
+}
+
+.dark-mode .transporter-form-input:focus {
+  border-color: #63b3ed;
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.3);
+}
+
+.transporter-search-button {
+  border-radius: 4px;
+  height: 45px;
+  width: 49px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+  cursor: pointer;
+}
+
+/* Light Mode Search Button */
+.light-mode .transporter-search-button {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Dark Mode Search Button */
+.dark-mode .transporter-search-button {
+  background-color: #718096;
+  border-color: #718096;
+  color: white;
+}
+
+.transporter-search-icon {
+  font-size: 1.5rem;
+}
+
+.transporter-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Light Mode Dropdown */
+.light-mode .transporter-suggestions-dropdown {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+}
+
+/* Dark Mode Dropdown */
+.dark-mode .transporter-suggestions-dropdown {
+  background-color: #2d3748;
+  border: 1px solid #4a5568;
+}
+
+.transporter-suggestions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.transporter-suggestion-item {
+  margin: 0;
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 14px;
+  display: flex;
+}
+
+/* Light Mode Suggestion Item */
+.light-mode .transporter-suggestion-item:hover {
+  background-color: #f7fafc;
+}
+
+/* Dark Mode Suggestion Item */
+.dark-mode .transporter-suggestion-item:hover {
+  background-color: #4a5568;
+}
+
+.transporter-no-suggestions {
+  padding: 10px 15px;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Light Mode No Suggestions */
+.light-mode .transporter-no-suggestions {
+  color: #718096;
+}
+
+/* Dark Mode No Suggestions */
+.dark-mode .transporter-no-suggestions {
+  color: #a0aec0;
+}
+
+/* Suggestion text highlighting */
+.transporter-suggestion-prefix {
+  font-weight: 600;
+}
+
+/* Light Mode Prefix */
+.light-mode .transporter-suggestion-prefix {
+  color: #3182ce;
+}
+
+/* Dark Mode Prefix */
+.dark-mode .transporter-suggestion-prefix {
+  color: #63b3ed;
+}
+
+.transporter-form-container {
+  margin-top: 20px;
+}
+
+.transporter-form-group {
+  margin-bottom: 15px;
+}
+
+.transporter-form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+/* Light Mode Label */
+.light-mode .transporter-form-label {
+  color: #444;
+}
+
+/* Dark Mode Label */
+.dark-mode .transporter-form-label {
+  color: #e2e8f0;
+}
+
+.transporter-form-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.transporter-form-input:focus {
+  outline: none;
+}
+
+.transporter-input-with-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transporter-input-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.transporter-copy-button,
+.transporter-verify-button {
+  height: 46px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Light Mode Buttons */
+.light-mode .transporter-copy-button {
+  background-color: #e2e2e2;
+  color: #333;
+}
+
+.light-mode .transporter-verify-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+/* Dark Mode Buttons */
+.dark-mode .transporter-copy-button {
+  background-color: #4a5568;
+  color: #f7fafc;
+}
+
+.dark-mode .transporter-verify-button {
+  background-color: #48bb78;
+  color: white;
+}
+
+.transporter-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.transporter-submit-button,
+.transporter-delete-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.transporter-submit-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* Light Mode Submit Button */
+.light-mode .transporter-submit-button {
+  background-color: #4a90e2;
+  color: white;
+}
+
+/* Dark Mode Submit Button */
+.dark-mode .transporter-submit-button {
+  background-color: #4299e1;
+  color: white;
+}
+
+.transporter-delete-button {
+  width: 100%;
+}
+
+/* Light Mode Delete Button */
+.light-mode .transporter-delete-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Dark Mode Delete Button */
+.dark-mode .transporter-delete-button {
+  background-color: #f56565;
+  color: white;
+}
+
+.transporter-details-container {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 6px;
+}
+
+.transporter-details-container-header {
+  margin-bottom: 20px;
+  font-size: 25px;
+}
+
+/* Light Mode Details */
+.light-mode .transporter-details-container {
+  background-color: #f8f9fa;
+}
+
+/* Dark Mode Details */
+.dark-mode .transporter-details-container {
+  background-color: #3c4657;
+}
+
+.transporter-detail-item {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+}
+
+/* Light Mode Detail Item */
+.light-mode .transporter-detail-item {
+  border-bottom-color: #e2e8f0;
+}
+
+/* Dark Mode Detail Item */
+.dark-mode .transporter-detail-item {
+  border-bottom-color: #4a5568;
+}
+
+.transporter-detail-label {
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+/* Light Mode Detail Label */
+.light-mode .transporter-detail-label {
+  color: #4a5568;
+}
+
+/* Dark Mode Detail Label */
+.dark-mode .transporter-detail-label {
+  color: #a0aec0;
+}
+
+.transporter-comment-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  display: inline-block;
+}
+
+.transporter-delete-confirmation {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Light Mode Delete Confirmation */
+.light-mode .transporter-delete-confirmation {
+  background-color: #f8f9fa;
+}
+
+/* Dark Mode Delete Confirmation */
+.dark-mode .transporter-delete-confirmation {
+  background-color: #3c4657;
+}
+
+/* MODAL STYLES */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  min-width: 300px;
+  max-width: 500px;
+}
+.light-mode .modal-content {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+.dark-mode .modal-content {
+  background-color: #2d3748;
+  color: #f7fafc;
+}
+.modal-content p {
+  margin: 0 0 20px 0;
+  font-size: 1.1rem;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.modal-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.modal-actions button:first-child {
+  background-color: #6c757d;
+  color: white;
+}
+.modal-actions button:last-child {
+  background-color: #007bff;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .transporter-main-container {
+    padding: 15px;
+  }
+
+  .transporter-mode-selector {
+    flex-direction: column;
+  }
+
+  .transporter-input-wrapper {
+    flex-direction: column;
+  }
+
+  .transporter-form-input {
+    border-radius: 4px;
+    border-right: 1px solid;
+    width: 100%;
+  }
+
+  .transporter-search-button {
+    width: 100%;
+    border-radius: 4px;
+    margin-top: 5px;
+  }
+
+  .transporter-suggestions-dropdown {
+    position: static;
+    margin-top: 5px;
+    border-radius: 4px;
+    border-top: 1px solid;
+  }
+}
+
+@media (max-width: 480px) {
+  .transporter-main-container {
+    padding: 10px;
+  }
+
+  .transporter-form-input {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .transporter-suggestion-item {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

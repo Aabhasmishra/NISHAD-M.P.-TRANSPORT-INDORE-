@@ -1,0 +1,422 @@
+/* Base Container Styles */
+.user-main-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 25px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.user-main-container.light-mode {
+  background-color: #ffffffdd;
+  color: #333333;
+}
+
+.user-main-container.dark-mode {
+  background-color: #2d3748;
+  color: #f7fafc;
+}
+
+/* Title Styles */
+.user-title {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.user-title.light-mode {
+  color: #333333;
+}
+
+.user-title.dark-mode {
+  color: #f7fafc;
+}
+
+/* Mode Selector Styles */
+.user-mode-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.user-mode-button {
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.user-mode-button.light-mode {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  color: #333333;
+}
+
+.user-mode-button.light-mode:hover {
+  background-color: #e0e0e0;
+}
+
+.user-mode-button.light-mode.user-active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.user-mode-button.dark-mode {
+  background-color: #4a5568;
+  border: 1px solid #4a5568;
+  color: #f7fafc;
+}
+
+.user-mode-button.dark-mode:hover {
+  background-color: #3c4858;
+}
+
+.user-mode-button.dark-mode.user-active {
+  background-color: #4299e1;
+  color: white;
+  border-color: #4299e1;
+}
+
+/* Search Container Styles */
+.user-search-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.user-search-container.light-mode {
+  background-color: #f8f9fa;
+}
+
+.user-search-container.dark-mode {
+  background-color: #3c4657;
+}
+
+.user-input-wrapper {
+  display: flex;
+  position: relative;
+  gap: 10px;
+  width: 300px;
+}
+
+.user-form-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.user-form-input.light-mode {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  color: #333333;
+}
+
+.user-form-input.light-mode:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.user-form-input.dark-mode {
+  background-color: #4a5568;
+  border: 1px solid #4a5568;
+  color: #f7fafc;
+}
+
+.user-form-input.dark-mode:focus {
+  border-color: #63b3ed;
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.3);
+}
+
+.user-search-button {
+  border-radius: 4px;
+  height: 45px;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+  cursor: pointer;
+}
+
+.user-search-button.light-mode {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.user-search-button.dark-mode {
+  background-color: #718096;
+  border-color: #718096;
+  color: white;
+}
+
+.user-search-icon {
+  font-size: 1.5rem;
+}
+
+/* List Container Styles */
+.user-list-container {
+  margin-top: 20px;
+}
+
+.user-section-title {
+  margin: 15px 0 10px;
+  font-size: 25px;
+}
+
+.user-section-title.light-mode {
+  color: #333333;
+}
+
+.user-section-title.dark-mode {
+  color: #f7fafc;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.user-table th, .user-table td {
+  padding: 12px 15px;
+  text-align: center;
+  border-bottom: 1px solid;
+}
+
+.user-table.light-mode th,
+.user-table.light-mode td {
+  border-color: #e2e8f0;
+  color: #333333;
+}
+
+.user-table.dark-mode th,
+.user-table.dark-mode td {
+  border-color: #4a5568;
+  color: #f7fafc;
+}
+
+/* Status Badge Styles */
+.user-status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.user-status-badge.active {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.user-status-badge.inactive {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+}
+
+/* Details Container Styles */
+.user-details-container {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 6px;
+}
+
+.user-details-container.light-mode {
+  background-color: #f8f9fa;
+}
+
+.user-details-container.dark-mode {
+  background-color: #3c4657;
+}
+
+.user-details-header {
+  margin-bottom: 15px;
+  font-size: 25px;
+}
+
+.user-details-header.light-mode {
+  color: #333333;
+}
+
+.user-details-header.dark-mode {
+  color: #f7fafc;
+}
+
+.user-detail-item {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+}
+
+.user-detail-item.light-mode {
+  border-bottom-color: #e2e8f0;
+}
+
+.user-detail-item.dark-mode {
+  border-bottom-color: #4a5568;
+}
+
+.user-detail-label {
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+.user-detail-label.light-mode {
+  color: #4a5568;
+}
+
+.user-detail-label.dark-mode {
+  color: #a0aec0;
+}
+
+/* Delete Confirmation Styles */
+.user-delete-confirmation {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.user-delete-confirmation.light-mode {
+  background-color: #f8f9fa;
+}
+
+.user-delete-confirmation.dark-mode {
+  background-color: #3c4657;
+}
+
+/* Form Container Styles */
+.user-form-container {
+  margin-top: 20px;
+}
+
+.user-form-group {
+  margin-bottom: 15px;
+}
+
+.user-form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.user-form-label.light-mode {
+  color: #444;
+}
+
+.user-form-label.dark-mode {
+  color: #e2e8f0;
+}
+
+/* Password Input Styles */
+.user-password-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.user-password-toggle {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1.2rem;
+}
+
+.user-password-toggle.light-mode {
+  color: #333333;
+}
+
+.user-password-toggle.dark-mode {
+  color: #f7fafc;
+}
+
+/* Button Styles */
+.user-submit-button {
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+}
+
+.user-submit-button.light-mode {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.user-submit-button.dark-mode {
+  background-color: #4299e1;
+  color: white;
+}
+
+.user-delete-button {
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.user-delete-button.light-mode {
+  background-color: #dc3545;
+  color: white;
+}
+
+.user-delete-button.dark-mode {
+  background-color: #f56565;
+  color: white;
+}
+
+/* No Results Styles */
+.user-no-results {
+  text-align: center;
+  padding: 20px;
+}
+
+.user-no-results.light-mode {
+  color: #333333;
+}
+
+.user-no-results.dark-mode {
+  color: #f7fafc;
+}
+
+/* Row Styles */
+.user-table-title.dark-mode {
+    background-color: #3c4657;
+}
+
+.user-table-title.light-mode {
+    background-color: #f0f0f0;
+}
+
+/* .user-table-title.light-mode th{
+    color: #fff;
+} */
+
+.user-active-row.light-mode {
+  background-color: #ffffff;
+}
+
+.user-active-row.dark-mode {
+  background-color: #2d3748;
+}
+
+.user-inactive-row.light-mode {
+  background-color: #f8f9fa;
+}
+
+.user-inactive-row.dark-mode {
+  background-color: #2d3748;
+  /* background-color: #3c4657; */
+}

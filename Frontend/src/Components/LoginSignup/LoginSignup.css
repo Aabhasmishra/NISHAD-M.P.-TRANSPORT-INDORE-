@@ -1,0 +1,138 @@
+@import url("https://fonts.googleapis.com/css?family=Poppins:400,500,600,700&display=swap");
+
+.login-main-container {
+  display: grid;
+  height: 100vh;
+  width: 100%;
+  place-items: center;
+  background: #282a36;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+.login-wrapper {
+  max-width: 390px;
+  background: #fff;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.login-title-text {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.login-title {
+  font-size: 35px;
+  font-weight: 600;
+  text-align: center;
+  color: #333;
+}
+
+.login-title.active {
+  color: #0073e6;
+}
+
+.login-form-container {
+  width: 100%;
+}
+
+.login-form-inner {
+  width: 100%;
+}
+
+.login-form .login-field {
+  height: 50px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.login-form .login-input {
+  height: 100%;
+  width: 100%;
+  outline: none;
+  padding-left: 15px;
+  border-radius: 15px;
+  border: 1px solid lightgrey;
+  border-bottom-width: 2px;
+  font-size: 17px;
+  transition: all 0.3s ease;
+}
+
+.login-form .login-input:focus {
+  border-color: #1a75ff;
+}
+
+.login-form .login-input::placeholder {
+  color: #999;
+  transition: all 0.3s ease;
+}
+
+.login-form .login-input:focus::placeholder {
+  color: #1a75ff;
+}
+
+.login-error-message {
+  color: #ff3333;
+  font-size: 14px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.login-btn {
+  height: 50px;
+  width: 100%;
+  border-radius: 15px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 30px;
+}
+
+.login-submit-btn {
+  height: 100%;
+  width: 100%;
+  background: -webkit-linear-gradient(right, #003366, #004080, #0059b3, #0073e6);
+  border: none;
+  color: #fff;
+  border-radius: 15px;
+  font-size: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.login-submit-btn:hover {
+  background: -webkit-linear-gradient(right, #004080, #0059b3, #0073e6, #0080ff);
+}
+
+.login-submit-btn:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding: 20px;
+    max-width: 95%;
+  }
+  
+  .login-title {
+    font-size: 28px;
+  }
+  
+  .login-form .login-input {
+    font-size: 15px;
+  }
+  
+  .login-submit-btn {
+    font-size: 18px;
+  }
+}
