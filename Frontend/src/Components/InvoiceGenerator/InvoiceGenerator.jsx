@@ -374,13 +374,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
   const handleConsignorSuggestionClick = (customer) => {
     let gstNumber = "UIN";
-    if (customer.id_details && customer.id_details.length > 0) {
-      const gstDetail = customer.id_details.find(detail => 
-        detail.id_type === "GST Number"
-      );
-      if (gstDetail) {
-        gstNumber = gstDetail.id_number;
-      }
+    if (customer && customer.id_type === "GST Number") {
+        gstNumber = customer.id_number;
     }
 
     setFormData((prev) => ({ 
@@ -394,13 +389,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
   const handleConsigneeSuggestionClick = (customer) => {
     let gstNumber = "UIN";
-    if (customer.id_details && customer.id_details.length > 0) {
-      const gstDetail = customer.id_details.find(detail => 
-        detail.id_type === "GST Number"
-      );
-      if (gstDetail) {
-        gstNumber = gstDetail.id_number;
-      }
+    if (customer && customer.id_type === "GST Number") {
+        gstNumber = customer.id_number;
     }
 
     setFormData((prev) => ({ 
@@ -443,22 +433,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       let consignorGst = "UIN";
       let consigneeGst = "UIN";
       
-      if (consignorData.id_details && consignorData.id_details.length > 0) {
-        const gstDetail = consignorData.id_details.find(detail => 
-          detail.id_type === "GST Number"
-        );
-        if (gstDetail) {
-          consignorGst = gstDetail.id_number;
-        }
+      if (consignorData && consignorData.id_type === "GST Number") {
+          consignorGst = consignorData.id_number;
       }
-      
-      if (consigneeData.id_details && consigneeData.id_details.length > 0) {
-        const gstDetail = consigneeData.id_details.find(detail => 
-          detail.id_type === "GST Number"
-        );
-        if (gstDetail) {
-          consigneeGst = gstDetail.id_number;
-        }
+
+      if (consigneeData && consigneeData.id_type === "GST Number") {
+          consigneeGst = consigneeData.id_number;
       }
 
       setFormData((prev) => ({
