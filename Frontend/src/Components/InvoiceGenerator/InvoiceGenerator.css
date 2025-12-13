@@ -838,6 +838,12 @@
   color: #a0aec0;
 }
 
+.codeWidth {
+  width: 152px;
+  display: flex;
+  justify-content: end;
+}
+
 .suggestions-list {
   position: absolute;
   top: 100%;
