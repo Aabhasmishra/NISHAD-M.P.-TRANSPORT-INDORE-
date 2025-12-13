@@ -5,7 +5,7 @@ import { TfiWrite } from "react-icons/tfi";
 import "./InvoiceGenerator.css";
 import TransactionHistory from '../TransactionHistory/TransactionHistory';
 import AutoWriteTable from '../TransactionHistory/TransactionHistory2';
-// import CustomerManagement from "../CustomerManagement/CustomerManagement";
+import CustomerManagement from "../CustomerManagement/CustomerManagement";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 const SCROLLBAR_CLASS = "custom-scrollbar";
@@ -373,6 +373,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   };
 
   const handleConsignorSuggestionClick = (customer) => {
+    // console.log(customer);
     let gstNumber = "UIN";
     if (customer && customer.id_type === "GST Number") {
         gstNumber = customer.id_number;
@@ -432,7 +433,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       let consignorGst = "UIN";
       let consigneeGst = "UIN";
-      
+
       if (consignorData && consignorData.id_type === "GST Number") {
           consignorGst = consignorData.id_number;
       }
@@ -750,9 +751,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       const dbDate = new Date(data.date);
       const formattedDate = [
-        dbDate.getDate().toString().padStart(2, "0"),
-        (dbDate.getMonth() + 1).toString().padStart(2, "0"),
         dbDate.getFullYear(),
+        (dbDate.getMonth() + 1).toString().padStart(2, "0"),
+        dbDate.getDate().toString().padStart(2, "0"),
       ].join("-");
 
       setFormData({
@@ -883,7 +884,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         driverName: formData.driverName,
       };
 
-      console.log(updatedData);
+      // console.log(updatedData);
 
       const response = await fetch(
         `http://43.230.202.198:3000/api/transport-records/${formData.invoiceNumber}`,
@@ -1429,7 +1430,7 @@ const ensureThreeRowsInTable = (html) => {
   const handleHistoryTransactionComplete = (result) => {
     setTransactionResult(result);
     setShowTransactionHistory(false);
-    console.log(transactionResult);
+    // console.log(transactionResult);
   };
 
   const totals = calculateTotals();
@@ -1580,7 +1581,7 @@ return (
                       className="invoice-input"
                     />
                   ) : (
-                    <span>{formData.date}</span>
+                    <span>{formData.date.split("-").reverse().join("-")}</span>
                   )}
                 </div>
                 <div className="form-group inline">
@@ -1644,7 +1645,7 @@ return (
                         {formData.consignorGst}
                       </span>
                     ) : (
-                      <span>{"—"}</span>
+                      <span style={{ width: "113px" }}>{"—"}</span>
                     )}
                   </div>
                   <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
@@ -1739,7 +1740,7 @@ return (
                       <span className="fixed-value">{formData.consignor}</span>
                     )}
                   </div>
-                  <div className="form-group inline">
+                  <div className="form-group inline codeWidth">
                     <strong>Consignor Code:</strong>
                     <span>{formData.consignorCode || "—"}</span>
                   </div>
@@ -1754,7 +1755,7 @@ return (
                         {formData.consigneeGst}
                       </span>
                     ) : (
-                      <span>{"—"}</span>
+                      <span style={{ width: "113px" }}>{"—"}</span>
                     )}
                   </div>
                   <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
@@ -1849,7 +1850,7 @@ return (
                       <span className="fixed-value">{formData.consignee}</span>
                     )}
                   </div>
-                  <div className="form-group inline">
+                  <div className="form-group inline codeWidth">
                     <strong>Consignee Code:</strong>
                     <span>{formData.consigneeCode || "—"}</span>
                   </div>
