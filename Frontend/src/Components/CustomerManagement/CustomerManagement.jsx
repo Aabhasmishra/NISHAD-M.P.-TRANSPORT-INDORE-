@@ -14,6 +14,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   const [customerName, setCustomerName] = useState("");
   const [updateFormData, setUpdateFormData] = useState({
     name: "",
+    oldNameForSearch: "",
     type: "Individual",
     idType: "GST Number",
     idNumber: "",
@@ -24,12 +25,12 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   // State for View Customer Details
   const [viewCustomerName, setViewCustomerName] = useState("");
   const [customerDetails, setCustomerDetails] = useState(null);
-  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isViewingCustomer, setIsViewingCustomer] = useState(false);
 
   // State for Delete Customer
   const [deleteCustomerName, setDeleteCustomerName] = useState("");
   const [customerToDelete, setCustomerToDelete] = useState(null);
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
 
   // State to track which form to show
   const [activeForm, setActiveForm] = useState(modeOfView);
@@ -162,17 +163,34 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   // Find Customer for Update
   const handleCustomerSearch = async (e) => {
     e.preventDefault();
+
+    // Check if customer exists in our local suggestions
+    const customerExists = allCustomerNames.some(name => 
+      name.toLowerCase() === customerName.toLowerCase()
+    );
+    
+    if (!customerExists) {
+      showAlert('No matching customers found', 'error');
+      return;
+    }
+
     try {
       const response = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(customerName)}`
       );
       const data = await response.json();
       if (data.error) throw new Error(data.error);
-      setUpdateFormData(data);
+      const updatedData = {
+        ...data,
+        oldNameForSearch: data.name
+      };
+      
+      setUpdateFormData(updatedData);
       setIsCustomerFound(true);
     } catch (error) {
       showAlert(error.message, 'error');
     }
+    // console.log(updateFormData);
   };
 
   // Update Customer
@@ -180,20 +198,21 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
     e.preventDefault();
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/customers/${encodeURIComponent(updateFormData.name)}`,
+        `http://43.230.202.198:3000/api/customers/${encodeURIComponent(updateFormData.oldNameForSearch)}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: updateFormData.name,
             type: updateFormData.type,
-            idType: updateFormData.idType,
-            idNumber: updateFormData.idNumber,
-            contactNumber: updateFormData.contactNumber
+            idType: updateFormData.id_type,
+            idNumber: updateFormData.id_number,
+            contactNumber: updateFormData.contact_number
           }),
         }
       );
       const data = await response.json();
+      // console.log(data, updateFormData);
       
       if (response.ok) {
         showAlert(data.message || 'Customer updated successfully!', 'success');
@@ -220,7 +239,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setCustomerDetails(data);
-      setIsViewModalVisible(true);
+      setIsViewingCustomer(true);
     } catch (error) {
       showAlert(error.message, 'error');
     }
@@ -236,7 +255,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setCustomerToDelete(data);
-      setIsDeleteModalVisible(true);
+      setIsDeletingCustomer(true);
     } catch (error) {
       showAlert(error.message, 'error');
     }
@@ -255,8 +274,9 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
       
       if (response.ok) {
         showAlert(data.message || 'Customer deleted successfully!', 'success');
-        setIsDeleteModalVisible(false);
+        setIsDeletingCustomer(false);
         setDeleteCustomerName("");
+        setCustomerToDelete(null);
         // Refresh customer names after deletion
         const namesResponse = await fetch('http://43.230.202.198:3000/api/customers/all-names');
         const namesData = await namesResponse.json();
@@ -301,8 +321,10 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   useEffect(() => {
     if (isPopup) {
       setActiveForm("add");
+    } else {
+      setActiveForm(modeOfView);
     }
-  }, [isPopup]);
+  }, [isPopup, modeOfView]);
 
   return (
     <div className={`customer-management ${isLightMode ? 'light-mode' : 'dark-mode'} ${isPopup ? 'popup-mode' : ''}`}>
@@ -322,26 +344,9 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
         </div>
       )}
       
-      {!isPopup && (
-        <div className="form-selector">
-          <button onClick={() => setActiveForm("add")} className={activeForm === "add" ? "active" : ""}>
-            Add Customer
-          </button>
-          <button onClick={() => setActiveForm("update")} className={activeForm === "update" ? "active" : ""}>
-            Update Customer
-          </button>
-          <button onClick={() => setActiveForm("view")} className={activeForm === "view" ? "active" : ""}>
-            View Details
-          </button>
-          <button onClick={() => setActiveForm("delete")} className={activeForm === "delete" ? "active" : ""}>
-            Delete Customer
-          </button>
-        </div>
-      )}
-
       {activeForm === "add" && (
         <div className="form-container">
-          {!isPopup && <h2>Add New Customer</h2>}
+          {!isPopup && <h2 className="customer-header">Add New Customer</h2>}
           <form onSubmit={handleAddSubmit}>
             <div className="form-group">
               <label>Name:</label>
@@ -351,6 +356,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 value={addFormData.name}
                 onChange={handleAddInputChange}
                 required
+                className="no-outline"
               />
             </div>
 
@@ -361,6 +367,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 value={addFormData.type}
                 onChange={handleAddInputChange}
                 required
+                className="no-outline"
               >
                 <option value="Individual">Individual</option>
                 <option value="Company">Company</option>
@@ -375,6 +382,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 value={addFormData.idType}
                 onChange={handleAddInputChange}
                 required
+                className="no-outline"
               >
                 <option value="GST Number">GST Number</option>
                 <option value="PAN Number">PAN Number</option>
@@ -392,6 +400,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 required
                 pattern={getIdValidationPattern(addFormData.idType)}
                 title={getIdValidationTitle(addFormData.idType)}
+                className="no-outline"
               />
             </div>
 
@@ -406,12 +415,13 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 pattern="[0-9]{10}"
                 title="Contact number must be exactly 10 digits (no spaces or special characters)"
                 maxLength="10"
+                className="no-outline"
               />
             </div>
             
             <div className="button-group">
               {isPopup && (
-                <button type="button" className="danger-btn cancel-btn" onClick={onClose}>
+                <button type="button" className="danger-btn customer-cancel-btn" onClick={onClose}>
                   Cancel
                 </button>
               )}
@@ -423,355 +433,419 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
         </div>
       )}
 
-      {!isPopup && (
-        <>
-          {activeForm === "update" && (
-            <div className="form-container">
-              <h2>Update Customer</h2>
-              <form onSubmit={isCustomerFound ? handleUpdateSubmit : handleCustomerSearch}>
-                <div className="form-group">
-                  <label>Customer Name:</label>
-                  <div className="search-container">
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => handleSearchInputChange(e, setCustomerName)}
-                      required
-                      disabled={isCustomerFound}
-                    />
-                    {suggestions.length > 0 ? (
-                      <ul className="suggestions-list">
-                        {suggestions.map((suggestion, index) => {
-                          const lowerInput = customerName.toLowerCase();
-                          const lowerSuggestion = suggestion.toLowerCase();
-                          const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                          const prefix = suggestion.substring(0, prefixIndex + customerName.length);
-                          const rest = suggestion.substring(prefixIndex + customerName.length);
-                          
-                          return (
-                            <li 
-                              key={index}
-                              className="suggestion-item"
-                              onClick={() => handleSuggestionClick(suggestion, setCustomerName)}
-                            >
-                              <span className="suggestion-prefix">{prefix}</span>
-                              <span className="suggestion-rest">{rest}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      showSuggestions && (
-                        <div className="no-suggestions">
-                          No matching customers found
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {!isCustomerFound ? (
-                  <button type="submit" className="submit-btn">
-                    Find Customer
-                  </button>
+      {activeForm === "update" && (
+        <div className="form-container">
+          <h2 className="customer-header">Update Customer</h2>
+          <form onSubmit={isCustomerFound ? handleUpdateSubmit : handleCustomerSearch}>
+            <div className="form-group">
+              <label>Customer Name:</label>
+              <div className="search-container">
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => handleSearchInputChange(e, setCustomerName)}
+                  required
+                  disabled={isCustomerFound}
+                  className="no-outline"
+                />
+                {suggestions.length > 0 ? (
+                  <ul className="suggestions-list">
+                    {suggestions.map((suggestion, index) => {
+                      const lowerInput = customerName.toLowerCase();
+                      const lowerSuggestion = suggestion.toLowerCase();
+                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
+                      const prefix = suggestion.substring(0, prefixIndex + customerName.length);
+                      const rest = suggestion.substring(prefixIndex + customerName.length);
+                      
+                      return (
+                        <li 
+                          key={index}
+                          className="suggestion-item"
+                          onClick={() => handleSuggestionClick(suggestion, setCustomerName)}
+                        >
+                          <span className="suggestion-prefix">{prefix}</span>
+                          <span className="suggestion-rest">{rest}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 ) : (
-                  <>
-                    <div className="form-group">
-                      <label>Name:</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={updateFormData.name}
-                        onChange={handleUpdateInputChange}
-                        required
-                      />
+                  showSuggestions && (
+                    <div className="no-suggestions">
+                      No matching customers found
                     </div>
-
-                    <div className="form-group">
-                      <label>Type:</label>
-                      <select
-                        name="type"
-                        value={updateFormData.type}
-                        onChange={handleUpdateInputChange}
-                        required
-                      >
-                        <option value="Individual">Individual</option>
-                        <option value="Company">Company</option>
-                        <option value="URD">URD</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>ID Type:</label>
-                      <select
-                        name="idType"
-                        value={updateFormData.idType}
-                        onChange={handleUpdateInputChange}
-                        required
-                      >
-                        <option value="GST Number">GST Number</option>
-                        <option value="PAN Number">PAN Number</option>
-                        <option value="Aadhaar Number">Aadhaar Number</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>ID Number:</label>
-                      <input
-                        type="text"
-                        name="idNumber"
-                        value={updateFormData.idNumber}
-                        onChange={handleUpdateInputChange}
-                        required
-                        pattern={getIdValidationPattern(updateFormData.idType)}
-                        title={getIdValidationTitle(updateFormData.idType)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Contact Number:</label>
-                      <input
-                        type="tel"
-                        name="contactNumber"
-                        value={updateFormData.contactNumber}
-                        onChange={handleUpdateInputChange}
-                        required
-                        pattern="[0-9]{10}"
-                        title="Contact number must be 10 digits"
-                      />
-                    </div>
-
-                    <div className="button-group">
-                      <button type="button" className="danger-btn cancel-btn" onClick={() => {
-                        setCustomerName("");
-                        setIsCustomerFound(false);
-                      }}>
-                        Cancel
-                      </button>
-                      <button type="submit" className="submit-btn">
-                        Update Customer
-                      </button>
-                    </div>
-                  </>
+                  )
                 )}
-              </form>
+              </div>
             </div>
-          )}
 
-          {activeForm === "view" && (
-            <div className="form-container">
-              <h2>View Customer Details</h2>
-              <form onSubmit={handleViewCustomerSearch}>
+            {!isCustomerFound ? (
+              <button type="submit" className="submit-btn">
+                Find Customer
+              </button>
+            ) : (
+              <>
                 <div className="form-group">
-                  <label>Customer Name:</label>
-                  <div className="search-container">
-                    <input
-                      type="text"
-                      value={viewCustomerName}
-                      onChange={(e) => handleSearchInputChange(e, setViewCustomerName)}
-                      required
-                      disabled={isCustomerFound}
-                    />
-                    {suggestions.length > 0 ? (
-                      <ul className="suggestions-list">
-                        {suggestions.map((suggestion, index) => {
-                          const lowerInput = viewCustomerName.toLowerCase();
-                          const lowerSuggestion = suggestion.toLowerCase();
-                          const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                          const prefix = suggestion.substring(0, prefixIndex + viewCustomerName.length);
-                          const rest = suggestion.substring(prefixIndex + viewCustomerName.length);
-                          
-                          return (
-                            <li 
-                              key={index}
-                              className="suggestion-item"
-                              onClick={() => handleSuggestionClick(suggestion, setViewCustomerName)}
-                            >
-                              <span className="suggestion-prefix">{prefix}</span>
-                              <span className="suggestion-rest">{rest}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      showSuggestions && (
-                        <div className="no-suggestions">
-                          No matching customers found
-                        </div>
-                      )
-                    )}
-                  </div>
+                  <label>Name:</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={updateFormData.name}
+                    onChange={handleUpdateInputChange}
+                    required
+                    className="no-outline"
+                  />
                 </div>
-                <button type="submit" className="submit-btn">
-                  View Details
-                </button>
-              </form>
 
-              {isViewModalVisible && (
-                <div className="custom-modal">
-                  <div className={`modal-content ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                    <div className="modal-header">
-                      <h3 className="modal-title">Customer Details</h3>
-                    </div>
-                    <div className="modal-body">
-                      {customerDetails && (
-                        <table className={`data-table ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                          <thead>
-                            <tr>
-                              <th>Field</th>
-                              <th>Value</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>Customer Code</td>
-                              <td>{customerDetails.customer_code}</td>
-                            </tr>
-                            <tr>
-                              <td>Name</td>
-                              <td>{customerDetails.name}</td>
-                            </tr>
-                            <tr>
-                              <td>Type</td>
-                              <td>{customerDetails.type}</td>
-                            </tr>
-                            <tr>
-                              <td>ID Type</td>
-                              <td>{customerDetails.id_type}</td>
-                            </tr>
-                            <tr>
-                              <td>ID Number</td>
-                              <td>{customerDetails.id_number}</td>
-                            </tr>
-                            <tr>
-                              <td>Contact Number</td>
-                              <td>{customerDetails.contact_number}</td>
-                            </tr>
-                            <tr>
-                              <td>Created At</td>
-                              <td>{new Date(customerDetails.created_at).toLocaleString()}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                    <div className={`modal-footer ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                      <button 
-                        className={`${isLightMode ? 'light-mode' : 'dark-mode'} danger-btn cancel-btn`}
-                        onClick={() => setIsViewModalVisible(false)}
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeForm === "delete" && (
-            <div className="form-container">
-              <h2>Delete Customer</h2>
-              <form onSubmit={handleDeleteCustomerSearch}>
                 <div className="form-group">
-                  <label>Customer Name:</label>
-                  <div className="search-container">
-                    <input
-                      type="text"
-                      value={deleteCustomerName}
-                      onChange={(e) => handleSearchInputChange(e, setDeleteCustomerName)}
-                      required
-                    />
-                    {suggestions.length > 0 ? (
-                      <ul className="suggestions-list">
-                        {suggestions.map((suggestion, index) => {
-                          const lowerInput = deleteCustomerName.toLowerCase();
-                          const lowerSuggestion = suggestion.toLowerCase();
-                          const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                          const prefix = suggestion.substring(0, prefixIndex + deleteCustomerName.length);
-                          const rest = suggestion.substring(prefixIndex + deleteCustomerName.length);
-                          
-                          return (
-                            <li 
-                              key={index}
-                              className="suggestion-item"
-                              onClick={() => handleSuggestionClick(suggestion, setDeleteCustomerName)}
-                            >
-                              <span className="suggestion-prefix">{prefix}</span>
-                              <span className="suggestion-rest">{rest}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      showSuggestions && (
-                        <div className="no-suggestions">
-                          No matching customers found
-                        </div>
-                      )
-                    )}
-                  </div>
+                  <label>Type:</label>
+                  <select
+                    name="type"
+                    value={updateFormData.type}
+                    onChange={handleUpdateInputChange}
+                    required
+                    className="no-outline"
+                  >
+                    <option value="Individual">Individual</option>
+                    <option value="Company">Company</option>
+                    <option value="URD">URD</option>
+                  </select>
                 </div>
-                <button type="submit" className="submit-btn">
-                  Find Customer
-                </button>
-              </form>
 
-              {isDeleteModalVisible && (
-                <div className="custom-modal">
-                  <div className={`modal-content ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                    <div className="modal-header">
-                      <h3 className="modal-title">Confirm Deletion</h3>
-                    </div>
-                    <div className="modal-body">
-                      {customerToDelete && (
-                        <>
-                          <p>Are you sure you want to delete this customer?</p>
-                          <table className={`data-table ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                            <thead>
-                              <tr>
-                                <th>Field</th>
-                                <th>Value</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr>
-                                <td>Customer Code</td>
-                                <td>{customerToDelete.customer_code}</td>
-                              </tr>
-                              <tr>
-                                <td>Name</td>
-                                <td>{customerToDelete.name}</td>
-                              </tr>
-                              <tr>
-                                <td>Type</td>
-                                <td>{customerToDelete.type}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </>
-                      )}
-                    </div>
-                    <div className={`modal-footer ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                      <button 
-                        className={`${isLightMode ? 'light-mode' : 'dark-mode'} danger-btn cancel-btn`}
-                        onClick={() => setIsDeleteModalVisible(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        className="danger-btn"
-                        onClick={handleDeleteCustomer}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
+                <div className="form-group">
+                  <label>ID Type:</label>
+                  <select
+                    name="id_type"
+                    value={updateFormData.id_type}
+                    onChange={handleUpdateInputChange}
+                    required
+                    className="no-outline"
+                  >
+                    <option value="GST Number">GST Number</option>
+                    <option value="PAN Number">PAN Number</option>
+                    <option value="Aadhaar Number">Aadhaar Number</option>
+                  </select>
                 </div>
-              )}
+
+                <div className="form-group">
+                  <label>ID Number:</label>
+                  <input
+                    type="text"
+                    name="id_number"  // Changed from "idNumber"
+                    value={updateFormData.id_number}
+                    onChange={handleUpdateInputChange}
+                    required
+                    pattern={getIdValidationPattern(updateFormData.id_type)}
+                    title={getIdValidationTitle(updateFormData.id_type)}
+                    className="no-outline"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Contact Number:</label>
+                  <input
+                    type="tel"
+                    name="contact_number"  // Changed from "contactNumber"
+                    value={updateFormData.contact_number}
+                    onChange={handleUpdateInputChange}
+                    required
+                    pattern="[0-9]{10}"
+                    title="Contact number must be 10 digits"
+                    className="no-outline"
+                  />
+                </div>
+
+                <div className="button-group">
+                  <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
+                    setCustomerName("");
+                    setIsCustomerFound(false);
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    Update Customer
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+
+      {activeForm === "view" && (
+        <div className="form-container">
+          <h2 className="customer-header">View Customer Details</h2>
+          <form onSubmit={handleViewCustomerSearch}>
+            <div className="form-group">
+              <label>Customer Name:</label>
+              <div className="search-container">
+                <input
+                  type="text"
+                  value={viewCustomerName}
+                  onChange={(e) => handleSearchInputChange(e, setViewCustomerName)}
+                  required
+                  disabled={isViewingCustomer}
+                  className="no-outline"
+                />
+                {suggestions.length > 0 ? (
+                  <ul className="suggestions-list">
+                    {suggestions.map((suggestion, index) => {
+                      const lowerInput = viewCustomerName.toLowerCase();
+                      const lowerSuggestion = suggestion.toLowerCase();
+                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
+                      const prefix = suggestion.substring(0, prefixIndex + viewCustomerName.length);
+                      const rest = suggestion.substring(prefixIndex + viewCustomerName.length);
+                      
+                      return (
+                        <li 
+                          key={index}
+                          className="suggestion-item"
+                          onClick={() => handleSuggestionClick(suggestion, setViewCustomerName)}
+                        >
+                          <span className="suggestion-prefix">{prefix}</span>
+                          <span className="suggestion-rest">{rest}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  showSuggestions && (
+                    <div className="no-suggestions">
+                      No matching customers found
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+            {!isViewingCustomer ? (
+              <button type="submit" className="submit-btn">
+                Find Customer
+              </button>
+            ) : ('')}
+          </form>
+
+          {isViewingCustomer && customerDetails && (
+            <div>
+              <div className="customer-details-view">
+                <div className="form-group">
+                  <label>Customer Code:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.customer_code || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Name:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.name || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Type:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.type || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>ID Type:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.id_type || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>ID Number:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.id_number || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Contact Number:</label>
+                  <input
+                    type="tel"
+                    value={customerDetails.contact_number || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Created At:</label>
+                  <input
+                    type="text"
+                    value={customerDetails.created_at ? new Date(customerDetails.created_at).toLocaleString() : ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+              </div>
+              <div className="button-group">
+                <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
+                  setViewCustomerName("");
+                  setIsViewingCustomer(false);
+                  setCustomerDetails(null);
+                }}>
+                  Back to Search
+                </button>
+              </div>
             </div>
           )}
-        </>
+        </div>
+      )}
+
+      {activeForm === "delete" && (
+        <div className="form-container">
+          <h2 className="customer-header">Delete Customer</h2>
+          <form onSubmit={handleDeleteCustomerSearch}>
+            <div className="form-group">
+              <label>Customer Name:</label>
+              <div className="search-container">
+                <input
+                  type="text"
+                  value={deleteCustomerName}
+                  onChange={(e) => handleSearchInputChange(e, setDeleteCustomerName)}
+                  required
+                  disabled={isDeletingCustomer}
+                  className="no-outline"
+                />
+                {suggestions.length > 0 ? (
+                  <ul className="suggestions-list">
+                    {suggestions.map((suggestion, index) => {
+                      const lowerInput = deleteCustomerName.toLowerCase();
+                      const lowerSuggestion = suggestion.toLowerCase();
+                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
+                      const prefix = suggestion.substring(0, prefixIndex + deleteCustomerName.length);
+                      const rest = suggestion.substring(prefixIndex + deleteCustomerName.length);
+                      
+                      return (
+                        <li 
+                          key={index}
+                          className="suggestion-item"
+                          onClick={() => handleSuggestionClick(suggestion, setDeleteCustomerName)}
+                        >
+                          <span className="suggestion-prefix">{prefix}</span>
+                          <span className="suggestion-rest">{rest}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  showSuggestions && (
+                    <div className="no-suggestions">
+                      No matching customers found
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+            
+            {!isDeletingCustomer && (
+              <button type="submit" className="submit-btn">
+                Find Customer
+              </button>
+            )}
+          </form>
+
+          {isDeletingCustomer && customerToDelete && (
+            <div>
+            <div className="customer-details-view">
+              <div className="form-group">
+                <label>Customer Code:</label>
+                <input
+                  type="text"
+                  value={customerToDelete.customer_code || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Name:</label>
+                <input
+                  type="text"
+                  value={customerToDelete.name || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Type:</label>
+                <input
+                  type="text"
+                  value={customerToDelete.type || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>ID Type:</label>
+                <input
+                  type="text"
+                  value={customerToDelete.id_type || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>ID Number:</label>
+                <input
+                  type="text"
+                  value={customerToDelete.id_number || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Contact Number:</label>
+                <input
+                  type="tel"
+                  value={customerToDelete.contact_number || ""}
+                  readOnly
+                  className="no-outline readonly-field"
+                />
+              </div>
+
+              <div className="warning-message">
+                <p>⚠️ Are you sure you want to delete this customer? This action cannot be undone.</p>
+              </div>
+              </div>
+              <div className="button-group">
+                <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
+                  setDeleteCustomerName("");
+                  setIsDeletingCustomer(false);
+                  setCustomerToDelete(null);
+                }}>
+                  Cancel
+                </button>
+                <button type="button" className="danger-btn" onClick={handleDeleteCustomer}>
+                  Delete Customer
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
