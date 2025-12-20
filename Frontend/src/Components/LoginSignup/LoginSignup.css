@@ -56,9 +56,10 @@
 }
 
 .login-form .login-input {
-  height: 100%;
+  height: 40px;
   width: 100%;
   outline: none;
+  padding: 10px;
   padding-left: 15px;
   border-radius: 15px;
   border: 1px solid lightgrey;
