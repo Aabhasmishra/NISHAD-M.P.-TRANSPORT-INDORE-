@@ -3,7 +3,7 @@ import './PaymentManagement.css';
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 const PaymentManagement = ({ isLightMode, modeOfView }) => {
-  const [activeTab, setActiveTab] = useState(modeOfView || 'view');
+  const activeTab = modeOfView || 'view';
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDetails, setInvoiceDetails] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState(null);
@@ -62,6 +62,19 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
     } else {
       return `GR${numberPart}`;
     }
+  };
+
+  const formatDateTime = (date) => {
+    // if (!date) return '';
+    return new Date(date).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    }).replace('am', 'AM').replace('pm', 'PM');
   };
 
   // Fetch status information
@@ -173,10 +186,14 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
               setPaymentDetails(currentPaymentData);
               
               if (activeTab === 'update') {
+                const predefinedModes = ['Incorrect Invoice Freight', 'Damage Deduction', 'Roundoff', 'Party Default'];
+                const commentValue = currentPaymentData.comments || '';
+
                 setFormData({
                   amountCollected: currentPaymentData.amount_collected || '',
                   modeOfCollection: currentPaymentData.mode_of_collection || 'Cash',
-                  comments: currentPaymentData.comments || ''
+                  comments: predefinedModes.includes(commentValue) ? commentValue : 'Other',
+                  customComment: predefinedModes.includes(commentValue) ? '' : commentValue
                 });
                 
                 // Show comments field if amount collected is less than invoice amount
@@ -186,7 +203,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
               }
             } else {
               // No payment record exists yet, which is fine for view/delete tabs
-              if (activeTab === 'view' || activeTab === 'delete') {
+              if (activeTab === 'view' || activeTab === 'delete' ||activeTab === 'update') {
                 showAlert('No payment record found for this invoice', 'info');
               }
             }
@@ -375,17 +392,21 @@ const handleSubmit = async (e) => {
 
   const handleCommentsSelectChange = (e) => {
     const value = e.target.value;
-    if (value === "Other") {
-      setFormData(prev => ({
-        ...prev,
-        comments: ''
-      }));
-    } else {
-      setFormData(prev => ({
+    // if (value === "Other") {
+    //   setFormData(prev => ({
+    //     ...prev,
+    //     comments: ''
+    //   }));
+    // } else {
+    //   setFormData(prev => ({
+    //     ...prev,
+    //     comments: value
+    //   }));
+    // }
+        setFormData(prev => ({
         ...prev,
         comments: value
-      }));
-    }
+        }));
   };
 
   const handleInputChange = (e) => {
@@ -453,11 +474,11 @@ const handleSubmit = async (e) => {
           </div>
           <div className="pm-detail-item">
             <span className="pm-detail-label">Date:</span>
-            <span className="pm-detail-value">{invoiceDetails.date}</span>
+            <span className="pm-detail-value">{formatDateTime(invoiceDetails.date)}</span>
           </div>
           <div className="pm-detail-item">
             <span className="pm-detail-label">Created:</span>
-            <span className="pm-detail-value">{invoiceDetails.createdAt}</span>
+            <span className="pm-detail-value">{formatDateTime(invoiceDetails.createdAt)}</span>
           </div>
           {/* Status Details */}
           {statusDetails && (
@@ -506,12 +527,16 @@ const handleSubmit = async (e) => {
           )}
           <div className="pm-detail-item">
             <span className="pm-detail-label">Payment Date:</span>
-            <span className="pm-detail-value">{new Date(paymentDetails.created_at).toLocaleString()}</span>
+            <span className="pm-detail-value">{formatDateTime(paymentDetails.created_at)}</span>
           </div>
-          <div className="pm-detail-item">
-            <span className="pm-detail-label">Last Updated:</span>
-            <span className="pm-detail-value">{new Date(paymentDetails.updated_at).toLocaleString()}</span>
-          </div>
+          {paymentDetails.created_at !== paymentDetails.updated_at && (
+            <div className="pm-detail-item">
+              <span className="pm-detail-label">Last Updated:</span>
+              <span className="pm-detail-value">
+                {formatDateTime(paymentDetails.updated_at)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -582,7 +607,8 @@ const handleSubmit = async (e) => {
               </select>
             </div>
 
-            {showCustomComment && (
+            {/* {showCustomComment && ( */}
+            {formData.comments === "Other" && (
               <div className="pm-form-group">
                 <label htmlFor="customComment">Custom Comment:</label>
                 <input
@@ -667,13 +693,15 @@ const handleSubmit = async (e) => {
             {renderInvoiceDetails()}
             
             {activeTab === 'view' && paymentDetails && renderPaymentDetails()}
-            {activeTab === 'view' && !paymentDetails && (
+            {(activeTab === 'view' || activeTab === 'update') && !paymentDetails && (
               <div className="pm-info-message">
                 <span>No payment record exists for this invoice.</span>
               </div>
             )}
-            
-            {(activeTab === 'add' || activeTab === 'update') && renderEditableFields()}
+
+            {activeTab === 'add' && renderEditableFields()}
+
+            {activeTab === 'update' && paymentDetails && renderEditableFields()}
             
             {activeTab === 'delete' && (
               <div className="pm-delete-section">
@@ -736,33 +764,12 @@ const handleSubmit = async (e) => {
       />
       
       <div className="pm-header">
-        <h1>Payment Management</h1>
-        <div className="pm-tab-buttons">
-          <button
-            className={`pm-tab-button ${activeTab === 'view' ? 'active' : ''}`}
-            onClick={() => setActiveTab('view')}
-          >
-            View Payment
-          </button>
-          <button
-            className={`pm-tab-button ${activeTab === 'add' ? 'active' : ''}`}
-            onClick={() => setActiveTab('add')}
-          >
-            Add Payment
-          </button>
-          <button
-            className={`pm-tab-button ${activeTab === 'update' ? 'active' : ''}`}
-            onClick={() => setActiveTab('update')}
-          >
-            Update Payment
-          </button>
-          <button
-            className={`pm-tab-button ${activeTab === 'delete' ? 'active' : ''}`}
-            onClick={() => setActiveTab('delete')}
-          >
-            Delete Payment
-          </button>
-        </div>
+      <h1>
+        {activeTab === 'view' && 'View Payment'}
+        {activeTab === 'add' && 'Add Payment'}
+        {activeTab === 'update' && 'Update Payment'}
+        {activeTab === 'delete' && 'Delete Payment'}
+      </h1>
       </div>
 
       <div className="pm-content">
