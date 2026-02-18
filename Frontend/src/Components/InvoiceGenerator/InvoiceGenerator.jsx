@@ -75,6 +75,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const [consigneeSuggestions, setConsigneeSuggestions] = useState([]);
   const [showConsignorSuggestions, setShowConsignorSuggestions] = useState(false);
   const [showConsigneeSuggestions, setShowConsigneeSuggestions] = useState(false);
+  // GST suggestions state
+  const [consignorGstSuggestions, setConsignorGstSuggestions] = useState([]);
+  const [consigneeGstSuggestions, setConsigneeGstSuggestions] = useState([]);
+  const [showConsignorGstSuggestions, setShowConsignorGstSuggestions] = useState(false);
+  const [showConsigneeGstSuggestions, setShowConsigneeGstSuggestions] = useState(false);
+  
   const [openPopUp, setOpenPopUp] = useState(false);
   const [shippingStatus, setShippingStatus] = useState(null);
   const [showCustomerPopup, setShowCustomerPopup] = useState(false);
@@ -346,6 +352,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     }
   };
 
+  // Name search handlers
   const handleConsignorSearch = (value) => {
     if (value.length > 0) {
       const filtered = allCustomersWithCodes.filter((customer) =>
@@ -372,8 +379,34 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     }
   };
 
+  // GST search handlers
+  const handleConsignorGstSearch = (value) => {
+    if (value.length > 0) {
+      const filtered = allCustomersWithCodes.filter((customer) =>
+        customer.id_number && customer.id_number.toLowerCase().startsWith(value.toLowerCase())
+      );
+      setConsignorGstSuggestions(filtered);
+      setShowConsignorGstSuggestions(true);
+    } else {
+      setConsignorGstSuggestions([]);
+      setShowConsignorGstSuggestions(false);
+    }
+  };
+
+  const handleConsigneeGstSearch = (value) => {
+    if (value.length > 0) {
+      const filtered = allCustomersWithCodes.filter((customer) =>
+        customer.id_number && customer.id_number.toLowerCase().startsWith(value.toLowerCase())
+      );
+      setConsigneeGstSuggestions(filtered);
+      setShowConsigneeGstSuggestions(true);
+    } else {
+      setConsigneeGstSuggestions([]);
+      setShowConsigneeGstSuggestions(false);
+    }
+  };
+
   const handleConsignorSuggestionClick = (customer) => {
-    // console.log(customer);
     let gstNumber = "UIN";
     if (customer && customer.id_type === "GST Number") {
         gstNumber = customer.id_number;
@@ -386,6 +419,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       consignorGst: gstNumber
     }));
     setShowConsignorSuggestions(false);
+    setShowConsignorGstSuggestions(false);
   };
 
   const handleConsigneeSuggestionClick = (customer) => {
@@ -401,6 +435,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       consigneeGst: gstNumber
     }));
     setShowConsigneeSuggestions(false);
+    setShowConsigneeGstSuggestions(false);
   };
 
   const verifyConsignorConsignee = async () => {
@@ -884,8 +919,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         driverName: formData.driverName,
       };
 
-      // console.log(updatedData);
-
       const response = await fetch(
         `http://43.230.202.198:3000/api/transport-records/${formData.invoiceNumber}`,
         {
@@ -941,293 +974,51 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     });
   };
 
-const handlePrint = (pageSize = 'A4') => {
-  const printWindow = window.open('', '_blank');
-  
-  const originalInvoiceElement = document.getElementById('print-area');
-  const modifiedInvoiceHTML = ensureThreeRowsInTable(originalInvoiceElement.innerHTML);
-  
-  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map(el => el.outerHTML)
-    .join('\n');
+  const handlePrint = (pageSize = 'A4') => {
+    const printWindow = window.open('', '_blank');
+    
+    const originalInvoiceElement = document.getElementById('print-area');
+    const modifiedInvoiceHTML = ensureThreeRowsInTable(originalInvoiceElement.innerHTML);
+    
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(el => el.outerHTML)
+      .join('\n');
 
-  const copies = [
-    { label: 'CONSIGNOR COPY' },
-    { label: 'CONSIGNEE COPY' },
-    { label: 'DRIVER COPY' }
-  ];
+    const copies = [
+      { label: 'CONSIGNOR COPY' },
+      { label: 'CONSIGNEE COPY' },
+      { label: 'DRIVER COPY' }
+    ];
 
-  // Check payment type from formData
-  const isPaidType = formData.paymentType === "paid";
+    // Check payment type from formData
+    const isPaidType = formData.paymentType === "paid";
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Invoice Print</title>
-        ${styles}
-        <style>
-          @page {
-            size: A4;
-            margin: 7mm;
-          }
-
-          body {
-            margin: 0;
-            padding: 7mm;
-            background: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            font-size: 10px;
-            width: 196mm;
-            height: 283mm;
-          }
-
-          .print-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 3mm;
-          }
-
-          .invoice-copy {
-            flex: 1;
-            position: relative;
-            min-height: 0;
-          }
-
-          .invoice-container {
-            border: 1px solid #000 !important;
-            margin: 0 auto;
-            padding: 8px !important;
-            height: 100%;
-            box-sizing: border-box;
-            transform: scale(0.82);
-            transform-origin: top left;
-            width: 121.95%;
-          }
-
-          .copy-label {
-            position: absolute;
-            top: 6px;
-            right: 12px;
-            font-weight: bold;
-            font-size: 11px;
-            color: #000;
-            margin: 0;
-            z-index: 1000;
-          }
-
-          .footer-right .copy-label {
-            position: static !important;
-            font-weight: bold;
-            font-size: 11px;
-            color: #000;
-            margin: 0;
-            text-align: right;
-          }
-
-          body * {
-            visibility: visible !important;
-          }
-
-          .no-print,
-          .invoice-actions,
-          .invoice-tabs,
-          .error-message,
-          .search-container,
-          .suggestions-list,
-          .invoice-timestamps {
-            display: none !important;
-          }
-
-          .company-name {
-            font-size: 15px !important;
-          }
-
-          .company-description {
-            font-size: 10px !important;
-            margin-bottom: 3px !important;
-          }
-
-          .company-address {
-            font-size: 10px !important;
-          }
-
-          .consignment-details {
-            font-size: 10px !important;
-            margin-bottom: 5px !important;
-          }
-
-          .form-group.inline {
-            margin-bottom: 1px !important;
-          }
-
-          .invoice-table {
-            margin-bottom: 3px !important;
-          }
-
-          .invoice-table table {
-            width: 100% !important;
-            table-layout: fixed !important;
-          }
-
-          .invoice-table th,
-          .invoice-table td {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            font-size: 9px !important;
-            padding: 2px 3px !important;
-            line-height: 1.1 !important;
-          }
-
-          .invoice-table th {
-            font-size: 9px !important;
-            padding: 3px !important;
-          }
-
-          .invoice-table th:nth-child(1),
-          .invoice-table td:nth-child(1) {
-            width: ${PRINT_COLUMN_WIDTHS.serialNo} !important;
-          }
-
-          .invoice-table th:nth-child(2),
-          .invoice-table td:nth-child(2) {
-            width: ${PRINT_COLUMN_WIDTHS.noOfArticles} !important;
-          }
-
-          .invoice-table th:nth-child(3),
-          .invoice-table td:nth-child(3) {
-            width: ${PRINT_COLUMN_WIDTHS.saidToContain} !important;
-          }
-
-          .invoice-table th:nth-child(4),
-          .invoice-table td:nth-child(4) {
-            width: ${PRINT_COLUMN_WIDTHS.hsn} !important;
-          }
-
-          .invoice-table th:nth-child(5),
-          .invoice-table td:nth-child(5) {
-            width: ${PRINT_COLUMN_WIDTHS.taxFree} !important;
-          }
-
-          .invoice-table th:nth-child(6),
-          .invoice-table td:nth-child(6) {
-            width: ${PRINT_COLUMN_WIDTHS.weightChargeable} !important;
-          }
-
-          .invoice-table th:nth-child(7),
-          .invoice-table td:nth-child(7) {
-            width: ${PRINT_COLUMN_WIDTHS.actualWeight} !important;
-          }
-
-          .invoice-table th:nth-child(8),
-          .invoice-table td:nth-child(8) {
-            width: ${PRINT_COLUMN_WIDTHS.payment} !important;
-          }
-
-          .invoice-table th:nth-child(9),
-          .invoice-table td:nth-child(9) {
-            width: ${PRINT_COLUMN_WIDTHS.remarks} !important;
-          }
-
-          .invoice-table th:nth-child(10),
-          .invoice-table td:nth-child(10) {
-            width: ${PRINT_COLUMN_WIDTHS.auto} !important;
-          }
-
-          .invoice-table th:nth-child(11),
-          .invoice-table td:nth-child(11) {
-            width: ${PRINT_COLUMN_WIDTHS.action} !important;
-          }
-
-          .invoice-table th:nth-child(10),
-          .invoice-table td:nth-child(10),
-          .invoice-table th:nth-child(11),
-          .invoice-table td:nth-child(11) {
-            display: none !important;
-          }
-
-          ${isPaidType ? `
-            .driver-copy .invoice-table td:nth-child(8) {
-              visibility: hidden !important;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice Print</title>
+          ${styles}
+          <style>
+            @page {
+              size: A4;
+              margin: 7mm;
             }
-            
-            .driver-copy .invoice-table td:nth-child(8)::after {
-              content: "" !important;
-            }
-          ` : ''}
 
-          .invoice-input {
-            font-size: 9px !important;
-            padding: 1px 2px !important;
-          }
-
-          .table-input {
-            padding: 1px 2px !important;
-          }
-
-          .invoice-footer {
-            font-size: 10px !important;
-            margin-top: 2px !important;
-          }
-
-          .goods-type-row {
-            margin-bottom: 0px !important;
-          }
-
-          .GoodsTypeCSS {
-            margin-right: 120px;
-          }
-
-          .spaceForSign {
-            width: 85px;
-          }
-
-          .footer-below {
-            margin-top: 1px !important;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .invoice-header {
-            margin-bottom: 5px !important;
-          }
-
-          .address-left,
-          .address-right {
-            font-size: 9px !important;
-          }
-
-          .gstin {
-            width: 310px;
-            font-size: 10px !important;
-            text-align: left;
-            padding-left: 35px;
-          }
-
-          .payment-type-selector {
-            font-size: 9px !important;
-          }
-
-          .form-group.inline {
-            gap: 2px !important;
-          }
-
-          @media print {
             body {
-              margin: 0 !important;
-              padding: 7mm !important;
-              width: 210mm;
-              height: 297mm;
-              box-sizing: border-box;
+              margin: 0;
+              padding: 7mm;
+              background: white !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              font-size: 10px;
+              width: 196mm;
+              height: 283mm;
             }
 
             .print-container {
-              width: 196mm;
-              height: 283mm;
+              width: 100%;
+              height: 100%;
               display: flex;
               flex-direction: column;
               gap: 3mm;
@@ -1235,28 +1026,33 @@ const handlePrint = (pageSize = 'A4') => {
 
             .invoice-copy {
               flex: 1;
-              height: calc((283mm - 6mm) / 3);
-              min-height: 0;
               position: relative;
+              min-height: 0;
             }
 
             .invoice-container {
               border: 1px solid #000 !important;
-              margin: 0 auto !important;
+              margin: 0 auto;
               padding: 8px !important;
               height: 100%;
+              box-sizing: border-box;
               transform: scale(0.82);
               transform-origin: top left;
               width: 121.95%;
-              box-sizing: border-box;
             }
 
             .copy-label {
-              display: none !important;
+              position: absolute;
+              top: 6px;
+              right: 12px;
+              font-weight: bold;
+              font-size: 11px;
+              color: #000;
+              margin: 0;
+              z-index: 1000;
             }
 
             .footer-right .copy-label {
-              display: block !important;
               position: static !important;
               font-weight: bold;
               font-size: 11px;
@@ -1265,135 +1061,372 @@ const handlePrint = (pageSize = 'A4') => {
               text-align: right;
             }
 
+            body * {
+              visibility: visible !important;
+            }
+
+            .no-print,
+            .invoice-actions,
+            .invoice-tabs,
+            .error-message,
+            .search-container,
+            .suggestions-list,
+            .invoice-timestamps {
+              display: none !important;
+            }
+
+            .company-name {
+              font-size: 15px !important;
+            }
+
+            .company-description {
+              font-size: 10px !important;
+              margin-bottom: 3px !important;
+            }
+
+            .company-address {
+              font-size: 10px !important;
+            }
+
+            .consignment-details {
+              font-size: 10px !important;
+              margin-bottom: 5px !important;
+            }
+
+            .form-group.inline {
+              margin-bottom: 1px !important;
+            }
+
+            .invoice-table {
+              margin-bottom: 3px !important;
+            }
+
+            .invoice-table table {
+              width: 100% !important;
+              table-layout: fixed !important;
+            }
+
+            .invoice-table th,
+            .invoice-table td {
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              font-size: 9px !important;
+              padding: 2px 3px !important;
+              line-height: 1.1 !important;
+            }
+
+            .invoice-table th {
+              font-size: 9px !important;
+              padding: 3px !important;
+            }
+
+            .invoice-table th:nth-child(1),
+            .invoice-table td:nth-child(1) {
+              width: ${PRINT_COLUMN_WIDTHS.serialNo} !important;
+            }
+
+            .invoice-table th:nth-child(2),
+            .invoice-table td:nth-child(2) {
+              width: ${PRINT_COLUMN_WIDTHS.noOfArticles} !important;
+            }
+
+            .invoice-table th:nth-child(3),
+            .invoice-table td:nth-child(3) {
+              width: ${PRINT_COLUMN_WIDTHS.saidToContain} !important;
+            }
+
+            .invoice-table th:nth-child(4),
+            .invoice-table td:nth-child(4) {
+              width: ${PRINT_COLUMN_WIDTHS.hsn} !important;
+            }
+
+            .invoice-table th:nth-child(5),
+            .invoice-table td:nth-child(5) {
+              width: ${PRINT_COLUMN_WIDTHS.taxFree} !important;
+            }
+
+            .invoice-table th:nth-child(6),
+            .invoice-table td:nth-child(6) {
+              width: ${PRINT_COLUMN_WIDTHS.weightChargeable} !important;
+            }
+
+            .invoice-table th:nth-child(7),
+            .invoice-table td:nth-child(7) {
+              width: ${PRINT_COLUMN_WIDTHS.actualWeight} !important;
+            }
+
+            .invoice-table th:nth-child(8),
+            .invoice-table td:nth-child(8) {
+              width: ${PRINT_COLUMN_WIDTHS.payment} !important;
+            }
+
+            .invoice-table th:nth-child(9),
+            .invoice-table td:nth-child(9) {
+              width: ${PRINT_COLUMN_WIDTHS.remarks} !important;
+            }
+
+            .invoice-table th:nth-child(10),
+            .invoice-table td:nth-child(10) {
+              width: ${PRINT_COLUMN_WIDTHS.auto} !important;
+            }
+
+            .invoice-table th:nth-child(11),
+            .invoice-table td:nth-child(11) {
+              width: ${PRINT_COLUMN_WIDTHS.action} !important;
+            }
+
+            .invoice-table th:nth-child(10),
+            .invoice-table td:nth-child(10),
+            .invoice-table th:nth-child(11),
+            .invoice-table td:nth-child(11) {
+              display: none !important;
+            }
+
             ${isPaidType ? `
               .driver-copy .invoice-table td:nth-child(8) {
                 visibility: hidden !important;
               }
+              
+              .driver-copy .invoice-table td:nth-child(8)::after {
+                content: "" !important;
+              }
             ` : ''}
-          }
-        </style>
-      </head>
-      <body class="light-mode">
-        <div class="print-container">
-          ${copies.map((copy, index) => {
-            // Replace the copy label in footer area
-            const copyHTML = modifiedInvoiceHTML.replace(
-              '<p class="copy-label">Driver Copy</p>',
-              `<p class="copy-label">${copy.label}</p>`
-            );
-            
-            // Add driver-copy class only for driver copy
-            const copyClass = copy.label === 'DRIVER COPY' ? 'driver-copy' : '';
-            
-            return `
-              <div class="invoice-copy ${copyClass}">
-                ${copyHTML}
-              </div>
-            `;
-          }).join('')}
-        </div>
-        <script>
-          setTimeout(() => {
-            window.print();
-            setTimeout(() => {
-              window.close();
-            }, 100);
-          }, 500);
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-};
 
-// Helper function to ensure exactly 3 rows in the table
-const ensureThreeRowsInTable = (html) => {
-  // Create a temporary DOM element to parse and modify the HTML
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-  
-  const tbodies = tempDiv.querySelectorAll('.invoice-table tbody');
-  
-  tbodies.forEach(tbody => {
-    const allRows = Array.from(tbody.querySelectorAll('tr'));
+            .invoice-input {
+              font-size: 9px !important;
+              padding: 1px 2px !important;
+            }
+
+            .table-input {
+              padding: 1px 2px !important;
+            }
+
+            .invoice-footer {
+              font-size: 10px !important;
+              margin-top: 2px !important;
+            }
+
+            .goods-type-row {
+              margin-bottom: 0px !important;
+            }
+
+            .GoodsTypeCSS {
+              margin-right: 120px;
+            }
+
+            .spaceForSign {
+              width: 85px;
+            }
+
+            .footer-below {
+              margin-top: 1px !important;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+
+            .invoice-header {
+              margin-bottom: 5px !important;
+            }
+
+            .address-left,
+            .address-right {
+              font-size: 9px !important;
+            }
+
+            .gstin {
+              width: 310px;
+              font-size: 10px !important;
+              text-align: left;
+              padding-left: 35px;
+            }
+
+            .payment-type-selector {
+              font-size: 9px !important;
+            }
+
+            .form-group.inline {
+              gap: 2px !important;
+            }
+
+            @media print {
+              body {
+                margin: 0 !important;
+                padding: 7mm !important;
+                width: 210mm;
+                height: 297mm;
+                box-sizing: border-box;
+              }
+
+              .print-container {
+                width: 196mm;
+                height: 283mm;
+                display: flex;
+                flex-direction: column;
+                gap: 3mm;
+              }
+
+              .invoice-copy {
+                flex: 1;
+                height: calc((283mm - 6mm) / 3);
+                min-height: 0;
+                position: relative;
+              }
+
+              .invoice-container {
+                border: 1px solid #000 !important;
+                margin: 0 auto !important;
+                padding: 8px !important;
+                height: 100%;
+                transform: scale(0.82);
+                transform-origin: top left;
+                width: 121.95%;
+                box-sizing: border-box;
+              }
+
+              .copy-label {
+                display: none !important;
+              }
+
+              .footer-right .copy-label {
+                display: block !important;
+                position: static !important;
+                font-weight: bold;
+                font-size: 11px;
+                color: #000;
+                margin: 0;
+                text-align: right;
+              }
+
+              ${isPaidType ? `
+                .driver-copy .invoice-table td:nth-child(8) {
+                  visibility: hidden !important;
+                }
+              ` : ''}
+            }
+          </style>
+        </head>
+        <body class="light-mode">
+          <div class="print-container">
+            ${copies.map((copy, index) => {
+              // Replace the copy label in footer area
+              const copyHTML = modifiedInvoiceHTML.replace(
+                '<p class="copy-label">Driver Copy</p>',
+                `<p class="copy-label">${copy.label}</p>`
+              );
+              
+              // Add driver-copy class only for driver copy
+              const copyClass = copy.label === 'DRIVER COPY' ? 'driver-copy' : '';
+              
+              return `
+                <div class="invoice-copy ${copyClass}">
+                  ${copyHTML}
+                </div>
+              `;
+            }).join('')}
+          </div>
+          <script>
+            setTimeout(() => {
+              window.print();
+              setTimeout(() => {
+                window.close();
+              }, 100);
+            }, 500);
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // Helper function to ensure exactly 3 rows in the table
+  const ensureThreeRowsInTable = (html) => {
+    // Create a temporary DOM element to parse and modify the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
     
-    const motorFreightRow = allRows.find(tr => 
-      tr.textContent.includes('Motor Freight')
-    );
-    const hammaliRow = allRows.find(tr => 
-      tr.textContent.includes('Hammali')
-    );
-    const otherChargesRow = allRows.find(tr => 
-      tr.textContent.includes('Other Charges')
-    );
-    const totalRow = allRows.find(tr => 
-      tr.classList.contains('total-row')
-    );
+    const tbodies = tempDiv.querySelectorAll('.invoice-table tbody');
     
-    // Find article rows
-    const articleRows = allRows.filter(tr => 
-      tr.classList.contains('article-row') &&
-      !tr.textContent.includes('Motor Freight') &&
-      !tr.textContent.includes('Hammali') &&
-      !tr.textContent.includes('Other Charges') &&
-      !tr.classList.contains('total-row')
-    );
-    
-    const currentRowCount = articleRows.length;
-    
-    tbody.innerHTML = '';
-    
-    if (currentRowCount < 3) {
-      // Add existing article rows with correct numbering
-      articleRows.forEach((row, index) => {
-        const newRow = row.cloneNode(true);
-        const firstTd = newRow.querySelector('td:first-child');
-        if (firstTd) {
-          firstTd.textContent = index + 1;
-        }
-        tbody.appendChild(newRow);
-      });
+    tbodies.forEach(tbody => {
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
       
-      // Add empty rows to make exactly 3
-      for (let i = currentRowCount; i < 3; i++) {
-        const emptyRow = document.createElement('tr');
-        emptyRow.className = 'article-row';
-        emptyRow.innerHTML = `
-          <td>${i + 1}</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td style="display: none;"></td>
-          <td style="display: none;"></td>
-        `;
-        tbody.appendChild(emptyRow);
-      }
-    } else {
-      // Add first 3 article rows
-      articleRows.slice(0, 3).forEach((row, index) => {
-        const newRow = row.cloneNode(true);
-        const firstTd = newRow.querySelector('td:first-child');
-        if (firstTd) {
-          firstTd.textContent = index + 1;
+      const motorFreightRow = allRows.find(tr => 
+        tr.textContent.includes('Motor Freight')
+      );
+      const hammaliRow = allRows.find(tr => 
+        tr.textContent.includes('Hammali')
+      );
+      const otherChargesRow = allRows.find(tr => 
+        tr.textContent.includes('Other Charges')
+      );
+      const totalRow = allRows.find(tr => 
+        tr.classList.contains('total-row')
+      );
+      
+      // Find article rows
+      const articleRows = allRows.filter(tr => 
+        tr.classList.contains('article-row') &&
+        !tr.textContent.includes('Motor Freight') &&
+        !tr.textContent.includes('Hammali') &&
+        !tr.textContent.includes('Other Charges') &&
+        !tr.classList.contains('total-row')
+      );
+      
+      const currentRowCount = articleRows.length;
+      
+      tbody.innerHTML = '';
+      
+      if (currentRowCount < 3) {
+        // Add existing article rows with correct numbering
+        articleRows.forEach((row, index) => {
+          const newRow = row.cloneNode(true);
+          const firstTd = newRow.querySelector('td:first-child');
+          if (firstTd) {
+            firstTd.textContent = index + 1;
+          }
+          tbody.appendChild(newRow);
+        });
+        
+        // Add empty rows to make exactly 3
+        for (let i = currentRowCount; i < 3; i++) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.className = 'article-row';
+          emptyRow.innerHTML = `
+            <td>${i + 1}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="display: none;"></td>
+            <td style="display: none;"></td>
+          `;
+          tbody.appendChild(emptyRow);
         }
-        tbody.appendChild(newRow);
-      });
-    }
+      } else {
+        // Add first 3 article rows
+        articleRows.slice(0, 3).forEach((row, index) => {
+          const newRow = row.cloneNode(true);
+          const firstTd = newRow.querySelector('td:first-child');
+          if (firstTd) {
+            firstTd.textContent = index + 1;
+          }
+          tbody.appendChild(newRow);
+        });
+      }
+      
+      // Add special rows after article rows
+      if (motorFreightRow) tbody.appendChild(motorFreightRow.cloneNode(true));
+      if (hammaliRow) tbody.appendChild(hammaliRow.cloneNode(true));
+      if (otherChargesRow) tbody.appendChild(otherChargesRow.cloneNode(true));
+      if (totalRow) tbody.appendChild(totalRow.cloneNode(true));
+    });
     
-    // Add special rows after article rows
-    if (motorFreightRow) tbody.appendChild(motorFreightRow.cloneNode(true));
-    if (hammaliRow) tbody.appendChild(hammaliRow.cloneNode(true));
-    if (otherChargesRow) tbody.appendChild(otherChargesRow.cloneNode(true));
-    if (totalRow) tbody.appendChild(totalRow.cloneNode(true));
-  });
-  
-  return tempDiv.innerHTML;
-};
+    return tempDiv.innerHTML;
+  };
 
   const calculateTotals = () => {
     const articleTotals = formData.articles.reduce(
@@ -1430,892 +1463,878 @@ const ensureThreeRowsInTable = (html) => {
   const handleHistoryTransactionComplete = (result) => {
     setTransactionResult(result);
     setShowTransactionHistory(false);
-    // console.log(transactionResult);
   };
 
   const totals = calculateTotals();
 
-return (
-  <div
-    className={`invoice-generator-container ${
-      isLightMode ? "light-mode" : "dark-mode"
-    }`}
-  >
-    {/* Popup Alert */}
-    <PopupAlert
-      message={alert.message}
-      type={alert.type}
-      duration={5000}
-      onClose={hideAlert}
-      isLightMode={isLightMode}
-      position="top-right"
-    />
-
-    {/* Confirm Alert */}
-    {confirmAlert.show && (
-      <div className="modal-overlay">
-        <div className={`modal-content ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-          <p>{confirmAlert.message}</p>
-          <div className="modal-actions">
-            <button onClick={hideConfirm}>Cancel</button>
-            <button onClick={handleConfirm}>Confirm</button>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {openPopUp && (
-      <TransactionHistory
-        isLightMode={isLightMode}
-        consignorName={formData.consignor}
-        consigneeName={formData.consignee}
-        onClose={() => setOpenPopUp(false)}
-      />
-    )}
-
-    {(activeTab === "view" ||
-      activeTab === "update" ||
-      activeTab === "delete") && (
-      <div className={`invoice-search ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-        <form onSubmit={handleSearchInvoice} className={`invoice-search-form ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-          <input
-            type="text"
-            placeholder="Enter Invoice Number"
-            value={searchInvoiceNumber}
-            onChange={(e) => setSearchInvoiceNumber(e.target.value)}
-            required
-            className={`invoice-search-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-          />
-          <button 
-            type="submit" 
-            className={`invoice-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-          >
-            <IoSearch className={`invoice-search-icon ${isLightMode ? 'light-mode' : 'dark-mode'}`}/>
-          </button>
-        </form>
-      </div>
-    )}
-
-    {/* Only show invoice if in add mode OR if invoice has been found in view/update/delete mode */}
-    {(activeTab === "add" || (activeTab !== "add" && showInvoice)) && (
-      <>
-        {formData.created_at && (
-          <div className="invoice-timestamps">
-            <div>
-              Created At: {new Date(formData.created_at).toLocaleString()}
-              {shippingStatus && (
-                <div className="status-info">
-                  <strong>Challan Status:</strong> {shippingStatus.challan_status || "—"}
-                </div>
-              )}
-            </div>
-            <div>
-              {formData.updated_at && (
-                <>
-                  Updated At: {new Date(formData.updated_at).toLocaleString()}
-                  {shippingStatus && (
-                    <div className="status-info">
-                      <strong>Payment Status:</strong> {shippingStatus.payment_status || "—"}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+  // Reusable function to render a field with suggestions
+  const renderInputWithSuggestions = ({
+    inputName,
+    inputValue,
+    onInputChange,
+    onSearch,
+    suggestionsList,
+    showSuggestions,
+    setShowSuggestions,
+    onSuggestionClick,
+    placeholder = "",
+    className = "invoice-input customer-input fixed-input",
+    suggestionItemRenderer,
+    noSuggestionsContent = null
+  }) => {
+    return (
+      <div className="search-container" style={{ display: "inline-block", position: "relative", width: "66%" }}>
+        <input
+          type="text"
+          name={inputName}
+          value={inputValue}
+          onChange={(e) => {
+            onInputChange(e);
+            onSearch(e.target.value);
+          }}
+          onFocus={() => inputValue && onSearch(inputValue)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          placeholder={placeholder}
+          className={className}
+        />
+        {showSuggestions && suggestionsList.length > 0 && (
+          <ul className={`suggestions-list customer-suggestions ${SCROLLBAR_CLASS}`} style={{ 
+            minWidth: "400px",
+            width: "max-content",
+            maxWidth: "500px",
+            whiteSpace: "nowrap",
+            maxHeight: "200px",
+            overflowY: "auto"
+          }}>
+            {suggestionsList.map((customer, index) => (
+              <li
+                key={index}
+                className="suggestion-item customer-suggestion-item"
+                onClick={() => onSuggestionClick(customer)}
+              >
+                {suggestionItemRenderer ? suggestionItemRenderer(customer) : (
+                  <>
+                    <span className="suggestion-prefix">{customer.name}</span>
+                    <span className="customer-code"> - {customer.customer_code}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {showSuggestions && suggestionsList.length === 0 && noSuggestionsContent && (
+          <div className="no-suggestions" style={{ position: 'absolute', background: 'white', border: '1px solid #ccc', zIndex: 1000, padding: '5px' }}>
+            {noSuggestionsContent}
           </div>
         )}
+      </div>
+    );
+  };
 
-        <div className={`invoice-container ${isEditing ? "editable" : ""}`} id="print-area">
-          <div className="invoice-header">
-            <div className="company-name">NISHAD M.P. TRANSPORT (INDORE)</div>
-            <div className="company-description">
-              Clearing, Forwarding & Transport Agent
+  // Reusable function for name field
+  const renderNameField = (type) => {
+    const isConsignor = type === 'consignor';
+    const name = isConsignor ? 'consignor' : 'consignee';
+    const value = formData[name];
+    const suggestions = isConsignor ? consignorSuggestions : consigneeSuggestions;
+    const showSuggestions = isConsignor ? showConsignorSuggestions : showConsigneeSuggestions;
+    const setShowSuggestions = isConsignor ? setShowConsignorSuggestions : setShowConsigneeSuggestions;
+    const handleSearch = isConsignor ? handleConsignorSearch : handleConsigneeSearch;
+    const handleSuggestionClick = isConsignor ? handleConsignorSuggestionClick : handleConsigneeSuggestionClick;
+
+    const noSuggestionsContent = (
+      <>
+        No matching customers found.
+        <button 
+          className="add-customer-btn"
+          onClick={() => {
+            setPopupCustomerType(type);
+            setShowCustomerPopup(true);
+          }}
+        >
+          Add New Customer
+        </button>
+      </>
+    );
+
+    return renderInputWithSuggestions({
+      inputName: name,
+      inputValue: value,
+      onInputChange: handleChange,
+      onSearch: handleSearch,
+      suggestionsList: suggestions,
+      showSuggestions,
+      setShowSuggestions,
+      onSuggestionClick: handleSuggestionClick,
+      placeholder: "",
+      className: "invoice-input customer-input fixed-input",
+      suggestionItemRenderer: (customer) => {
+        const lowerInput = value.toLowerCase();
+        const lowerSuggestion = customer.name.toLowerCase();
+        const prefixIndex = lowerSuggestion.indexOf(lowerInput);
+        const prefix = customer.name.substring(0, prefixIndex + value.length);
+        const rest = customer.name.substring(prefixIndex + value.length);
+        return (
+          <>
+            <span className="suggestion-prefix">{prefix}</span>
+            <span className="suggestion-rest">{rest}</span>
+            <span className="customer-code"> - {customer.customer_code}</span>
+          </>
+        );
+      },
+      noSuggestionsContent
+    });
+  };
+
+  // Reusable function for GST field
+  const renderGstField = (type) => {
+    const isConsignor = type === 'consignor';
+    const gstName = isConsignor ? 'consignorGst' : 'consigneeGst';
+    const gstValue = formData[gstName];
+    const gstSuggestions = isConsignor ? consignorGstSuggestions : consigneeGstSuggestions;
+    const showGstSuggestions = isConsignor ? showConsignorGstSuggestions : showConsigneeGstSuggestions;
+    const setShowGstSuggestions = isConsignor ? setShowConsignorGstSuggestions : setShowConsigneeGstSuggestions;
+    const handleGstSearch = isConsignor ? handleConsignorGstSearch : handleConsigneeGstSearch;
+    const handleSuggestionClick = isConsignor ? handleConsignorSuggestionClick : handleConsigneeSuggestionClick;
+
+    return renderInputWithSuggestions({
+      inputName: gstName,
+      inputValue: gstValue,
+      onInputChange: handleChange,
+      onSearch: handleGstSearch,
+      suggestionsList: gstSuggestions,
+      showSuggestions: showGstSuggestions,
+      setShowSuggestions: setShowGstSuggestions,
+      onSuggestionClick: handleSuggestionClick,
+      placeholder: "",
+      className: "invoice-input customer-input fixed-input",
+      suggestionItemRenderer: (customer) => (
+        <>
+          <span className="suggestion-prefix">{customer.id_number}</span>
+          <span className="customer-code"> - {customer.customer_code}</span>
+        </>
+      ),
+      noSuggestionsContent: null
+    });
+  };
+
+  return (
+    <div
+      className={`invoice-generator-container ${
+        isLightMode ? "light-mode" : "dark-mode"
+      }`}
+    >
+      {/* Popup Alert */}
+      <PopupAlert
+        message={alert.message}
+        type={alert.type}
+        duration={5000}
+        onClose={hideAlert}
+        isLightMode={isLightMode}
+        position="top-right"
+      />
+
+      {/* Confirm Alert */}
+      {confirmAlert.show && (
+        <div className="modal-overlay">
+          <div className={`modal-content ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+            <p>{confirmAlert.message}</p>
+            <div className="modal-actions">
+              <button onClick={hideConfirm}>Cancel</button>
+              <button onClick={handleConfirm}>Confirm</button>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="company-address">
-              <div className="address-left">
-                <div>
-                  <strong>H.O.:</strong> 180, Loha Mandi, Indore (M.P.) - 452001
-                </div>
-                <div>
-                  <strong>Mobile No:</strong> 94250-82053, 94799-82057
-                </div>
-                <div>
-                  <strong>Raipur Branch:</strong> 94253-15983, 97703-87681
-                </div>
+      {openPopUp && (
+        <TransactionHistory
+          isLightMode={isLightMode}
+          consignorName={formData.consignor}
+          consigneeName={formData.consignee}
+          onClose={() => setOpenPopUp(false)}
+        />
+      )}
+
+      {(activeTab === "view" ||
+        activeTab === "update" ||
+        activeTab === "delete") && (
+        <div className={`invoice-search ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+          <form onSubmit={handleSearchInvoice} className={`invoice-search-form ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+            <input
+              type="text"
+              placeholder="Enter Invoice Number"
+              value={searchInvoiceNumber}
+              onChange={(e) => setSearchInvoiceNumber(e.target.value)}
+              required
+              className={`invoice-search-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+            />
+            <button 
+              type="submit" 
+              className={`invoice-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+            >
+              <IoSearch className={`invoice-search-icon ${isLightMode ? 'light-mode' : 'dark-mode'}`}/>
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Only show invoice if in add mode OR if invoice has been found in view/update/delete mode */}
+      {(activeTab === "add" || (activeTab !== "add" && showInvoice)) && (
+        <>
+          {formData.created_at && (
+            <div className="invoice-timestamps">
+              <div>
+                Created At: {new Date(formData.created_at).toLocaleString()}
+                {shippingStatus && (
+                  <div className="status-info">
+                    <strong>Challan Status:</strong> {shippingStatus.challan_status || "—"}
+                  </div>
+                )}
               </div>
               <div>
-                <div className="gstin">
-                  <strong>GSTIN:</strong> 23AACPT2351B1ZA
+                {formData.updated_at && (
+                  <>
+                    Updated At: {new Date(formData.updated_at).toLocaleString()}
+                    {shippingStatus && (
+                      <div className="status-info">
+                        <strong>Payment Status:</strong> {shippingStatus.payment_status || "—"}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className={`invoice-container ${isEditing ? "editable" : ""}`} id="print-area">
+            <div className="invoice-header">
+              <div className="company-name">NISHAD M.P. TRANSPORT (INDORE)</div>
+              <div className="company-description">
+                Clearing, Forwarding & Transport Agent
+              </div>
+
+              <div className="company-address">
+                <div className="address-left">
+                  <div>
+                    <strong>H.O.:</strong> 180, Loha Mandi, Indore (M.P.) - 452001
+                  </div>
+                  <div>
+                    <strong>Mobile No:</strong> 94250-82053, 94799-82057
+                  </div>
+                  <div>
+                    <strong>Raipur Branch:</strong> 94253-15983, 97703-87681
+                  </div>
                 </div>
-                <div className="payment-type-selector">
-                  {isEditing && (
-                    <div className="form-group">
-                      <label>
-                        <strong>Payment Type: </strong>
+                <div>
+                  <div className="gstin">
+                    <strong>GSTIN:</strong> 23AACPT2351B1ZA
+                  </div>
+                  <div className="payment-type-selector">
+                    {isEditing && (
+                      <div className="form-group">
+                        <label>
+                          <strong>Payment Type: </strong>
+                          <select
+                            name="paymentType"
+                            className={`payment-type-selector-dropDown ${SCROLLBAR_CLASS}`}
+                            value={formData.paymentType}
+                            onChange={handleChange}
+                            disabled={isCheckingPayment}
+                          >
+                            <option value="toPay">TO PAY</option>
+                            <option value="paid">PAID</option>
+                          </select>
+                          {isCheckingPayment && <span>Checking...</span>}
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="address-right">
+                  <div className="form-group inline ShowDate">
+                    <strong>Date:&nbsp;</strong>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="date"
+                        value={formData.date}
+                        onChange={handleChange}
+                        required
+                        className="invoice-input"
+                      />
+                    ) : (
+                      <span>{formData.date.split("-").reverse().join("-")}</span>
+                    )}
+                  </div>
+                  <div className="form-group inline">
+                    <strong>G.R. No.:&nbsp;</strong>
+                    <span>{formatGRForDisplay(formData.invoiceNumber) || "—"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="consignment-details">
+                <div className="consignment-from">
+                  <div className="from-to">
+                    <div className="form-group inline">
+                      <strong>From:</strong>
+                      {isEditing ? (
                         <select
-                          name="paymentType"
-                          className={`payment-type-selector-dropDown ${SCROLLBAR_CLASS}`}
-                          value={formData.paymentType}
+                          name="fromLocation"
+                          value={formData.fromLocation}
                           onChange={handleChange}
-                          disabled={isCheckingPayment}
+                          required
+                          className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
+                          style={{ maxHeight: '200px' }}
                         >
-                          <option value="toPay">TO PAY</option>
-                          <option value="paid">PAID</option>
+                          {locationOptions.map((location) => (
+                            <option key={location} value={location}>
+                              {location}
+                            </option>
+                          ))}
                         </select>
-                        {isCheckingPayment && <span>Checking...</span>}
-                      </label>
+                      ) : (
+                        <span>{formData.fromLocation}</span>
+                      )}
+                    </div>
+                    <div className="form-group inline">
+                      <strong>To:</strong>
+                      {isEditing ? (
+                        <select
+                          name="toLocation"
+                          value={formData.toLocation}
+                          onChange={handleChange}
+                          required
+                          className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
+                          style={{ maxHeight: '200px' }}
+                        >
+                          {locationOptions.map((location) => (
+                            <option key={location} value={location}>
+                              {location}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span>{formData.toLocation}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="consignment-from2 fixed-position">
+                    {/* Consignor GST field */}
+                    <div className="form-group inline">
+                      <strong style={{marginRight: "2px"}}>Consignor GST:</strong>
+                      {isEditing ? (
+                        renderGstField('consignor')
+                      ) : (
+                        <span style={{ width: "113px" }}>
+                          {formData.consignorGst || "—"}
+                        </span>
+                      )}
+                    </div>
+                    {/* Consignor Name field */}
+                    <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
+                      <strong className="invoice-customerNames fixed-label">Consignor Name:</strong>
+                      {isEditing ? (
+                        renderNameField('consignor')
+                      ) : (
+                        <span className="fixed-value">{formData.consignor}</span>
+                      )}
+                    </div>
+                    <div className="form-group inline codeWidth">
+                      <strong>Consignor Code:</strong>
+                      <span>{formData.consignorCode || "—"}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="consignment-to">
+                  <div className="consignment-from2 fixed-position">
+                    {/* Consignee GST field */}
+                    <div className="form-group inline">
+                      <strong>Consignee GST:</strong>
+                      {isEditing ? (
+                        renderGstField('consignee')
+                      ) : (
+                        <span style={{ width: "113px" }}>
+                          {formData.consigneeGst || "—"}
+                        </span>
+                      )}
+                    </div>
+                    {/* Consignee Name field */}
+                    <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
+                      <strong className="invoice-customerNames fixed-label">Consignee Name:</strong>
+                      {isEditing ? (
+                        renderNameField('consignee')
+                      ) : (
+                        <span className="fixed-value">{formData.consignee}</span>
+                      )}
+                    </div>
+                    <div className="form-group inline codeWidth">
+                      <strong>Consignee Code:</strong>
+                      <span>{formData.consigneeCode || "—"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="invoice-table">
+              <table className="full-table">
+                <thead>
+                  <tr className="header-row">
+                    <th>S. No.</th>
+                    <th>No. of Articles</th>
+                    <th>Said to Contain</th>
+                    <th>HSN</th>
+                    <th>Tax Free (Yes/No)</th>
+                    <th>Wt. Charg (KG)</th>
+                    <th>Actual Wt. (KG)</th>
+                    <th className="namered">{formData.paymentType === "toPay" ? "TO PAY" : "PAID"}</th>
+                    <th>Remarks</th>
+                    {isEditing && <th>Auto</th>}
+                    {isEditing && formData.articles.length > 1 && <th>Action</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.articles.map((article, index) => (
+                    <tr key={index} className="article-row">
+                      <td>{article.noIndex}</td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="noOfArticles"
+                            value={article.noOfArticles}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            required
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          article.noOfArticles || "—"
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="saidToContain"
+                            value={article.saidToContain}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            required
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          article.saidToContain || "—"
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="hsn"
+                            value={article.hsn}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          article.hsn || "—"
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <select
+                            name="taxFree"
+                            value={article.taxFree}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            className={`invoice-input center-input ${SCROLLBAR_CLASS}`}
+                          >
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        ) : (
+                          article.taxFree || "—"
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="weightChargeable"
+                            value={article.weightChargeable}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          formatNumericValue(article.weightChargeable)
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="actualWeight"
+                            value={article.actualWeight}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          formatNumericValue(article.actualWeight)
+                        )}
+                      </td>   
+                      {formData.paymentType === "toPay" ? (
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              name="to_pay"
+                              value={article.to_pay}
+                              onChange={(e) => handleArticleChange(index, e)}
+                              className="invoice-input table-input center-input"
+                            />
+                          ) : (
+                            formatNumericValue(article.to_pay)
+                          )}
+                        </td>
+                      ) : (
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              name="paid"
+                              value={article.paid}
+                              onChange={(e) => handleArticleChange(index, e)}
+                              className="invoice-input table-input center-input"
+                            />
+                          ) : (
+                            formatNumericValue(article.paid)
+                          )}
+                        </td>
+                      )}
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="remarks"
+                            value={article.remarks}
+                            onChange={(e) => handleArticleChange(index, e)}
+                            className="invoice-input table-input center-input"
+                          />
+                        ) : (
+                          article.remarks || "—"
+                        )}
+                      </td>
+                      {isEditing && <td>
+                        <button 
+                          onClick={() => handleHistoryButtonClick(index)}
+                          disabled={isFillingArticle}
+                          title="Auto-fill from history"
+                          className={`auto_fill_button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                        >
+                          {isFillingArticle && currentArticleIndex === index ? '...' : <TfiWrite className={"auto_icon"} />}
+                        </button>
+                      </td>}
+                      {isEditing && formData.articles.length > 1 && (
+                        <td className="action-cell">
+                          <button
+                            type="button"
+                            onClick={() => removeArticle(index)}
+                            className={`remove-btn ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                            title="Remove article"
+                          >
+                            <FaTrashCan />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  <tr>
+                    <td><b>Motor Freight</b></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="motorFreight"
+                          value={formData.motorFreight}
+                          onChange={handleChange}
+                          className="invoice-input table-input center-input"
+                        />
+                      ) : (
+                        formatNumericValue(formData.motorFreight === "" ? "0" : formData.motorFreight)
+                      )}
+                    </td>
+                    <td></td>
+                    {isEditing && <td></td>}
+                    {isEditing && formData.articles.length > 1 && (
+                      <td></td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td><b>Hammali</b></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="hammali"
+                          value={formData.hammali}
+                          onChange={handleChange}
+                          className="invoice-input table-input center-input"
+                        />
+                      ) : (
+                        formatNumericValue(formData.hammali === "" ? "0" : formData.hammali)
+                      )}
+                    </td>
+                    {isEditing && <td></td>}
+                    <td></td>
+                    {isEditing && formData.articles.length > 1 && (
+                      <td></td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td><b>Other Charges</b></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="otherCharges"
+                          value={formData.otherCharges}
+                          onChange={handleChange}
+                          className="invoice-input table-input center-input"
+                        />
+                      ) : (
+                        formatNumericValue(formData.otherCharges === "" ? "0" : formData.otherCharges)
+                      )}
+                    </td>
+                    {isEditing && <td></td>}
+                    <td></td>
+                    {isEditing && formData.articles.length > 1 && (
+                      <td></td>
+                    )}
+                  </tr>
+                  <tr className="total-row">
+                    <td>Total</td>
+                    <td>{totals.noOfArticles}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>{formatNumericValue(totals.weightChargeable)}</td>
+                    <td>{formatNumericValue(totals.actualWeight)}</td>
+                    <td>
+                      {formData.paymentType === "toPay" 
+                        ? formatNumericValue(totals.to_pay)
+                        : formatNumericValue(totals.paid)
+                      }
+                    </td>
+                    <td></td>
+                    {isEditing && <td></td>}
+                    {isEditing && formData.articles.length > 1 && <td></td>}
+                  </tr>
+                </tbody>
+              </table>
+              {isEditing && (
+                <button type="button" onClick={addArticle} className="add-btn">
+                  Add Article
+                </button>
+              )}
+            </div>
+
+            <div className="invoice-footer">
+              <div className="footer-left">
+                <div className="goods-type-row">
+                  <div className={`form-group inline ${!isEditing ? 'GoodsTypeCSS' : ''}`}>
+                    <strong>Goods Type:</strong>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="goodsType"
+                        value={formData.goodsType}
+                        onChange={handleChange}
+                        className="invoice-input"
+                      />
+                    ) : (
+                      <span>{formData.goodsType || "—"}</span>
+                    )}
+                  </div>
+                  <div className="form-group inline">
+                    <strong>Value Declared:</strong>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="valueDeclared"
+                        value={formData.valueDeclared}
+                        onChange={handleChange}
+                        className="invoice-input"
+                      />
+                    ) : (
+                      <span>
+                        {formatNumericValue(formData.valueDeclared)}
+                      </span>
+                    )}
+                  </div>
+                  {!isEditing && (
+                    <div className="spaceForSign"></div>
+                  )}
+                </div>
+                <div className="footer-below">
+                  <p>
+                    <strong>
+                      Subject to Indore Jurisdiction || AT OWNER'S RISK
+                    </strong>
+                  </p>
+                  <div className="form-group inline">
+                    <strong>GST Will be Paid By:</strong>
+                    {isEditing ? (
+                      <select
+                        name="gstPaidBy"
+                        value={formData.gstPaidBy}
+                        onChange={handleChange}
+                        className={`invoice-input ${SCROLLBAR_CLASS}`}
+                      >
+                        <option value="Consignor">Consignor</option>
+                        <option value="Consignee">Consignee</option>
+                      </select>
+                    ) : (
+                      <span>{formData.gstPaidBy || "—"}</span>
+                    )}
+                  </div>
+                  {!isEditing && (
+                    <div className="footer-right">
+                      <p className="copy-label">Driver Copy</p>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="address-right">
-                <div className="form-group inline ShowDate">
-                  <strong>Date:&nbsp;</strong>
-                  {isEditing ? (
-                    <input
-                      type="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleChange}
-                      required
-                      className="invoice-input"
-                    />
-                  ) : (
-                    <span>{formData.date.split("-").reverse().join("-")}</span>
-                  )}
-                </div>
-                <div className="form-group inline">
-                  <strong>G.R. No.:&nbsp;</strong>
-                  <span>{formatGRForDisplay(formData.invoiceNumber) || "—"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="consignment-details">
-              <div className="consignment-from">
-                <div className="from-to">
-                  <div className="form-group inline">
-                    <strong>From:</strong>
-                    {isEditing ? (
-                      <select
-                        name="fromLocation"
-                        value={formData.fromLocation}
-                        onChange={handleChange}
-                        required
-                        className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
-                        style={{ maxHeight: '200px' }}
-                      >
-                        {locationOptions.map((location) => (
-                          <option key={location} value={location}>
-                            {location}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span>{formData.fromLocation}</span>
-                    )}
-                  </div>
-                  <div className="form-group inline">
-                    <strong>To:</strong>
-                    {isEditing ? (
-                      <select
-                        name="toLocation"
-                        value={formData.toLocation}
-                        onChange={handleChange}
-                        required
-                        className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
-                        style={{ maxHeight: '200px' }}
-                      >
-                        {locationOptions.map((location) => (
-                          <option key={location} value={location}>
-                            {location}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span>{formData.toLocation}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="consignment-from2 fixed-position">
-                  <div className="form-group inline">
-                    <strong>Consignor GST:</strong>
-                    {formData.consignorGst ? (
-                      <span style={{ width: "113px" }}>
-                        {formData.consignorGst}
-                      </span>
-                    ) : (
-                      <span style={{ width: "113px" }}>{"—"}</span>
-                    )}
-                  </div>
-                  <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
-                    <strong className="invoice-customerNames fixed-label">Consignor Name:</strong>
-                    {isEditing ? (
-                      <div
-                        className="search-container fixed-input-container"
-                        style={{ display: "inline-block", position: "relative" }}
-                      >
-                        <input
-                          type="text"
-                          name="consignor"
-                          value={formData.consignor}
-                          onChange={(e) => {
-                            handleChange(e);
-                            handleConsignorSearch(e.target.value);
-                          }}
-                          onFocus={() =>
-                            formData.consignor &&
-                            handleConsignorSearch(formData.consignor)
-                          }
-                          onBlur={() =>
-                            setTimeout(
-                              () => setShowConsignorSuggestions(false),
-                              200
-                            )
-                          }
-                          required
-                          className="invoice-input customer-input fixed-input"
-                        />
-                        {showConsignorSuggestions && (
-                          <ul
-                            className={`suggestions-list customer-suggestions ${SCROLLBAR_CLASS}`}
-                            style={{ 
-                              minWidth: "400px",
-                              width: "max-content",
-                              maxWidth: "500px",
-                              whiteSpace: "nowrap",
-                              maxHeight: "200px",
-                              overflowY: "auto"
-                            }}
-                          >
-                            {consignorSuggestions.length > 0 ? (
-                              consignorSuggestions.map((customer, index) => {
-                                const lowerInput = formData.consignor.toLowerCase();
-                                const lowerSuggestion = customer.name.toLowerCase();
-                                const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                                const prefix = customer.name.substring(
-                                  0,
-                                  prefixIndex + formData.consignor.length
-                                );
-                                const rest = customer.name.substring(
-                                  prefixIndex + formData.consignor.length
-                                );
-
-                                return (
-                                  <li
-                                    key={index}
-                                    className="suggestion-item customer-suggestion-item"
-                                    onClick={() => handleConsignorSuggestionClick(customer)}
-                                  >
-                                    <span className="suggestion-prefix">
-                                      {prefix}
-                                    </span>
-                                    <span className="suggestion-rest">
-                                      {rest}
-                                    </span>
-                                    <span className="customer-code">
-                                      - {customer.customer_code}
-                                    </span>
-                                  </li>
-                                );
-                              })
-                            ) : (
-                              <div className="no-suggestions">
-                                No matching customers found.
-                                <button 
-                                  className="add-customer-btn"
-                                  onClick={() => {
-                                    setPopupCustomerType('consignor');
-                                    setShowCustomerPopup(true);
-                                  }}
-                                >
-                                  Add New Customer
-                                </button>
-                              </div>
-                            )}
-                          </ul>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="fixed-value">{formData.consignor}</span>
-                    )}
-                  </div>
-                  <div className="form-group inline codeWidth">
-                    <strong>Consignor Code:</strong>
-                    <span>{formData.consignorCode || "—"}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="consignment-to">
-                <div className="consignment-from2 fixed-position">
-                  <div className="form-group inline">
-                    <strong>Consignee GST:</strong>
-                    {formData.consigneeGst ? (
-                      <span style={{ width: "113px" }}>
-                        {formData.consigneeGst}
-                      </span>
-                    ) : (
-                      <span style={{ width: "113px" }}>{"—"}</span>
-                    )}
-                  </div>
-                  <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
-                    <strong className="invoice-customerNames fixed-label">Consignee Name:</strong>
-                    {isEditing ? (
-                      <div
-                        className="search-container fixed-input-container"
-                        style={{ display: "inline-block", position: "relative" }}
-                      >
-                        <input
-                          type="text"
-                          name="consignee"
-                          value={formData.consignee}
-                          onChange={(e) => {
-                            handleChange(e);
-                            handleConsigneeSearch(e.target.value);
-                          }}
-                          onFocus={() =>
-                            formData.consignee &&
-                            handleConsigneeSearch(formData.consignee)
-                          }
-                          onBlur={() =>
-                            setTimeout(
-                              () => setShowConsigneeSuggestions(false),
-                              200
-                            )
-                          }
-                          required
-                          className="invoice-input customer-input fixed-input"
-                        />
-                        {showConsigneeSuggestions && (
-                          <ul
-                            className={`suggestions-list customer-suggestions ${SCROLLBAR_CLASS}`}
-                            style={{ 
-                              minWidth: "400px",
-                              width: "max-content",
-                              maxWidth: "500px",
-                              whiteSpace: "nowrap",
-                              maxHeight: "200px",
-                              overflowY: "auto"
-                            }}
-                          >
-                            {consigneeSuggestions.length > 0 ? (
-                              consigneeSuggestions.map((customer, index) => {
-                                const lowerInput = formData.consignee.toLowerCase();
-                                const lowerSuggestion = customer.name.toLowerCase();
-                                const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                                const prefix = customer.name.substring(
-                                  0,
-                                  prefixIndex + formData.consignee.length
-                                );
-                                const rest = customer.name.substring(
-                                  prefixIndex + formData.consignee.length
-                                );
-
-                                return (
-                                  <li
-                                    key={index}
-                                    className="suggestion-item customer-suggestion-item"
-                                    onClick={() => handleConsigneeSuggestionClick(customer)}
-                                  >
-                                    <span className="suggestion-prefix">
-                                      {prefix}
-                                    </span>
-                                    <span className="suggestion-rest">
-                                      {rest}
-                                    </span>
-                                    <span className="customer-code">
-                                      - {customer.customer_code}
-                                    </span>
-                                  </li>
-                                );
-                              })
-                            ) : (
-                              <div className="no-suggestions">
-                                No matching customers found.
-                                <button 
-                                  className="add-customer-btn"
-                                  onClick={() => {
-                                    setPopupCustomerType('consignee');
-                                    setShowCustomerPopup(true);
-                                  }}
-                                >
-                                  Add New Customer
-                                </button>
-                              </div>
-                            )}
-                          </ul>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="fixed-value">{formData.consignee}</span>
-                    )}
-                  </div>
-                  <div className="form-group inline codeWidth">
-                    <strong>Consignee Code:</strong>
-                    <span>{formData.consigneeCode || "—"}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="invoice-table">
-            <table className="full-table">
-              <thead>
-                <tr className="header-row">
-                  <th>S. No.</th>
-                  <th>No. of Articles</th>
-                  <th>Said to Contain</th>
-                  <th>HSN</th>
-                  <th>Tax Free (Yes/No)</th>
-                  <th>Wt. Charg (KG)</th>
-                  <th>Actual Wt. (KG)</th>
-                  <th className="namered">{formData.paymentType === "toPay" ? "TO PAY" : "PAID"}</th>
-                  <th>Remarks</th>
-                  {isEditing && <th>Auto</th>}
-                  {isEditing && formData.articles.length > 1 && <th>Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {formData.articles.map((article, index) => (
-                  <tr key={index} className="article-row">
-                    <td>{article.noIndex}</td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="noOfArticles"
-                          value={article.noOfArticles}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          required
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        article.noOfArticles || "—"
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="saidToContain"
-                          value={article.saidToContain}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          required
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        article.saidToContain || "—"
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="hsn"
-                          value={article.hsn}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        article.hsn || "—"
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <select
-                          name="taxFree"
-                          value={article.taxFree}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          className={`invoice-input center-input ${SCROLLBAR_CLASS}`}
-                        >
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
-                      ) : (
-                        article.taxFree || "—"
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="weightChargeable"
-                          value={article.weightChargeable}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        formatNumericValue(article.weightChargeable)
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="actualWeight"
-                          value={article.actualWeight}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        formatNumericValue(article.actualWeight)
-                      )}
-                    </td>   
-                    {formData.paymentType === "toPay" ? (
-                      <td>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            name="to_pay"
-                            value={article.to_pay}
-                            onChange={(e) => handleArticleChange(index, e)}
-                            className="invoice-input table-input center-input"
-                          />
-                        ) : (
-                          formatNumericValue(article.to_pay)
-                        )}
-                      </td>
-                    ) : (
-                      <td>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            name="paid"
-                            value={article.paid}
-                            onChange={(e) => handleArticleChange(index, e)}
-                            className="invoice-input table-input center-input"
-                          />
-                        ) : (
-                          formatNumericValue(article.paid)
-                        )}
-                      </td>
-                    )}
-                    <td>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="remarks"
-                          value={article.remarks}
-                          onChange={(e) => handleArticleChange(index, e)}
-                          className="invoice-input table-input center-input"
-                        />
-                      ) : (
-                        article.remarks || "—"
-                      )}
-                    </td>
-                    {isEditing && <td>
-                      <button 
-                        onClick={() => handleHistoryButtonClick(index)}
-                        disabled={isFillingArticle}
-                        title="Auto-fill from history"
-                        className={`auto_fill_button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                      >
-                        {isFillingArticle && currentArticleIndex === index ? '...' : <TfiWrite className={"auto_icon"} />}
-                      </button>
-                    </td>}
-                    {isEditing && formData.articles.length > 1 && (
-                      <td className="action-cell">
-                        <button
-                          type="button"
-                          onClick={() => removeArticle(index)}
-                          className={`remove-btn ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                          title="Remove article"
-                        >
-                          <FaTrashCan />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                <tr>
-                  <td><b>Motor Freight</b></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="motorFreight"
-                        value={formData.motorFreight}
-                        onChange={handleChange}
-                        className="invoice-input table-input center-input"
-                      />
-                    ) : (
-                      formatNumericValue(formData.motorFreight === "" ? "0" : formData.motorFreight)
-                    )}
-                  </td>
-                  <td></td>
-                  {isEditing && <td></td>}
-                  {isEditing && formData.articles.length > 1 && (
-                    <td></td>
-                  )}
-                </tr>
-                <tr>
-                  <td><b>Hammali</b></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="hammali"
-                        value={formData.hammali}
-                        onChange={handleChange}
-                        className="invoice-input table-input center-input"
-                      />
-                    ) : (
-                      formatNumericValue(formData.hammali === "" ? "0" : formData.hammali)
-                    )}
-                  </td>
-                  {isEditing && <td></td>}
-                  <td></td>
-                  {isEditing && formData.articles.length > 1 && (
-                    <td></td>
-                  )}
-                </tr>
-                <tr>
-                  <td><b>Other Charges</b></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="otherCharges"
-                        value={formData.otherCharges}
-                        onChange={handleChange}
-                        className="invoice-input table-input center-input"
-                      />
-                    ) : (
-                      formatNumericValue(formData.otherCharges === "" ? "0" : formData.otherCharges)
-                    )}
-                  </td>
-                  {isEditing && <td></td>}
-                  <td></td>
-                  {isEditing && formData.articles.length > 1 && (
-                    <td></td>
-                  )}
-                </tr>
-                <tr className="total-row">
-                  <td>Total</td>
-                  <td>{totals.noOfArticles}</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatNumericValue(totals.weightChargeable)}</td>
-                  <td>{formatNumericValue(totals.actualWeight)}</td>
-                  <td>
-                    {formData.paymentType === "toPay" 
-                      ? formatNumericValue(totals.to_pay)
-                      : formatNumericValue(totals.paid)
-                    }
-                  </td>
-                  <td></td>
-                  {isEditing && <td></td>}
-                  {isEditing && formData.articles.length > 1 && <td></td>}
-                </tr>
-              </tbody>
-            </table>
+          <div className="invoice-actions">
             {isEditing && (
-              <button type="button" onClick={addArticle} className="add-btn">
-                Add Article
+              <button className="invoice-history-button" onClick={() => setOpenPopUp(true)}>
+                View Transaction History
               </button>
             )}
-          </div>
-
-          <div className="invoice-footer">
-            <div className="footer-left">
-              <div className="goods-type-row">
-                <div className={`form-group inline ${!isEditing ? 'GoodsTypeCSS' : ''}`}>
-                  <strong>Goods Type:</strong>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="goodsType"
-                      value={formData.goodsType}
-                      onChange={handleChange}
-                      className="invoice-input"
-                    />
-                  ) : (
-                    <span>{formData.goodsType || "—"}</span>
-                  )}
-                </div>
-                <div className="form-group inline">
-                  <strong>Value Declared:</strong>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="valueDeclared"
-                      value={formData.valueDeclared}
-                      onChange={handleChange}
-                      className="invoice-input"
-                    />
-                  ) : (
-                    <span>
-                      {formatNumericValue(formData.valueDeclared)}
-                    </span>
-                  )}
-                </div>
-                {!isEditing && (
-                  <div className="spaceForSign"></div>
-                )}
-              </div>
-              <div className="footer-below">
-                <p>
-                  <strong>
-                    Subject to Indore Jurisdiction || AT OWNER'S RISK
-                  </strong>
-                </p>
-                <div className="form-group inline">
-                  <strong>GST Will be Paid By:</strong>
-                  {isEditing ? (
-                    <select
-                      name="gstPaidBy"
-                      value={formData.gstPaidBy}
-                      onChange={handleChange}
-                      className={`invoice-input ${SCROLLBAR_CLASS}`}
-                    >
-                      <option value="Consignor">Consignor</option>
-                      <option value="Consignee">Consignee</option>
-                    </select>
-                  ) : (
-                    <span>{formData.gstPaidBy || "—"}</span>
-                  )}
-                </div>
-                {!isEditing && (
-                  <div className="footer-right">
-                    <p className="copy-label">Driver Copy</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="invoice-actions">
-          {isEditing && (
-            <button className="invoice-history-button" onClick={() => setOpenPopUp(true)}>
-              View Transaction History
-            </button>
-          )}
-          {isEditing ? (
-            activeTab === "add" ? (
-              <button
-                type="button"
-                onClick={handleGenerateInvoice}
-                className="generate-btn"
-                disabled={isVerifying}
-              >
-                {isVerifying ? "Verifying..." : "Generate Invoice"}
-              </button>
-            ) : activeTab === "update" ? (
-              <>
-                <button onClick={handleUpdateInvoice} className="generate-btn update-btn">
-                  Update Invoice
+            {isEditing ? (
+              activeTab === "add" ? (
+                <button
+                  type="button"
+                  onClick={handleGenerateInvoice}
+                  className="generate-btn"
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? "Verifying..." : "Generate Invoice"}
                 </button>
-                <button onClick={resetForm2} className="cancel-btn">
-                  Cancel
-                </button>
-              </>
-            ) : null
-          ) : (
-            <div className="invoice-actions no-print">
-              {activeTab === "add" && !isSubmitted && (
-                <button onClick={resetForm} className="edit-btn">
-                  Edit
-                </button>
-              )}
-              {activeTab === "add" && isSubmitted && (
-                <button onClick={resetForm2} className="edit-btn">
-                  Create New
-                </button>
-              )}
-              {activeTab === "add" && !isSubmitted && (
-                <button onClick={handleSubmitToServer} className="submit-btn">
-                  Submit
-                </button>
-              )}
-              {(activeTab === "add" || activeTab === "view") && isSubmitted && (
-                <button onClick={handlePrint} className="print-btn">
-                  Print
-                </button>
-              )}
-              {activeTab === "delete" && (
+              ) : activeTab === "update" ? (
                 <>
-                  <button onClick={handleDeleteInvoice} className="delete-btn">
-                    Delete Invoice
+                  <button onClick={handleUpdateInvoice} className="generate-btn update-btn">
+                    Update Invoice
                   </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("add");
-                      setShowInvoice(false);
-                    }}
-                    className="cancel-btn"
-                  >
+                  <button onClick={resetForm2} className="cancel-btn">
                     Cancel
                   </button>
                 </>
-              )}
-            </div>
-          )}
-        </div>
-      </>
-    )}
+              ) : null
+            ) : (
+              <div className="invoice-actions no-print">
+                {activeTab === "add" && !isSubmitted && (
+                  <button onClick={resetForm} className="edit-btn">
+                    Edit
+                  </button>
+                )}
+                {activeTab === "add" && isSubmitted && (
+                  <button onClick={resetForm2} className="edit-btn">
+                    Create New
+                  </button>
+                )}
+                {activeTab === "add" && !isSubmitted && (
+                  <button onClick={handleSubmitToServer} className="submit-btn">
+                    Submit
+                  </button>
+                )}
+                {(activeTab === "add" || activeTab === "view") && isSubmitted && (
+                  <button onClick={handlePrint} className="print-btn">
+                    Print
+                  </button>
+                )}
+                {activeTab === "delete" && (
+                  <>
+                    <button onClick={handleDeleteInvoice} className="delete-btn">
+                      Delete Invoice
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab("add");
+                        setShowInvoice(false);
+                      }}
+                      className="cancel-btn"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
-    {showCustomerPopup && (
-      <div onClick={() => setShowCustomerPopup(false)}>
-        <div onClick={(e) => e.stopPropagation()}>
-          <CustomerManagement 
-            isLightMode={isLightMode} 
-            isPopup={true} 
-            onClose={() => setShowCustomerPopup(false)}
-            onCustomerAdded={handleCustomerAdded}
-          />
+      {showCustomerPopup && (
+        <div onClick={() => setShowCustomerPopup(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <CustomerManagement 
+              isLightMode={isLightMode} 
+              isPopup={true} 
+              onClose={() => setShowCustomerPopup(false)}
+              onCustomerAdded={handleCustomerAdded}
+            />
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {showTransactionHistory && (
-      <AutoWriteTable
-        consignorName={formData.consignor}
-        consigneeName={formData.consignee}
-        hsn={formData.articles[currentArticleIndex]?.hsn}
-        noOfArticles={formData.articles[currentArticleIndex]?.noOfArticles}
-        onComplete={(result) => {
-          if (result) {
-            const updatedArticles = [...formData.articles];
-            updatedArticles[currentArticleIndex] = {
-              ...updatedArticles[currentArticleIndex],
-              saidToContain: result.saidToContain || updatedArticles[currentArticleIndex].saidToContain,
-              taxFree: result.taxFree || updatedArticles[currentArticleIndex].taxFree,
-              weightChargeable: result.weightChargeable || updatedArticles[currentArticleIndex].weightChargeable,
-              actualWeight: result.actualWeight || updatedArticles[currentArticleIndex].actualWeight,
-              hsn: result.hsn || updatedArticles[currentArticleIndex].hsn,
-              to_pay: formData.paymentType === "toPay" ? (result.amount || updatedArticles[currentArticleIndex].to_pay) : updatedArticles[currentArticleIndex].to_pay,
-              paid: formData.paymentType === "paid" ? (result.amount || updatedArticles[currentArticleIndex].paid) : updatedArticles[currentArticleIndex].paid,
-              remarks: result.remarks || updatedArticles[currentArticleIndex].remarks,
-            };
-            setFormData(prev => ({ ...prev, articles: updatedArticles }));
-          }
-          setShowTransactionHistory(false);
-        }}
-      />
-    )}
-  </div>
-);
+      {showTransactionHistory && (
+        <AutoWriteTable
+          consignorName={formData.consignor}
+          consigneeName={formData.consignee}
+          hsn={formData.articles[currentArticleIndex]?.hsn}
+          noOfArticles={formData.articles[currentArticleIndex]?.noOfArticles}
+          onComplete={(result) => {
+            if (result) {
+              const updatedArticles = [...formData.articles];
+              updatedArticles[currentArticleIndex] = {
+                ...updatedArticles[currentArticleIndex],
+                saidToContain: result.saidToContain || updatedArticles[currentArticleIndex].saidToContain,
+                taxFree: result.taxFree || updatedArticles[currentArticleIndex].taxFree,
+                weightChargeable: result.weightChargeable || updatedArticles[currentArticleIndex].weightChargeable,
+                actualWeight: result.actualWeight || updatedArticles[currentArticleIndex].actualWeight,
+                hsn: result.hsn || updatedArticles[currentArticleIndex].hsn,
+                to_pay: formData.paymentType === "toPay" ? (result.amount || updatedArticles[currentArticleIndex].to_pay) : updatedArticles[currentArticleIndex].to_pay,
+                paid: formData.paymentType === "paid" ? (result.amount || updatedArticles[currentArticleIndex].paid) : updatedArticles[currentArticleIndex].paid,
+                remarks: result.remarks || updatedArticles[currentArticleIndex].remarks,
+              };
+              setFormData(prev => ({ ...prev, articles: updatedArticles }));
+            }
+            setShowTransactionHistory(false);
+          }}
+        />
+      )}
+    </div>
+  );
 };
 
 export default InvoiceGenerator;
