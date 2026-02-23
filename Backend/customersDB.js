@@ -193,6 +193,47 @@ async function inspectDatabase() {
   }
 }
 
+
+// Search customers by name, customer code, or ID number (substring match).
+async function searchCustomers(query) {
+  if (!query || query.trim() === '') {
+    return [];
+  }
+
+  const searchTerm = query.trim();
+  // Use ILIKE for case-insensitive matching
+  // Relevance: exact match (1), starts with (2), contains (3)
+  const sql = `
+    SELECT 
+      customer_code,
+      name,
+      id_type,
+      id_number,
+      contact_number,
+      type,
+      created_at,
+      CASE 
+        WHEN name ILIKE $1 OR customer_code ILIKE $1 OR id_number ILIKE $1 THEN 1
+        WHEN name ILIKE $2 OR customer_code ILIKE $2 OR id_number ILIKE $2 THEN 2
+        ELSE 3
+      END as relevance
+    FROM customers
+    WHERE 
+      name ILIKE $3 OR 
+      customer_code ILIKE $3 OR 
+      id_number ILIKE $3
+    ORDER BY relevance, name
+    LIMIT 20
+  `;
+
+  const exact = searchTerm;           // exact match (with no wildcards)
+  const startsWith = `${searchTerm}%`; // starts with
+  const contains = `%${searchTerm}%`;  // contains
+
+  const { rows } = await pool.query(sql, [exact, startsWith, contains]);
+  return rows;
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   await pool.end();
@@ -207,5 +248,6 @@ module.exports = {
   createCustomer,
   updateCustomerByName,
   deleteCustomerByName,
-  inspectDatabase
+  inspectDatabase,
+  searchCustomers
 };
