@@ -116,5 +116,17 @@ module.exports = (customersDB) => {
     }
   });
 
+  // Search customers
+  router.get('/customers/search', async (req, res) => {
+    try {
+      const { q } = req.query;
+      const results = await customersDB.searchCustomers(q || '');
+      res.json(results);
+    } catch (err) {
+      console.error('Customer search error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   return router;
 };
