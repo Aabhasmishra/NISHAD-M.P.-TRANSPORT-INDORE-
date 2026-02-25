@@ -6,7 +6,7 @@ module.exports = (statusDB) => {
     try {
       const { 
         gr_no, 
-        challan_status = 'Book', 
+        challan_status = 'NOT SHIPPED', 
         payment_status = 'NA',
         crossing_status = 'Book' 
       } = req.body;
@@ -77,7 +77,7 @@ module.exports = (statusDB) => {
         success = await statusDB.updateStatus(grNo, challan_status, payment_status, crossing_status);
       } else if (challan_status !== undefined && payment_status !== undefined) {
         // Update challan and payment status
-        success = await statusDB.updateStatus(grNo, challan_status, payment_status, 'Book');
+        success = await statusDB.updateStatus(grNo, challan_status, payment_status, 'NOT SHIPPED');
       } else if (challan_status !== undefined && crossing_status !== undefined) {
         // Update challan and crossing status
         success = await statusDB.updateStatus(grNo, challan_status, 'NA', crossing_status);
