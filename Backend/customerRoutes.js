@@ -8,7 +8,7 @@ module.exports = (customersDB) => {
       if (customer) {
         const response = {
           ...customer,
-          gstin: customer.id_type === "GST Number" ? customer.id_number : "UIN"
+          gstin: customer.id_type === "GST Number" ? customer.id_number : `URD - ${customer.id_number}`
         };
         res.json(response);
       } else {
