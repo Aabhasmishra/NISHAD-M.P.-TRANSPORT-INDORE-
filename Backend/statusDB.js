@@ -18,7 +18,7 @@ async function initialize() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS status (
           gr_no VARCHAR(50) PRIMARY KEY,
-          challan_status VARCHAR(255) DEFAULT 'Book',
+          challan_status VARCHAR(255) DEFAULT 'NOT SHIPPED',
           payment_status VARCHAR(255) DEFAULT 'NA',
           crossing_status VARCHAR(255) DEFAULT 'Book'
       )
@@ -49,7 +49,7 @@ async function getStatus(grNo) {
 }
 
 // Create new status
-async function createStatus(grNo, challanStatus = 'Book', paymentStatus = 'NA', crossingStatus = 'Book') {
+async function createStatus(grNo, challanStatus = 'NOT SHIPPED', paymentStatus = 'NA', crossingStatus = 'Book') {
   try {
     const { rowCount } = await pool.query(
       `INSERT INTO status (gr_no, challan_status, payment_status, crossing_status) 
