@@ -44,6 +44,16 @@ async function initialize() {
           motor_freight DECIMAL(12, 2) DEFAULT 0,
           hammali DECIMAL(12, 2) DEFAULT 0,
           other_charges DECIMAL(12, 2) DEFAULT 0,
+          -- Payment fields (merged from payment table)
+          amount_collected DECIMAL(12, 2) DEFAULT 0,
+          mode_of_collection VARCHAR(20),
+          comments TEXT,
+          payment_created_at TIMESTAMPTZ,
+          payment_updated_at TIMESTAMPTZ,
+          -- Status fields (merged from status table)
+          challan_status VARCHAR(255) DEFAULT 'NOT SHIPPED',
+          payment_status VARCHAR(255) DEFAULT 'NA',
+          crossing_status VARCHAR(255) DEFAULT 'Book',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -58,18 +68,15 @@ async function initialize() {
 
 // Helper function to calculate total amount
 function calculateTotalAmount(amountString, motorFreight = 0, hammali = 0, otherCharges = 0) {
-  // Convert all inputs to numbers safely
   const toNumber = (val) => {
     const num = Number(val);
     return isNaN(num) ? 0 : num;
   };
 
-  // Calculate sum of article amounts
   const articleSum = amountString 
     ? amountString.split('|').reduce((sum, val) => sum + toNumber(val), 0)
     : 0;
 
-  // Sum all charges
   return (
     articleSum + 
     toNumber(motorFreight) + 
@@ -101,7 +108,6 @@ async function saveTransportRecord(recordData) {
   const formattedDate = `${year}-${month}-${day}`;
   const hsn = recordData.hsn || Array(recordData.articleLength).fill('9999').join('|');
 
-  // Calculate payment values
   const totalAmount = calculateTotalAmount(
     recordData.amount,
     recordData.motorFreight || 0,
@@ -120,10 +126,16 @@ async function saveTransportRecord(recordData) {
       article_no, article_length, said_to_contain, tax_free, 
       weight_chargeable, actual_weight, hsn, amount, remarks, 
       goods_type, value_declared, gst_will_be_paid_by,
-      to_pay, paid, motor_freight, hammali, other_charges
+      to_pay, paid, motor_freight, hammali, other_charges,
+      -- Payment fields (defaults)
+      amount_collected, mode_of_collection, comments, payment_created_at, payment_updated_at,
+      -- Status fields (defaults)
+      challan_status, payment_status, crossing_status
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-      $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+      $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+      $28, $29, $30, $31, $32,
+      $33, $34, $35
     )`,
     [
       grNo,
@@ -152,7 +164,17 @@ async function saveTransportRecord(recordData) {
       paid,
       recordData.motorFreight || 0,
       recordData.hammali || 0,
-      recordData.otherCharges || 0
+      recordData.otherCharges || 0,
+      // Payment fields
+      0,
+      null,
+      null,
+      null,
+      null,
+      // Status fields (defaults from status table)
+      'NOT SHIPPED',
+      'NA',
+      'Book'
     ]
   );
 
@@ -210,13 +232,12 @@ async function getTransportHistory(consignor, consignee) {
   });
 }
 
-// Update transport record
+// Update transport record (does NOT modify payment or status fields)
 async function updateTransportRecord(grNo, recordData) {
   const [day, month, year] = recordData.date.split('-');
   const formattedDate = `${year}-${month}-${day}`;
   const hsn = recordData.hsn || Array(recordData.articleLength).fill('9999').join('|');
 
-  // Calculate payment values
   const totalAmount = calculateTotalAmount(
     recordData.amount,
     recordData.motorFreight || 0,
@@ -305,7 +326,6 @@ async function deleteTransportRecord(grNo) {
 
 async function inspectDatabase() {
   try {
-    // Get table structure
     const columnsQuery = `
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
@@ -314,8 +334,6 @@ async function inspectDatabase() {
     `;
     
     const columnsResult = await pool.query(columnsQuery);
-    
-    // Get table content
     const contentResult = await pool.query('SELECT * FROM transport_records ORDER BY gr_no DESC');
     
     return {
