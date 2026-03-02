@@ -41,7 +41,7 @@ module.exports = (transportDB) => {
     }
   });
 
-  // Update transport record
+  // Update transport record (core fields only)
   router.put('/transport-records/:grNo', async (req, res) => {
     try {
       const record = await transportDB.updateTransportRecord(req.params.grNo, req.body);
@@ -50,6 +50,42 @@ module.exports = (transportDB) => {
           success: true,
           updated_at: record.updated_at,
           message: "Transport record updated successfully"
+        });
+      } else {
+        res.status(404).json({ error: "Transport record not found" });
+      }
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  // Update payment information
+  router.put('/transport-records/:grNo/payment', async (req, res) => {
+    try {
+      const record = await transportDB.updatePaymentInfo(req.params.grNo, req.body);
+      if (record) {
+        res.json({
+          success: true,
+          message: "Payment information updated successfully",
+          payment_created_at: record.payment_created_at,
+          payment_updated_at: record.payment_updated_at
+        });
+      } else {
+        res.status(404).json({ error: "Transport record not found" });
+      }
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  // Update status information
+  router.put('/transport-records/:grNo/status', async (req, res) => {
+    try {
+      const record = await transportDB.updateStatusInfo(req.params.grNo, req.body);
+      if (record) {
+        res.json({
+          success: true,
+          message: "Status information updated successfully"
         });
       } else {
         res.status(404).json({ error: "Transport record not found" });
