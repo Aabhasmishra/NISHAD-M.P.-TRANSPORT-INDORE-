@@ -4,8 +4,6 @@ const customersDB = require("./customersDB");
 const transporterDB = require("./transporterDB");
 const userDB = require("./userDB");
 const challanDB = require("./challanDB");
-const shippingStatusDB = require("./statusDB");
-const paymentDB = require("./paymentDB");
 const crossingDB = require("./crossingDB");
 const createDatabaseViewer = require("./databaseViewer");
 require("dotenv").config();
@@ -21,8 +19,6 @@ async function initialize() {
     await transporterDB.initialize();
     await userDB.initialize();
     await challanDB.initialize();
-    await shippingStatusDB.initialize();
-    await paymentDB.initialize();
     await crossingDB.initialize(); 
     console.log("All databases initialized successfully");
   } catch (err) {
@@ -45,19 +41,15 @@ const customerRoutes = require("./customerRoutes")(customersDB);
 const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
 const challanRoutes = require("./challanRoutes")(challanDB);
-const shippingStatusRoutes = require("./statusRoutes")(shippingStatusDB);
-const paymentRoutes = require("./paymentRoutes")(paymentDB);
 const crossingRoutes = require("./crossingRoutes")(crossingDB); 
 
-// Create database viewer routes - now including crossingDB
+// Create database viewer routes - now including crossingDB only
 const databaseViewerRoutes = createDatabaseViewer(
   transportDB, 
   customersDB, 
   transporterDB, 
   userDB, 
   challanDB, 
-  shippingStatusDB,
-  paymentDB,
   crossingDB 
 );
 
@@ -67,8 +59,6 @@ app.use("/api", customerRoutes);
 app.use("/api", transporterRoutes);
 app.use("/api", userRoutes);
 app.use("/api", challanRoutes);
-app.use("/api", shippingStatusRoutes);
-app.use("/api", paymentRoutes);
 app.use("/api", crossingRoutes);
 app.use("/", databaseViewerRoutes);
 
@@ -125,21 +115,6 @@ initialize()
       console.log("  GET    /api/challan?challan_no=...");
       console.log("  PUT    /api/challan/:challan_no");
       console.log("  DELETE /api/challan/:challan_no");
-      
-      console.log("\nShipping Status:");
-      console.log("  GET    /api/status");
-      console.log("  GET    /api/status?gr_no=...");
-      console.log("  PUT    /api/status/:gr_no");
-      console.log("  DELETE /api/status/:gr_no");
-      
-      console.log("\nPayment:");
-      console.log("  GET    /api/transport-records/:grNo - Get transport record details");
-      console.log("  POST   /api/payments - Create new payment");
-      console.log("  GET    /api/payments/:invoiceNumber - Get payment by invoice number");
-      console.log("  GET    /api/payments - Get all payments (last 100)");
-      console.log("  PUT    /api/payments/:invoiceNumber - Update payment");
-      console.log("  DELETE /api/payments/:invoiceNumber - Delete payment");
-      console.log("  GET    /api/payments/viewer - View payment records");
       
       console.log("\nCrossing Statements:");
       console.log("  POST   /api/crossing");
