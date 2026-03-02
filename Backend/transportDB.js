@@ -52,7 +52,7 @@ async function initialize() {
           payment_updated_at TIMESTAMPTZ,
           -- Status fields (merged from status table)
           challan_status VARCHAR(255) DEFAULT 'NOT SHIPPED',
-          payment_status VARCHAR(255) DEFAULT 'NA',
+          payment_status VARCHAR(255) DEFAULT 'Pending',
           crossing_status VARCHAR(255) DEFAULT 'Book',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -118,6 +118,16 @@ async function saveTransportRecord(recordData) {
   const toPay = recordData.paymentType === 'TO PAY' ? totalAmount : 0;
   const paid = recordData.paymentType === 'PAID' ? totalAmount : 0;
 
+  // Determine if any payment fields are provided
+  const hasPaymentData = 
+    recordData.amountCollected !== undefined || 
+    recordData.modeOfCollection !== undefined || 
+    recordData.paymentComments !== undefined;
+  
+  const now = new Date();
+  const paymentCreatedAt = hasPaymentData ? now : null;
+  const paymentUpdatedAt = hasPaymentData ? now : null;
+
   await pool.query(
     `INSERT INTO transport_records (
       gr_no, date, from_location, 
@@ -127,15 +137,15 @@ async function saveTransportRecord(recordData) {
       weight_chargeable, actual_weight, hsn, amount, remarks, 
       goods_type, value_declared, gst_will_be_paid_by,
       to_pay, paid, motor_freight, hammali, other_charges,
-      -- Payment fields (defaults)
-      amount_collected, mode_of_collection, comments, payment_created_at, payment_updated_at,
-      -- Status fields (defaults)
+      -- Payment fields
+      amount_collected, mode_of_collection, comments,
+      payment_created_at, payment_updated_at,
+      -- Status fields
       challan_status, payment_status, crossing_status
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
       $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-      $28, $29, $30, $31, $32,
-      $33, $34, $35
+      $28, $29, $30, $31, $32, $33, $34, $35
     )`,
     [
       grNo,
@@ -166,15 +176,15 @@ async function saveTransportRecord(recordData) {
       recordData.hammali || 0,
       recordData.otherCharges || 0,
       // Payment fields
-      0,
-      null,
-      null,
-      null,
-      null,
-      // Status fields (defaults from status table)
-      'NOT SHIPPED',
-      'NA',
-      'Book'
+      recordData.amountCollected || 0,
+      recordData.modeOfCollection || null,
+      recordData.paymentComments || null,
+      paymentCreatedAt,
+      paymentUpdatedAt,
+      // Status fields
+      recordData.challanStatus || 'NOT SHIPPED',
+      recordData.paymentStatus || 'Pending',
+      recordData.crossingStatus || 'Book'
     ]
   );
 
@@ -232,7 +242,7 @@ async function getTransportHistory(consignor, consignee) {
   });
 }
 
-// Update transport record (does NOT modify payment or status fields)
+// Update transport record (core fields only – payment & status use separate functions)
 async function updateTransportRecord(grNo, recordData) {
   const [day, month, year] = recordData.date.split('-');
   const formattedDate = `${year}-${month}-${day}`;
@@ -315,6 +325,96 @@ async function updateTransportRecord(grNo, recordData) {
   return rows[0];
 }
 
+// Update payment information (amount_collected, mode_of_collection, comments)
+async function updatePaymentInfo(grNo, paymentData) {
+  const { amountCollected, modeOfCollection, comments } = paymentData;
+  // Normalise field names to database column names
+  const amount_collected = amountCollected;
+  const mode_of_collection = modeOfCollection;
+  const payment_comments = comments;
+
+  // Ensure at least one field is provided
+  if (amount_collected === undefined && mode_of_collection === undefined && payment_comments === undefined) {
+    throw new Error("No payment fields to update");
+  }
+
+  // Fetch current record to check payment_created_at
+  const current = await getTransportRecord(grNo);
+  if (!current) {
+    throw new Error("Transport record not found");
+  }
+
+  // Build SET clause dynamically
+  const updates = [];
+  const values = [];
+  let idx = 1;
+
+  if (amount_collected !== undefined) {
+    updates.push(`amount_collected = $${idx++}`);
+    values.push(amount_collected);
+  }
+  if (mode_of_collection !== undefined) {
+    updates.push(`mode_of_collection = $${idx++}`);
+    values.push(mode_of_collection);
+  }
+  if (payment_comments !== undefined) {
+    updates.push(`comments = $${idx++}`);
+    values.push(payment_comments);
+  }
+
+  // Always set payment_updated_at to NOW()
+  updates.push(`payment_updated_at = NOW()`);
+
+  // If payment_created_at is null, set it to NOW() as well
+  if (!current.payment_created_at) {
+    updates.push(`payment_created_at = NOW()`);
+  }
+
+  // Construct and execute query
+  const query = `UPDATE transport_records SET ${updates.join(', ')} WHERE gr_no = $${idx} RETURNING *`;
+  values.push(grNo);
+
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+}
+
+// Update status information (challan_status, payment_status, crossing_status)
+async function updateStatusInfo(grNo, statusData) {
+  const { challanStatus, paymentStatus, crossingStatus } = statusData;
+  // Map to database column names
+  const challan_status = challanStatus;
+  const payment_status = paymentStatus;
+  const crossing_status = crossingStatus;
+
+  // Ensure at least one field is provided
+  if (challan_status === undefined && payment_status === undefined && crossing_status === undefined) {
+    throw new Error("No status fields to update");
+  }
+
+  const updates = [];
+  const values = [];
+  let idx = 1;
+
+  if (challan_status !== undefined) {
+    updates.push(`challan_status = $${idx++}`);
+    values.push(challan_status);
+  }
+  if (payment_status !== undefined) {
+    updates.push(`payment_status = $${idx++}`);
+    values.push(payment_status);
+  }
+  if (crossing_status !== undefined) {
+    updates.push(`crossing_status = $${idx++}`);
+    values.push(crossing_status);
+  }
+
+  const query = `UPDATE transport_records SET ${updates.join(', ')} WHERE gr_no = $${idx} RETURNING *`;
+  values.push(grNo);
+
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+}
+
 // Delete transport record
 async function deleteTransportRecord(grNo) {
   const { rowCount } = await pool.query(
@@ -362,6 +462,8 @@ module.exports = {
   getAllTransportRecords,
   getTransportHistory,
   updateTransportRecord,
+  updatePaymentInfo,
+  updateStatusInfo,
   deleteTransportRecord,
   inspectDatabase
 };
