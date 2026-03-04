@@ -426,22 +426,58 @@ async function deleteTransportRecord(grNo) {
 
 async function inspectDatabase() {
   try {
+    // 1. Fetch column metadata (original order)
     const columnsQuery = `
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
       WHERE table_name = 'transport_records'
       ORDER BY ordinal_position
     `;
-    
     const columnsResult = await pool.query(columnsQuery);
+    const originalColumns = columnsResult.rows;
+
+    // 2. Fetch all rows (as objects)
     const contentResult = await pool.query('SELECT * FROM transport_records ORDER BY gr_no DESC');
-    
+    const rows = contentResult.rows;
+
+    // 3. Define the desired column order
+    //    Start with gr_no and status columns
+    const baseOrder = ['gr_no', 'challan_status', 'payment_status', 'crossing_status'];
+    //    End with created_at and updated_at
+    const endOrder = ['created_at', 'updated_at'];
+
+    //    Get all column names from original metadata
+    const allColumnNames = originalColumns.map(col => col.column_name);
+
+    //    Identify columns that are not in baseOrder or endOrder
+    const middleColumns = allColumnNames.filter(
+      name => !baseOrder.includes(name) && !endOrder.includes(name)
+    );
+
+    //    Final order = base + middle + end
+    const finalOrder = [...baseOrder, ...middleColumns, ...endOrder];
+
+    // 4. Reorder the columns array to match finalOrder
+    const orderedColumns = finalOrder.map(colName => 
+      originalColumns.find(col => col.column_name === colName)
+    );
+
+    // 5. Reorder each row’s properties to follow finalOrder
+    const orderedRows = rows.map(row => {
+      const orderedRow = {};
+      finalOrder.forEach(colName => {
+        orderedRow[colName] = row[colName];
+      });
+      return orderedRow;
+    });
+
+    // 6. Return the restructured result
     return {
       database: 'mp_transport',
       tables: [{
         table: 'transport_records',
-        columns: columnsResult.rows,
-        Table_Content: contentResult.rows
+        columns: orderedColumns,
+        Table_Content: orderedRows
       }]
     };
   } catch (err) {
