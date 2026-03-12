@@ -4,7 +4,7 @@ import PopupAlert from '../PopupAlert/PopupAlert';
 
 // Inlined SVG components
 const IoAdd = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M256 48C141.1 48 48 141.1 48 256s93.1 208 208 208 208-93.1 208-208S370.9 48 256 48zm96 224h-80v80h-32v-80h-80v-32h80v-80h32v80h80v32z"></path></svg>;
-const IoSearch = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M456.69 421.39L362.6 327.3a173.81 173.81 0 0034.84-104.58C397.44 126.38 319.06 48 222.72 48S48 126.38 48 222.72s78.38 174.72 174.72 174.72A173.81 173.81 0 00327.3 362.6l94.09 94.09a25 25 0 0035.3-35.3zM97.92 222.72a124.8 124.8 0 11124.8 124.8 124.95 124.95 0 01-124.8-124.8z"></path></svg>;
+import { IoSearch } from "react-icons/io5";
 const IoTrash = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M296 64h-80a7.91 7.91 0 00-8 8v24h96V72a7.91 7.91 0 00-8-8z" fill="none"></path><path d="M432 96h-96V72a40 40 0 00-40-40h-80a40 40 0 00-40 40v24H80a16 16 0 000 32h17l19 304.92c1.42 26.85 22 47.08 48 47.08h184c26.13 0 46.3-19.78 48-47.08L415 128h17a16 16 0 000-32zM192 432c-6.62 0-12-5.37-12-12V200c0-6.63 5.38-12 12-12s12 5.37 12 12v220c0 6.63-5.38 12-12 12zm80 0c-6.62 0-12-5.37-12-12V200c0-6.63 5.38-12 12-12s12 5.37 12 12v220c0 6.63-5.38 12-12 12zm80 0c-6.62 0-12-5.37-12-12V200c0-6.63 5.38-12 12-12s12 5.37 12 12v220c0 6.63-5.38 12-12 12z"></path><path d="M200 72h112v24H200z" fill="none"></path></svg>;
 const IoPrint = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M399.95 160h-287.9C76.824 160 48 188.803 48 224v138.667h79.899V448H384.1v-85.333H464V224c0-35.197-28.825-64-64.05-64zM352 416H160V288h192v128zm32.101-352H127.899v80H384.1V64z"></path></svg>;
 const IoCreate = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M448 360.2V163.8c3.3-1.9 6.6-3.8 9.6-6 22.2-16.3 35.4-41.8 35.4-69.8 0-49.2-40.1-89.3-89.3-89.3-31.5 0-59.5 16.5-75.6 41.3-16.2-24.8-44.1-41.3-75.6-41.3C123.1 0 83 40.1 83 89.3c0 28 13.1 53.5 35.4 69.8 3 2.2 6.3 4.1 9.6 6v196.3c-3.3 1.9-6.6 3.8-9.6 6C123.1 369.2 110 394.7 110 422.7c0 49.2 40.1 89.3 89.3 89.3 31.5 0 59.5-16.5 75.6-41.3 16.2 24.8 44.1 41.3 75.6 41.3 49.2 0 89.3-40.1 89.3-89.3 0-28-13.1-53.5-35.4-69.8-3-2.2-6.3-4.1-9.6-6zM256 314.7c-49.2 0-89.3-40.1-89.3-89.3s40.1-89.3 89.3-89.3 89.3 40.1 89.3 89.3-40.1 89.3-89.3 89.3z"></path></svg>;
@@ -13,18 +13,18 @@ const IoEdit = () => <svg stroke="currentColor" fill="currentColor" strokeWidth=
 const Challan = ({ isLightMode, modeOfView }) => {
     // Form states
     const [formData, setFormData] = useState({
-        date: '',
+        date: new Date().toISOString().split("T")[0],
         truck_no: '',
         driver_no: '',
-        from: '',
-        destination: ''
+        from: 'Indore',
+        destination: 'Raipur'
     });
 
     // Table states
     const initialRowState = () => ({
         index: 1, builty_no: '', destination: '', consignor_name: '',
         consignee_name: '', units: '', weight: '', good_type: '',
-        to_pay: '', paid: '', collection: '', isFetched: false
+        to_pay: '', paid: '', collection: '', payment_collected: '', isFetched: false
     });
     const [rows, setRows] = useState(Array(10).fill(null).map((_, i) => ({ ...initialRowState(), index: i + 1 })));
 
@@ -38,6 +38,8 @@ const Challan = ({ isLightMode, modeOfView }) => {
     const [years, setYears] = useState([]);
     const [hasFetchedData, setHasFetchedData] = useState(false);
     const [removedBuiltyNos, setRemovedBuiltyNos] = useState([]);
+    const [showAddViewUpdateButtons, setShowAddViewUpdateButtons] = useState(false);
+    const [problematicBuiltyNo, setProblematicBuiltyNo] = useState('');
     
     // Popup Alert State
     const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
@@ -45,6 +47,14 @@ const Challan = ({ isLightMode, modeOfView }) => {
 
     // Print functionality
     const printRef = useRef();
+
+    const locationOptions = [
+        "Ambikapur", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
+        "Dhamtari", "Durg", "Indore", "Jagdalpur", "Janjgir", "Kanker", "Kawardha", 
+        "Korba", "Koriya", "Mahasamud", "Manendragarh", "Naila", "Narayanpur", 
+        "Pathalgaon", "Raigarh", "Raipur", "Rajnandgaon", "Rewa", "Satna", 
+        "Surguja"
+    ];
 
     // Show alert function
     const showAlert = (message, type = 'info') => {
@@ -83,6 +93,22 @@ const Challan = ({ isLightMode, modeOfView }) => {
         }
         setYears(yearOptions);
     }, []);
+
+    const challanBackButton = (text) => (
+        <button
+            onClick={() => {
+            if (mode === 'view') {
+                setHasFetchedData(false);
+            }
+            setMode('view');
+            setChallanEditMode(false);
+            setSearchTerm("");
+            }}
+            className={`back-to-search-button challan-back-to-search-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        >
+            🡰 {text}
+        </button>
+    );
 
     // Format challan number based on year and input
     const formatChallanNo = (input, year) => {
@@ -131,6 +157,16 @@ const Challan = ({ isLightMode, modeOfView }) => {
                 const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${formattedBuilty}`);
                 if (!response.ok) throw new Error('Builty not found');
                 
+                // Determine expected combined status for update mode
+                if (mode === 'add') {
+                    const expectedCombinedStatus = mode === 'update' ? `${challanNo} - ${formData.truck_no}` : null;
+                    const statusCheck = await checkBuiltyStatuses(expectedCombinedStatus);
+                    // console.log(expectedCombinedStatus, statusCheck);
+                    if (statusCheck.isAssigned) {
+                        setProblematicBuiltyNo(statusCheck.builtyNo);
+                        return statusCheck.builtyNo;
+                    }
+                }
                 const data = await response.json();
                 if (data) {
                     const units = data.article_no.split('|').reduce((sum, val) => sum + parseInt(val || 0), 0);
@@ -141,13 +177,13 @@ const Challan = ({ isLightMode, modeOfView }) => {
                             ...newRows[index], builty_no: formattedBuilty, destination: data.to_location,
                             consignor_name: data.consignor_name, consignee_name: data.consignee_name,
                             units, weight, to_pay: data.to_pay, paid: data.paid,
-                            good_type: data.goods_type, isFetched: true
+                            good_type: data.goods_type, payment_collected: data.amount_collected, isFetched: true
                         };
                         return newRows;
                     });
                 }
             } catch (err) {
-                console.error('Error fetching builty:', err);
+                showAlert(`${err.message}`, 'error');
                 // Optionally reset row if fetch fails
             }
         };
@@ -167,64 +203,80 @@ const Challan = ({ isLightMode, modeOfView }) => {
         setRows([...rows, ...Array(5).fill(null).map((_, i) => ({ ...initialRowState(), index: lastIndex + i + 1 }))]);
     };
 
+    const normalizeGRNumber = (input) => {
+        if (!input) return '';
+        let normalized = input.trim().toUpperCase();
+        const numbers = normalized.match(/\d+/g);
+        if (!numbers) return normalized;
+        const numberPart = numbers[0].padStart(5, '0');
+        return `GR${numberPart}`;
+    };
+
     const deleteRow = (index) => {
         if (rows.length <= 1) return;
         
         if (mode === 'update' && rows[index].builty_no) {
-            setRemovedBuiltyNos(prev => [...prev, rows[index].builty_no]);
+            const normalized = normalizeGRNumber(rows[index].builty_no);
+            setRemovedBuiltyNos(prev => [...prev, normalized]);
         }
         
         setRows(prev => prev.filter((_, i) => i !== index).map((row, i) => ({ ...row, index: i + 1 })));
     };
 
-    // Check status for all builty numbers using the new /api/status endpoint
-    const checkBuiltyStatuses = async () => {
-        const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
-        for (const builtyNo of builtyNos) {
-            try {
-                const response = await fetch(`http://43.230.202.198:3000/api/status?gr_no=${builtyNo}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.challan_status && data.challan_status.toLowerCase() !== 'book') {
-                        if (mode === 'update' && data.challan_status === challanNo) {
-                            continue;
-                        }
-                        return { isAssigned: true, builtyNo, assignedTo: data.challan_status };
-                    }
-                }
-            } catch (err) {
-                console.error(`Error checking status for ${builtyNo}:`, err);
+    // Check builty statuses using transport_records.challan_status
+    const checkBuiltyStatuses = async (expectedCombinedStatus = null) => {
+    const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => normalizeGRNumber(r.builty_no));
+    for (const builtyNo of builtyNos) {
+        try {
+        const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${builtyNo}`);
+        if (!response.ok) continue;
+        const data = await response.json();
+        const currentStatus = data.challan_status;
+        if (currentStatus && currentStatus !== 'NOT SHIPPED') {
+            // If in update mode and the status matches the expected one, it's fine (same challan)
+            if (expectedCombinedStatus && currentStatus === expectedCombinedStatus) {
+            continue;
             }
+            return { isAssigned: true, builtyNo, assignedTo: currentStatus };
         }
-        return { isAssigned: false };
+        } catch (err) {
+        console.error(`Error checking status for ${builtyNo}:`, err);
+        }
+    }
+    return { isAssigned: false };
     };
 
-    // Update status for all builty numbers
-    const updateBuiltyStatuses = async (newChallanNo) => {
-        const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
-        for (const builtyNo of builtyNos) {
-            try {
-                await fetch(`http://43.230.202.198:3000/api/status/${builtyNo}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ challan_status: newChallanNo })
-                });
-            } catch (err) {
-                console.error(`Error updating status for ${builtyNo}:`, err);
-                showAlert(`Failed to update status for GR ${builtyNo}. Please check manually.`, 'error');
-            }
+    // Update builty status to combined "{challanNo} - {truckNo}"
+    const updateBuiltyStatuses = async (challanNo, truckNo) => {
+    const combinedStatus = `${challanNo} - ${truckNo}`;
+    const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
+    for (const builtyNo of builtyNos) {
+        try {
+        await fetch(`http://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ challanStatus: combinedStatus })
+        });
+        } catch (err) {
+        console.error(`Error updating status for ${builtyNo}:`, err);
+        showAlert(`Failed to update status for GR ${builtyNo}. Please check manually.`, 'error');
         }
+    }
     };
 
-    // Update removed builties status back to "Book"
+    // Update removed builty statuses (set to NOT SHIPPED)
     const updateRemovedBuiltyStatuses = async () => {
         for (const builtyNo of removedBuiltyNos) {
             try {
-                await fetch(`http://43.230.202.198:3000/api/status/${builtyNo}`, {
+                const response = await fetch(`http://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ challan_status: 'Book' })
+                    body: JSON.stringify({ challanStatus: 'NOT SHIPPED' })
                 });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Failed to update ${builtyNo}`);
+                }
             } catch (err) {
                 console.error(`Error updating removed builty status for ${builtyNo}:`, err);
                 showAlert(`Failed to update removed builty ${builtyNo}. Please check manually.`, 'error');
@@ -233,64 +285,66 @@ const Challan = ({ isLightMode, modeOfView }) => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        try {
-            if (!formData.date || !formData.truck_no || !formData.driver_no || !formData.from || !formData.destination) {
-                throw new Error('Please fill all header fields.');
-            }
-            const filledRows = rows.filter(row => row.builty_no);
-            if (filledRows.length === 0) {
-                throw new Error('Please add at least one builty number.');
-            }
-            
-            const builtyNos = filledRows.map(r => r.builty_no.trim().toUpperCase());
-            if (new Set(builtyNos).size !== builtyNos.length) {
-                throw new Error('Duplicate builty numbers found. Please remove duplicates.');
-            }
-
-            const statusCheck = await checkBuiltyStatuses();
-            if (statusCheck.isAssigned) {
-                throw new Error(`Builty ${statusCheck.builtyNo} is already assigned to Challan ${statusCheck.assignedTo}.`);
-            }
-            
-            const payload = { ...formData, builty_no: builtyNos.join(' | ') };
-            const url = mode === 'update' ? `http://43.230.202.198:3000/api/challan/${challanNo}` : 'http://43.230.202.198:3000/api/challan';
-            
-            const response = await fetch(url, {
-                method: mode === 'update' ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) throw new Error(`Failed to ${mode} challan.`);
-            
-            const data = await response.json();
-            const newChallanNo = data.challan_no || challanNo;
-            setChallanNo(newChallanNo);
-            
-            // For update mode, update removed builties first
-            if (mode === 'update' && removedBuiltyNos.length > 0) {
-                await updateRemovedBuiltyStatuses();
-                setRemovedBuiltyNos([]);
-            }
-            
-            await updateBuiltyStatuses(newChallanNo);
-            
-            showAlert(`Challan ${mode}d successfully! Challan No: ${newChallanNo}`, 'success');
-            
-            // Set challanEditMode to false after successful submission
-            setChallanEditMode(false);
-            
-        } catch (err) {
-            showAlert(`Error: ${err.message}`, 'error');
-        } finally {
-            setIsLoading(false);
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+        if (!formData.date || !formData.truck_no || !formData.driver_no || !formData.from || !formData.destination) {
+            throw new Error('Please fill all header fields.');
         }
+        const filledRows = rows.filter(row => row.builty_no);
+        if (filledRows.length === 0) {
+            throw new Error('Please add at least one builty number.');
+        }
+
+        const builtyNos = filledRows.map(r => r.builty_no.trim().toUpperCase());
+        if (new Set(builtyNos).size !== builtyNos.length) {
+            throw new Error('Duplicate builty numbers found. Please remove duplicates.');
+        }
+
+        const expectedCombinedStatus = mode === 'update' ? `${challanNo} - ${formData.truck_no}` : null;
+            const statusCheck = await checkBuiltyStatuses(expectedCombinedStatus);
+                if (statusCheck.isAssigned) {
+                throw new Error(`Builty ${statusCheck.builtyNo} is already assigned to Challan ${statusCheck.assignedTo}.`);
+        }
+
+        const payload = { ...formData, builty_no: builtyNos.join(' | ') };
+        const url = mode === 'update' ? `http://43.230.202.198:3000/api/challan/${challanNo}` : 'http://43.230.202.198:3000/api/challan';
+
+        const response = await fetch(url, {
+        method: mode === 'update' ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`Failed to ${mode} challan.`);
+
+        const data = await response.json();
+        const newChallanNo = data.challan_no || challanNo;
+        setChallanNo(newChallanNo);
+
+        // For update mode, update removed builties first
+        if (mode === 'update' && removedBuiltyNos.length > 0) {
+        await updateRemovedBuiltyStatuses();
+        setRemovedBuiltyNos([]);
+        }
+
+        // Update all current builty statuses to combined "newChallanNo - truckNo"
+        await updateBuiltyStatuses(newChallanNo, formData.truck_no);
+
+        showAlert(`Challan ${mode}d successfully! Challan No: ${newChallanNo}`, 'success');
+
+        setChallanEditMode(false);
+        setShowAddViewUpdateButtons(true);
+
+    } catch (err) {
+        showAlert(`Error: ${err.message}`, 'error');
+    } finally {
+        setIsLoading(false);
+    }
     };
     
     const resetForm = () => {
-        setFormData({ date: '', truck_no: '', driver_no: '', from: '', destination: '' });
+        setFormData({ date: '', truck_no: '', driver_no: '', from: 'Indore', destination: 'Raipur' });
         setRows(Array(10).fill(null).map((_, i) => ({ ...initialRowState(), index: i + 1 })));
         setChallanNo('');
         setSearchTerm('');
@@ -298,24 +352,40 @@ const Challan = ({ isLightMode, modeOfView }) => {
         setRemovedBuiltyNos([]);
     };
 
-    const handleDelete = () => {
-        showConfirm('Delete this challan? This will unassign its builty numbers.', async () => {
-            setIsLoading(true);
-            try {
-                await updateBuiltyStatuses('Book');
-
-                const response = await fetch(`http://43.230.202.198:3000/api/challan/${challanNo}`, { method: 'DELETE' });
-                if (!response.ok) throw new Error('Failed to delete challan');
-                
-                showAlert('Challan deleted successfully.', 'success');
-                resetForm();
-
-            } catch (err) {
-                showAlert(`Error: ${err.message}`, 'error');
-            } finally {
-                setIsLoading(false);
-            }
+    const resetAllBuiltyStatuses = async () => {
+    const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
+    for (const builtyNo of builtyNos) {
+        try {
+        await fetch(`http://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ challanStatus: 'NOT SHIPPED' })
         });
+        } catch (err) {
+        console.error(`Error resetting status for ${builtyNo}:`, err);
+        showAlert(`Failed to reset status for GR ${builtyNo}.`, 'error');
+        }
+    }
+    };
+
+    const handleDelete = () => {
+    showConfirm('Delete this challan? This will unassign its builty numbers.', async () => {
+        setIsLoading(true);
+        try {
+        await resetAllBuiltyStatuses();
+
+        const response = await fetch(`http://43.230.202.198:3000/api/challan/${challanNo}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete challan');
+
+        showAlert('Challan deleted successfully.', 'success');
+        resetForm();
+
+        } catch (err) {
+        showAlert(`Error: ${err.message}`, 'error');
+        } finally {
+        setIsLoading(false);
+        }
+    });
     };
 
     const handleSearch = async (e) => {
@@ -365,9 +435,10 @@ const Challan = ({ isLightMode, modeOfView }) => {
                 totals.weight += Number(row.weight) || 0;
                 totals.to_pay += Number(row.to_pay) || 0;
                 totals.paid += Number(row.paid) || 0;
+                totals.payment_collected += Number(row.payment_collected) || 0;
             }
             return totals;
-        }, { units: 0, weight: 0, to_pay: 0, paid: 0 });
+        }, { units: 0, weight: 0, to_pay: 0, paid: 0, payment_collected: 0 });
     };
 
     // Function to ensure minimum rows in the table
@@ -395,6 +466,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
             to_pay: '',
             paid: '',
             collection: '',
+            payment_collected: '',
             isFetched: false
         }));
         
@@ -416,22 +488,23 @@ const Challan = ({ isLightMode, modeOfView }) => {
                             <tr class="challan-table-header">
                                 <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                 <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th>
+                                <th>To Pay</th><th>Paid</th><th>Collection</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${rowsForPrint.map((row, index) => `
                                 <tr class="challan-table-row print-row">
                                     <td class="text-center">${row.index}</td>
-                                    <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || '-'}</td>
-                                    <td class="text-center">${row.destination || '-'}</td>
-                                    <td class="text-center consignor-cell">${row.consignor_name || '-'}</td>
-                                    <td class="text-center consignee-cell">${row.consignee_name || '-'}</td>
-                                    <td class="text-center">${row.units || '-'}</td>
-                                    <td class="text-center">${row.index <= rows.length ? row.weight : '-'}</td>
-                                    <td class="text-center challan-goodType-Print">${row.good_type || '-'}</td>
-                                    <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : '-'}</td>
-                                    <td class="text-center">${row.index <= rows.length ? Number(row.paid) : '-'}</td>
+                                    <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
+                                    <td class="text-center">${row.destination || ''}</td>
+                                    <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
+                                    <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
+                                    <td class="text-center">${row.units || ''}</td>
+                                    <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
+                                    <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
+                                    <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
+                                    <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
+                                    <td class="text-center">${row.index <= rows.length ? Number(row.payment_collected) : ''}</td>
                                 </tr>
                             `).join('')}
                             ${rows.some(row => row.builty_no) && `
@@ -441,6 +514,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                     <td class="text-center">${calculateTotals().weight}</td><td></td>
                                     <td class="text-center">${calculateTotals().to_pay}</td>
                                     <td class="text-center">${calculateTotals().paid}</td>
+                                    <td class="text-center">${calculateTotals().payment_collected}</td>
                                 </tr>
                             `}
                         </tbody>
@@ -471,7 +545,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                         body {
                             font-family: Arial, sans-serif;
                             margin: 0;
-                            padding: 0;
+                            padding: 10mm;
                             background: white !important;
                             color: black !important;
                         }
@@ -487,7 +561,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                             justify-content: space-between;
                             margin-bottom: 15px;
                             margin-right: 0.6px;
-                            border: 2px solid #000;
+                            border: 1px solid #000;
                             padding: 15px;
                             background: white !important;
                             color: black !important;
@@ -531,12 +605,22 @@ const Challan = ({ isLightMode, modeOfView }) => {
                             width: 93px;
                             font-size: 13px;
                             padding: 4px 0px 4px 8px;
-                            border: 1px solid #000;
                             background: white !important;
                             color: black !important;
                             min-height: auto;
                             margin: 0;
+                            border: none;
+                            border: 1px solid #000;  
                         }
+
+                        .challanDate {
+                            font-family: Arial, sans-serif;
+                        }
+
+                        .challan-location-select {
+                            border-color: #000000;
+                        }
+
                         .challan-company-name {
                             font-size: 16px;
                             font-weight: bold;
@@ -625,24 +709,97 @@ const Challan = ({ isLightMode, modeOfView }) => {
         setMode('add');
         setChallanEditMode(true);
         setHasFetchedData(true);
+        setShowAddViewUpdateButtons(false);
     };
 
     const handleUpdate = () => {
         if (challanNo) {
             setMode('update');
             setChallanEditMode(true);
+            setShowAddViewUpdateButtons(false);
         }
     };
 
     const handleDeleteMode = () => {
+        // console.log(challanNo);
         if (challanNo) {
             setMode('delete');
             setChallanEditMode(false);
+            setShowAddViewUpdateButtons(false);
+            // console.log(mode, challanEditMode, showAddViewUpdateButtons);
         }
     };
 
     return (
         <>
+                {(mode === "view" || mode === "update" || mode === "delete") && (
+                <>
+                    <PopupAlert
+                        message={alert.message}
+                        type={alert.type}
+                        duration={5000}
+                        onClose={hideAlert}
+                        isLightMode={isLightMode}
+                        position="top-right"
+                    />
+                    {!hasFetchedData && (
+                    <div className={`invoice-search challan-search ${isLightMode ? "light-mode" : "dark-mode"}`}>
+                        <div className="invoice-search-text">Search Challan:</div>
+
+                        <form
+                        onSubmit={handleSearch}
+                        className={`invoice-search-form challan-search-form ${isLightMode ? "light-mode" : "dark-mode"}`}
+                        >
+                        {/* Challan Number Input */}
+                        <input
+                            type="text"
+                            placeholder="Enter Challan Number"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            required
+                            className={`invoice-search-input ${isLightMode ? "light-mode" : "dark-mode"}`}
+                        />
+
+                        {/* Year Dropdown */}
+                        <select
+                            value={searchYear}
+                            onChange={(e) => setSearchYear(e.target.value)}
+                            className={`challan-search-select ${isLightMode ? "light-mode" : "dark-mode"}`}
+                        >
+                            {years.map((y) => (
+                            <option key={y} value={y}>
+                                {y}
+                            </option>
+                            ))}
+                        </select>
+
+                        {/* Preview Box */}
+                        <div
+                            className={`invoice-search-input challan-search-preview ${isLightMode ? "light-mode" : "dark-mode"}`}
+                            style={{
+                                opacity: searchTerm ? 1 : 0.6,
+                                borderRadius: '0px',
+                            }}
+                        >
+                            {searchTerm
+                            ? formatChallanNo(searchTerm, searchYear)
+                            : "Preview"}
+                        </div>
+
+                        {/* Search Button */}
+                        <button
+                            type="submit"
+                            className={`invoice-search-button challan-search-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+                        >
+                            <IoSearch className="invoice-search-icon" />
+                        </button>
+                        </form>
+                    </div>
+                    )}
+                </>
+                )}
+
+            {(mode === "add" || hasFetchedData) && (
             <div className={`challan-main-container ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                 {/* Popup Alert Component */}
                 <PopupAlert
@@ -674,57 +831,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                     {mode === 'delete' && 'Delete Challan'}
                 </h2>
 
-                {(mode === 'view' || mode === 'update' || mode === 'delete') && (
-                    <div className={`challan-search-container ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                        <form onSubmit={handleSearch}>
-                            <div className="challan-search-header">
-                                <h3>Search Existing Challan</h3>
-                            </div>
-                            <div className={`challan-search-group ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                                <div className="challan-search-inputs">
-                                    <div className="challan-search-field">
-                                        <label className={`challan-search-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Challan Number</label>
-                                        <input
-                                            type="text"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            required
-                                            className={`challan-search-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                                            placeholder="Enter number (e.g., 123)"
-                                        />
-                                    </div>
-                                    <div className="challan-search-field">
-                                        <label className={`challan-search-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Year</label>
-                                        <select 
-                                            value={searchYear} 
-                                            onChange={(e) => setSearchYear(e.target.value)} 
-                                            className={`challan-search-select improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                                        >
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="challan-search-field">
-                                        <label className={`challan-search-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>&nbsp;</label>
-                                        <button type="submit" className={`challan-search-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                                            <IoSearch className={`challan-search-icon ${isLightMode ? 'light-mode' : 'dark-mode'}`}/>
-                                            Search
-                                        </button>
-                                    </div>
-                                    <div className="challan-search-field">
-                                        <label className={`challan-search-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>&nbsp;</label>
-                                        <div className="challan-search-preview">
-                                            {formatChallanNo(searchTerm, searchYear) && (
-                                                <span className="challan-preview">
-                                                    Preview: <strong>{formatChallanNo(searchTerm, searchYear)}</strong>
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                )}
+
 
                 {(mode === 'add' || hasFetchedData) && (
                     <div>
@@ -746,38 +853,78 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                                     value={formData.date} 
                                                     onChange={handleChange} 
                                                     required 
-                                                    className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
+                                                    className={`challan-form-input improved-input challanDate ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
                                                     readOnly={!challanEditMode} 
                                                 />
                                             </div>
                                         </div>
                                         <div className="challan-form-row">
-                                            <div className={`challan-form-group`}>
-                                                <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>From</label>
-                                                <input 
-                                                    type="text" 
-                                                    name="from" 
-                                                    value={formData.from} 
-                                                    onChange={handleChange} 
-                                                    required 
-                                                    placeholder="Source location" 
-                                                    className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
-                                                    readOnly={!challanEditMode} 
-                                                />
-                                            </div>
-                                            <div className={`challan-form-group`}>
-                                                <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Destination</label>
-                                                <input 
-                                                    type="text" 
-                                                    name="destination" 
-                                                    value={formData.destination} 
-                                                    onChange={handleChange} 
-                                                    required 
-                                                    placeholder="Destination location" 
-                                                    className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
+                                        <div className={`challan-form-group`}>
+                                            <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>From</label>
+                                            {mode !== 'view' && mode !== 'delete' ? (
+                                                <select
+                                                    name="from"
+                                                    value={formData.from}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                                                    disabled={!challanEditMode} // use disabled instead of readOnly for select
+                                                >
+                                                    <option value="" disabled>Select source location</option>
+                                                    {locationOptions.map(location => (
+                                                        <option key={location} value={location}>{location}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="from"
+                                                    value={formData.from}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className={`challan-form-input improved-input ${
+                                                    isLightMode ? "light-mode" : "dark-mode"
+                                                    }`}
                                                     readOnly={!challanEditMode}
                                                 />
-                                            </div>
+                                            )}
+                                        </div>
+                                        <div className={`challan-form-group`}>
+                                            <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Destination</label>
+                                            {mode !== 'view' && mode !== 'delete' ? (
+                                            <select
+                                                name="destination"
+                                                value={formData.destination}
+                                                onChange={handleChange}
+                                                required
+                                                className={`challan-form-input improved-input challan-location-select ${
+                                                isLightMode ? "light-mode" : "dark-mode"
+                                                }`}
+                                            >
+                                                <option value="" disabled>
+                                                Select destination location
+                                                </option>
+                                                {locationOptions.map((location) => (
+                                                <option key={location} value={location}>
+                                                    {location}
+                                                </option>
+                                                ))}
+                                            </select>
+                                            ) : (
+                                            <input
+                                                type="text"
+                                                name="destination"
+                                                value={formData.destination}
+                                                onChange={handleChange}
+                                                required
+                                                placeholder="Enter destination location"
+                                                className={`challan-form-input improved-input ${
+                                                isLightMode ? "light-mode" : "dark-mode"
+                                                }`}
+                                                readOnly={!challanEditMode}
+                                            />
+                                            )}
+                                        </div>
                                         </div>
                                         <div className="challan-form-row">
                                             <div className={`challan-form-group`}>
@@ -824,7 +971,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                         <tr className={`challan-table-header ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                                             <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                             <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                            <th>To Pay</th><th>Paid</th>
+                                            <th>To Pay</th><th>Paid</th><th>Payment Collected</th>
                                             {challanEditMode && <th>Action</th>}
                                         </tr>
                                     </thead>
@@ -838,6 +985,13 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                                             type="text" 
                                                             value={row.builty_no} 
                                                             onChange={(e) => handleTableChange(index, 'builty_no', e.target.value)} 
+                                                            style={
+                                                                problematicBuiltyNo && 
+                                                                row.builty_no && 
+                                                                problematicBuiltyNo.includes(row.builty_no)
+                                                                    ? { color: 'red', fontWeight: '600', background: '#ffffff' }
+                                                                    : {}
+                                                            }
                                                             className={`challan-table-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
                                                         />
                                                     ) : <div className="text-center">{formatBuiltyForDisplay(row.builty_no) || '-'}</div>}
@@ -850,8 +1004,9 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                                 <td className="text-center">{row.good_type || '-'}</td>
                                                 <td className="text-center">{row.to_pay != null ? Number(row.to_pay) : '-'}</td>
                                                 <td className="text-center">{row.paid != null ? Number(row.paid) : '-'}</td>
+                                                <td className="text-center">{row.payment_collected != null ? Number(row.payment_collected) : '-'}</td>
                                                 {challanEditMode && (
-                                                    <td className="text-center">
+                                                    <td className="text-center challan-makeItCenter">
                                                         <button type="button" onClick={() => deleteRow(index)} className={`challan-delete-row-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}><IoTrash /></button>
                                                     </td>
                                                 )}
@@ -864,6 +1019,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                                 <td className="text-center">{calculateTotals().weight}</td><td></td>
                                                 <td className="text-center">{calculateTotals().to_pay}</td>
                                                 <td className="text-center">{calculateTotals().paid}</td>
+                                                <td className="text-center">{calculateTotals().payment_collected}</td>
                                                 {challanEditMode && <td></td>}
                                             </tr>
                                         )}
@@ -875,11 +1031,26 @@ const Challan = ({ isLightMode, modeOfView }) => {
                         {challanEditMode && (
                             <div className={`challan-add-more-container`}>
                                 <button type="button" onClick={addMoreRows} className={`challan-add-more-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}><IoAdd /> Add 5 More Rows</button>
+                                {(mode === 'add' || hasFetchedData) && challanEditMode && (
+                                    <div>
+                                        {(mode === 'add' || mode === 'update') && (
+                                            <button 
+                                                type="button" 
+                                                onClick={handleSubmit} 
+                                                disabled={isLoading} 
+                                                className={`challan-submit-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                                            >
+                                                {isLoading ? 'Saving...' : (mode === 'add' ? 'Save Challan' : 'Update Challan')}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                {mode !== 'add' && challanBackButton("Back")}
                             </div>
                         )}
 
                         {/* Action buttons for view mode */}
-                        {mode === 'view' && (
+                        {(mode === 'view' || showAddViewUpdateButtons) && (
                             <div className={`challan-action-buttons ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                                 <button 
                                     onClick={handlePrint} 
@@ -905,34 +1076,24 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                 >
                                     <IoTrash /> Delete This Challan
                                 </button>
+                                {challanBackButton("Back to Search")}
                             </div>
                         )}
                     </div>
                 )}
 
-                {(mode === 'add' || hasFetchedData) && (
+                {hasFetchedData && mode === 'delete' && (
                     <div className={`challan-submit-container`}>
-                        {(mode === 'add' || mode === 'update') && (
-                            <button 
-                                type="button" 
-                                onClick={handleSubmit} 
-                                disabled={isLoading} 
-                                className={`challan-submit-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                            >
-                                {isLoading ? 'Saving...' : (mode === 'add' ? 'Save Challan' : 'Update Challan')}
-                            </button>
-                        )}
-                        {mode === 'delete' && (
-                            <button 
-                                type="button" 
-                                onClick={handleDelete} 
-                                disabled={isLoading} 
-                                className={`challan-delete-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                            >
-                                {isLoading ? 'Deleting...' : 'Delete Challan'}
-                            </button>
-                        )}
-                    </div>
+                        <button 
+                            type="button" 
+                            onClick={handleDelete} 
+                            disabled={isLoading} 
+                            className={`challan-delete-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                        >
+                            <IoTrash /> {isLoading ? 'Deleting...' : 'Delete Challan'}
+                        </button>
+                        {challanBackButton("Back")}
+                    </div> 
                 )}
 
                 {isLoading && (
@@ -941,6 +1102,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                     </div>
                 )}
             </div>
+            )}
         </>
     );
 };
