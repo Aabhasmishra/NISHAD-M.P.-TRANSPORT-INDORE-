@@ -333,8 +333,8 @@
 
 .pm-form-actions {
   display: flex;
-  gap: 15px;
   margin-top: 20px;
+  justify-content: center;
 }
 
 .pm-delete-section {
