@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import UserManagement from "./Components/UserManagement/UserManagement";
 import MySidebar from "./Components/Sidebar/Sidebar";
 import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
@@ -10,6 +9,7 @@ import PaymentManagement from "./Components/PaymentManagement/PaymentManagement"
 import Challan from "./Components/Challan/Challan";
 import CrossingStatement from "./Components/CrossingStatement/CrossingStatement";
 import Cookies from 'js-cookie';
+import LoginSignup from "./Components/LoginSignup/LoginSignup";
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -90,8 +90,9 @@ const App = () => {
         onItemClick={handleSidebarItemClick}
         onThemeChange={change_theme}
         onLogout={handleLogout}
-      />
-      <div className="main-content">{renderComponent()}</div>
+      >
+        {renderComponent()}   {/* 👈 this becomes the children */}
+      </MySidebar>
     </div>
   );
 };
