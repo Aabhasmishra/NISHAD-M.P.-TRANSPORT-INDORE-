@@ -4,8 +4,9 @@ import { IoSearch } from "react-icons/io5";
 import { TfiWrite } from "react-icons/tfi";
 import "./InvoiceGenerator.css";
 import TransactionHistory from '../TransactionHistory/TransactionHistory';
-import AutoWriteTable from '../TransactionHistory/TransactionHistory2';
+import AutoWriteInvoice from "../TransactionHistory/AutoWriteInvoice";
 import CustomerManagement from "../CustomerManagement/CustomerManagement";
+import CustomerSearchInput from "../HelpFulComponents/CustomerSearchInput";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 const SCROLLBAR_CLASS = "custom-scrollbar";
@@ -61,6 +62,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     otherCharges: "",
     created_at: "",
     updated_at: "",
+    
+    // Status Fields
+    challan_status: 'NOT SHIPPED',
+    payment_status: 'Pending',
+    crossing_status: 'NO'
   });
 
   const [isEditing, setIsEditing] = useState(true);
@@ -69,28 +75,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [activeTab, setActiveTab] = useState(modeOfView);
   const [searchInvoiceNumber, setSearchInvoiceNumber] = useState("");
-  const [allCustomerNames, setAllCustomerNames] = useState([]);
-  const [allCustomersWithCodes, setAllCustomersWithCodes] = useState([]);
-  const [consignorSuggestions, setConsignorSuggestions] = useState([]);
-  const [consigneeSuggestions, setConsigneeSuggestions] = useState([]);
-  const [showConsignorSuggestions, setShowConsignorSuggestions] = useState(false);
-  const [showConsigneeSuggestions, setShowConsigneeSuggestions] = useState(false);
-  // GST suggestions state
-  const [consignorGstSuggestions, setConsignorGstSuggestions] = useState([]);
-  const [consigneeGstSuggestions, setConsigneeGstSuggestions] = useState([]);
-  const [showConsignorGstSuggestions, setShowConsignorGstSuggestions] = useState(false);
-  const [showConsigneeGstSuggestions, setShowConsigneeGstSuggestions] = useState(false);
   
   const [openPopUp, setOpenPopUp] = useState(false);
-  const [shippingStatus, setShippingStatus] = useState(null);
   const [showCustomerPopup, setShowCustomerPopup] = useState(false);
   const [popupCustomerType, setPopupCustomerType] = useState('');
-  const [transactionResult, setTransactionResult] = useState(null);
-  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [showAutoWrite, setShowAutoWrite] = useState(false);
+  const [autoWriteLoading, setAutoWriteLoading] = useState(false);
   const [paymentTypeDifferent, setPaymentTypeDifferent] = useState(false);
-  const [currentArticleIndex, setCurrentArticleIndex] = useState(0);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
-  const [isFillingArticle, setIsFillingArticle] = useState(false);
   const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
   const [confirmAlert, setConfirmAlert] = useState({ message: '', show: false, onConfirm: null });
   const [showInvoice, setShowInvoice] = useState(false);
@@ -104,22 +96,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     "Pathalgaon", "Raigarh", "Raipur", "Rajnandgaon", "Rewa", "Satna", 
     "Surguja"
   ];
-
-  useEffect(() => {
-    const fetchCustomerData = async () => {
-      try {
-        const response = await fetch(
-          "http://43.230.202.198:3000/api/customers/all"
-        );
-        const data = await response.json();
-        setAllCustomersWithCodes(data);
-        setAllCustomerNames(data.map(customer => customer.name));
-      } catch (err) {
-        console.error("Failed to fetch customer data:", err);
-      }
-    };
-    fetchCustomerData();
-  }, []);
 
   useEffect(() => {
     if (formData.consignor && formData.consignee) {
@@ -263,181 +239,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     }
   };
 
-  const fillArticleFromHistory = async (articleIndex) => {
-    const article = formData.articles[articleIndex];
-    if (!article.hsn) {
-      showAlert("Please enter 'HSN' value first", 'warning');
-      return;
-    }
-
-    if (!article.noOfArticles) {
-      showAlert("Please enter 'No. of Articles' value first", 'warning');
-      return;
-    }
-
-    setIsFillingArticle(true);
-    try {
-      const response = await fetch(
-        `http://43.230.202.198:3000/api/transport-records/history?consignor=${encodeURIComponent(formData.consignor)}&consignee=${encodeURIComponent(formData.consignee)}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch transaction history');
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        let foundRecord = null;
-        let foundIndex = -1;
-        
-        for (const record of data) {
-          if (record.hsn) {
-            const hsns = record.hsn.split('|');
-            const index = hsns.findIndex(item => item === article.hsn);
-            if (index !== -1) {
-              foundRecord = record;
-              foundIndex = index;
-              break;
-            }
-          }
-        }
-        
-        if (foundRecord && foundIndex !== -1) {
-          const articleNos = foundRecord.article_no?.split('|') || [];
-          const taxFrees = foundRecord.tax_free?.split('|') || [];
-          const weightChargeables = foundRecord.weight_chargeable?.split('|') || [];
-          const actualWeights = foundRecord.actual_weight?.split('|') || [];
-          const hsns = foundRecord.hsn?.split('|') || [];
-          const amounts = foundRecord.amount?.split('|') || [];
-          const remarksList = foundRecord.remarks?.split('|') || [];
-          const saidToContains = foundRecord.said_to_contain?.split('|') || [];
-          
-          const fetchedNoOfArticles = articleNos[foundIndex] ? parseInt(articleNos[foundIndex]) : 1;
-          const currentNoOfArticles = parseInt(article.noOfArticles) || 1;
-          
-          const fetchedAmount = amounts[foundIndex] ? parseFloat(amounts[foundIndex]) : 0;
-          const fetchedWeightChargeable = weightChargeables[foundIndex] ? parseFloat(weightChargeables[foundIndex]) : 0;
-          const fetchedActualWeight = actualWeights[foundIndex] ? parseFloat(actualWeights[foundIndex]) : 0;
-          
-          const calculatedAmount = (fetchedAmount / fetchedNoOfArticles) * currentNoOfArticles;
-          const calculatedWeightChargeable = (fetchedWeightChargeable / fetchedNoOfArticles) * currentNoOfArticles;
-          const calculatedActualWeight = (fetchedActualWeight / fetchedNoOfArticles) * currentNoOfArticles;
-          
-          const updatedArticles = [...formData.articles];
-          updatedArticles[articleIndex] = {
-            ...updatedArticles[articleIndex],
-            saidToContain: saidToContains[foundIndex] || updatedArticles[articleIndex].saidToContain,
-            taxFree: taxFrees[foundIndex] || updatedArticles[articleIndex].taxFree,
-            weightChargeable: calculatedWeightChargeable.toString() || updatedArticles[articleIndex].weightChargeable,
-            actualWeight: calculatedActualWeight.toString() || updatedArticles[articleIndex].actualWeight,
-            hsn: hsns[foundIndex] || updatedArticles[articleIndex].hsn,
-            to_pay: formData.paymentType === "toPay" ? (calculatedAmount.toString() || updatedArticles[articleIndex].to_pay) : updatedArticles[articleIndex].to_pay,
-            paid: formData.paymentType === "paid" ? (calculatedAmount.toString() || updatedArticles[articleIndex].paid) : updatedArticles[articleIndex].paid,
-            remarks: remarksList[foundIndex] || updatedArticles[articleIndex].remarks,
-          };
-          
-          setFormData(prev => ({ ...prev, articles: updatedArticles }));
-        } else {
-          showAlert("No matching records found for this HSN value", 'error');
-        }
-      } else {
-        showAlert("No transaction history found between these parties", 'error');
-      }
-    } catch (err) {
-      console.error('Error filling article:', err);
-      showAlert("Error fetching historical data", 'error');
-    } finally {
-      setIsFillingArticle(false);
-    }
-  };
-
-  // Name search handlers
-  const handleConsignorSearch = (value) => {
-    if (value.length > 0) {
-      const filtered = allCustomersWithCodes.filter((customer) =>
-        customer.name.toLowerCase().startsWith(value.toLowerCase())
-      );
-      setConsignorSuggestions(filtered);
-      setShowConsignorSuggestions(true);
-    } else {
-      setConsignorSuggestions([]);
-      setShowConsignorSuggestions(false);
-    }
-  };
-
-  const handleConsigneeSearch = (value) => {
-    if (value.length > 0) {
-      const filtered = allCustomersWithCodes.filter((customer) =>
-        customer.name.toLowerCase().startsWith(value.toLowerCase())
-      );
-      setConsigneeSuggestions(filtered);
-      setShowConsigneeSuggestions(true);
-    } else {
-      setConsigneeSuggestions([]);
-      setShowConsigneeSuggestions(false);
-    }
-  };
-
-  // GST search handlers
-  const handleConsignorGstSearch = (value) => {
-    if (value.length > 0) {
-      const filtered = allCustomersWithCodes.filter((customer) =>
-        customer.id_number && customer.id_number.toLowerCase().startsWith(value.toLowerCase())
-      );
-      setConsignorGstSuggestions(filtered);
-      setShowConsignorGstSuggestions(true);
-    } else {
-      setConsignorGstSuggestions([]);
-      setShowConsignorGstSuggestions(false);
-    }
-  };
-
-  const handleConsigneeGstSearch = (value) => {
-    if (value.length > 0) {
-      const filtered = allCustomersWithCodes.filter((customer) =>
-        customer.id_number && customer.id_number.toLowerCase().startsWith(value.toLowerCase())
-      );
-      setConsigneeGstSuggestions(filtered);
-      setShowConsigneeGstSuggestions(true);
-    } else {
-      setConsigneeGstSuggestions([]);
-      setShowConsigneeGstSuggestions(false);
-    }
-  };
-
-  const handleConsignorSuggestionClick = (customer) => {
-    let gstNumber = "UIN";
-    if (customer && customer.id_type === "GST Number") {
-        gstNumber = customer.id_number;
-    }
-
-    setFormData((prev) => ({ 
-      ...prev, 
-      consignor: customer.name,
-      consignorCode: customer.customer_code,
-      consignorGst: gstNumber
-    }));
-    setShowConsignorSuggestions(false);
-    setShowConsignorGstSuggestions(false);
-  };
-
-  const handleConsigneeSuggestionClick = (customer) => {
-    let gstNumber = "UIN";
-    if (customer && customer.id_type === "GST Number") {
-        gstNumber = customer.id_number;
-    }
-
-    setFormData((prev) => ({ 
-      ...prev, 
-      consignee: customer.name,
-      consigneeCode: customer.customer_code,
-      consigneeGst: gstNumber
-    }));
-    setShowConsigneeSuggestions(false);
-    setShowConsigneeGstSuggestions(false);
-  };
-
   const verifyConsignorConsignee = async () => {
     setIsVerifying(true);
     setErrorMessage("");
@@ -466,8 +267,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         return false;
       }
 
-      let consignorGst = "UIN";
-      let consigneeGst = "UIN";
+      let consignorGst = `URD - ${consignorData.id_number}`;
+      let consigneeGst = `URD - ${consigneeData.id_number}`;
 
       if (consignorData && consignorData.id_type === "GST Number") {
           consignorGst = consignorData.id_number;
@@ -583,6 +384,16 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   };
 
   const handleSubmitToServer = async () => {
+    // Validate required fields
+    if (!formData.valueDeclared || formData.valueDeclared.trim() === '') {
+      showAlert("Value Declared is required", 'warning');
+      return;
+    }
+    if (!formData.goodsType || formData.goodsType.trim() === '') {
+      showAlert("Goods Type is required", 'warning');
+      return;
+    }
+
     try {
       const articlesWithHSN = formData.articles.map((article) => ({
         ...article,
@@ -621,7 +432,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             amount: articlesWithHSN.map((a) => 
               formData.paymentType === "toPay" ? a.to_pay || "0" : a.paid || "0"
             ).join("|"),
-            hsn: articlesWithHSN.map((a) => a.hsn || "9999").join("|"),
+            hsn: articlesWithHSN.map((a) => a.hsn || "0").join("|"),
             to_pay: articlesWithHSN.map((a) => a.to_pay).join("|"),
             paid: articlesWithHSN.map((a) => a.paid).join("|"),
             remarks: articlesWithHSN.map((a) => a.remarks).join("|"),
@@ -631,7 +442,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             gstWillBePaidBy: formData.gstPaidBy,
             motorFreight: motorFreightValue,
             hammali: hammaliValue,
-            otherCharges: otherChargesValue
+            otherCharges: otherChargesValue,
+            payment_status: formData.payment_status
           }),
         }
       );
@@ -644,37 +456,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         showAlert("Transport record saved successfully", 'success');
       }
 
-      // Save to status database with challan_status 'Book' and payment_status 'Pending'
-      if (response.ok) {
-        try {
-          const statusResponse = await fetch(
-            "http://43.230.202.198:3000/api/status",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                gr_no: data.grNo,
-                challan_status: "Book",
-                payment_status: "Pending"
-              }),
-            }
-          );
-
-          const statusData = await statusResponse.json();
-          
-          if (!statusResponse.ok) {
-            console.warn("Failed to save status:", statusData.error);
-          }
-        } catch (statusErr) {
-          console.warn("Error saving status:", statusErr.message);
-        }
-      }
-
       setFormData((prev) => ({
         ...prev,
         invoiceNumber: data.grNo,
         created_at: data.created_at,
         updated_at: data.updated_at,
+        challan_status: 'NOT SHIPPED',
+        payment_status: 'Pending',
+        crossing_status: 'NO',
       }));
       setIsSubmitted(true);
     } catch (err) {
@@ -732,6 +521,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       otherCharges: "",
       created_at: "",
       updated_at: "",
+      challan_status: 'NOT SHIPPED',
+      payment_status: 'Pending',
+      crossing_status: 'NO',
     });
     setIsEditing(true);
     setIsSubmitted(false);
@@ -749,23 +541,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       if (!response.ok) {
         showAlert(data.error || "Invoice not found", 'error');
         return;
-      }
-
-      // Fetch status data
-      try {
-        const statusResponse = await fetch(
-          `http://43.230.202.198:3000/api/status?gr_no=${invoiceNumber}`
-        );
-        const statusData = await statusResponse.json();
-        
-        if (statusResponse.ok) {
-          setShippingStatus(statusData);
-        } else {
-          setShippingStatus(null);
-        }
-      } catch (statusErr) {
-        console.warn("Error fetching status:", statusErr.message);
-        setShippingStatus(null);
       }
 
       const articles = [];
@@ -806,14 +581,17 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         articles,
         paymentType: data.paid == 0 ? "toPay" : "paid",
         goodsType: data.goods_type,
-        valueDeclared: data.value_declared,
+        valueDeclared: formatNumericValue(data.value_declared),
         gstPaidBy: data.gst_will_be_paid_by,
-        motorFreight: data.motor_freight || "",
-        hammali: data.hammali || "",
-        otherCharges: data.other_charges || "",
+        motorFreight: formatNumericValue(data.motor_freight) || "",
+        hammali: formatNumericValue(data.hammali) || "",
+        otherCharges: formatNumericValue(data.other_charges) || "",
         driverName: data.driver_name,
         created_at: data.created_at,
         updated_at: data.updated_at,
+        challan_status: data.challan_status || 'NOT SHIPPED',
+        payment_status: data.payment_status || 'Pending',
+        crossing_status: data.crossing_status || 'NO',
       });
 
       setIsEditing(activeTab === "update");
@@ -939,6 +717,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         ...updatedData,
         updated_at: data.updated_at,
         date: formData.date,
+        challan_status: 'NOT SHIPPED',
+        payment_status: 'Pending',
+        crossing_status: 'NO',
       }));
 
       showAlert("Transport record updated successfully", 'success');
@@ -1091,6 +872,26 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             .consignment-details {
               font-size: 10px !important;
               margin-bottom: 5px !important;
+            }
+
+            .consignment-from2 {
+              display: flex;
+              justify-content: space-between;
+            }
+
+            .fixed-name-field {
+              width: 350px;
+            }
+
+            .customer-GST-Fields,
+            .customer-GST-value {
+              display: flex;
+              justify-content: flex-end;
+            }
+
+            .customer-GST-value {
+              width: 93px;
+              justify-content: center;
             }
 
             .form-group.inline {
@@ -1455,167 +1256,143 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     };
   };
 
-  const handleHistoryButtonClick = (articleIndex) => {
-    setCurrentArticleIndex(articleIndex);
-    fillArticleFromHistory(articleIndex);
+  const handleAutoWriteClick = () => {
+    if (!formData.consignor || !formData.consignee) {
+      showAlert('Consignor and Consignee are required to auto-write invoice', 'warning');
+      return;
+    }
+    setShowAutoWrite(true);
   };
 
-  const handleHistoryTransactionComplete = (result) => {
-    setTransactionResult(result);
-    setShowTransactionHistory(false);
+  const handleAutoWriteData = (invoice) => {
+    setShowAutoWrite(false);
+    if (invoice) {
+      showAlert(`Auto-filled invoice from GR No: ${invoice.gr_no}`, 'info');
+      populateFormWithInvoice(invoice);
+    } else {
+      showAlert('No previous invoice found for this consignor/consignee pair', 'info');
+    }
+  };
+
+  const handleAutoWriteError = (errorMsg) => {
+    setShowAutoWrite(false);
+    showAlert(`Error: ${errorMsg}`, 'error');
+  };
+
+  const populateFormWithInvoice = (invoice) => {
+    // Build articles array from pipe‑separated strings
+    const articles = [];
+    for (let i = 0; i < invoice.article_length; i++) {
+      articles.push({
+        noIndex: i + 1,
+        noOfArticles: invoice.article_no?.split('|')[i] || "",
+        saidToContain: invoice.said_to_contain?.split('|')[i] || "",
+        taxFree: invoice.tax_free?.split('|')[i] || "No",
+        weightChargeable: invoice.weight_chargeable?.split('|')[i] || "",
+        actualWeight: invoice.actual_weight?.split('|')[i] || "",
+        hsn: invoice.hsn ? invoice.hsn.split('|')[i] || "" : "",
+        to_pay: (invoice.paid == 0) ? invoice.amount?.split('|')[i] || "" : "",
+        paid: (invoice.to_pay == 0) ? invoice.amount?.split('|')[i] || "" : "",
+        remarks: invoice.remarks?.split('|')[i] || "",
+      });
+    }
+
+    // Format date from database (YYYY-MM-DD)
+    const dbDate = new Date(invoice.date);
+    const formattedDate = [
+      dbDate.getFullYear(),
+      (dbDate.getMonth() + 1).toString().padStart(2, "0"),
+      dbDate.getDate().toString().padStart(2, "0"),
+    ].join("-");
+
+    setFormData({
+      invoiceNumber: "",               // new invoice, so clear previous number
+      date: formattedDate,
+      ewayBillNo: invoice.eway_bill_no || "",
+      fromLocation: invoice.from_location || "Indore",
+      consignor: invoice.consignor_name || "",
+      consignorCode: invoice.consignor_code || "",
+      consignorGst: invoice.consignor_gst || "",
+      toLocation: invoice.to_location || "Raipur",
+      consignee: invoice.consignee_name || "",
+      consigneeCode: invoice.consignee_code || "",
+      consigneeGst: invoice.consignee_gst || "",
+      articles,
+      paymentType: invoice.paid == 0 ? "toPay" : "paid",
+      goodsType: invoice.goods_type || "",
+      valueDeclared: invoice.value_declared || "",
+      gstPaidBy: invoice.gst_will_be_paid_by || "Consignor",
+      motorFreight: invoice.motor_freight || "",
+      hammali: invoice.hammali || "",
+      otherCharges: invoice.other_charges || "",
+      driverName: invoice.driver_name,
+      created_at: "",
+      updated_at: "",
+    });
   };
 
   const totals = calculateTotals();
 
-  // Reusable function to render a field with suggestions
-  const renderInputWithSuggestions = ({
-    inputName,
-    inputValue,
-    onInputChange,
-    onSearch,
-    suggestionsList,
-    showSuggestions,
-    setShowSuggestions,
-    onSuggestionClick,
-    placeholder = "",
-    className = "invoice-input customer-input fixed-input",
-    suggestionItemRenderer,
-    noSuggestionsContent = null
-  }) => {
-    return (
-      <div className="search-container" style={{ display: "inline-block", position: "relative", width: "66%" }}>
-        <input
-          type="text"
-          name={inputName}
-          value={inputValue}
-          onChange={(e) => {
-            onInputChange(e);
-            onSearch(e.target.value);
-          }}
-          onFocus={() => inputValue && onSearch(inputValue)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          placeholder={placeholder}
-          className={className}
-        />
-        {showSuggestions && suggestionsList.length > 0 && (
-          <ul className={`suggestions-list customer-suggestions ${SCROLLBAR_CLASS}`} style={{ 
-            minWidth: "400px",
-            width: "max-content",
-            maxWidth: "500px",
-            whiteSpace: "nowrap",
-            maxHeight: "200px",
-            overflowY: "auto"
-          }}>
-            {suggestionsList.map((customer, index) => (
-              <li
-                key={index}
-                className="suggestion-item customer-suggestion-item"
-                onClick={() => onSuggestionClick(customer)}
-              >
-                {suggestionItemRenderer ? suggestionItemRenderer(customer) : (
-                  <>
-                    <span className="suggestion-prefix">{customer.name}</span>
-                    <span className="customer-code"> - {customer.customer_code}</span>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {showSuggestions && suggestionsList.length === 0 && noSuggestionsContent && (
-          <div className="no-suggestions" style={{ position: 'absolute', background: 'white', border: '1px solid #ccc', zIndex: 1000, padding: '5px' }}>
-            {noSuggestionsContent}
-          </div>
-        )}
-      </div>
-    );
-  };
+  {isEditing ? (
+    <CustomerSearchInput
+      name="consignor"
+      value={formData.consignor}
+      onChange={handleChange}
+      onSelect={(customer) => {
+        let gstValue = customer.id_number;
+        if (customer.id_type !== "GST Number") {
+          gstValue = `URD - ${customer.id_number}`;
+        }
+        setFormData(prev => ({
+          ...prev,
+          consignor: customer.name,
+          consignorCode: customer.customer_code,
+          consignorGst: gstValue
+        }));
+      }}
+      type="consignor"
+      placeholder=""
+      className="invoice-input customer-input fixed-input"
+      isLightMode={isLightMode}
+      showGstHighlight={false}
+      onOpenCustomerPopup={setPopupCustomerType}
+      suggestionDisplayField="id" 
+    />
+  ) : (
+    <span className="fixed-value">{formData.consignor}</span>
+  )}
 
-  // Reusable function for name field
-  const renderNameField = (type) => {
-    const isConsignor = type === 'consignor';
-    const name = isConsignor ? 'consignor' : 'consignee';
-    const value = formData[name];
-    const suggestions = isConsignor ? consignorSuggestions : consigneeSuggestions;
-    const showSuggestions = isConsignor ? showConsignorSuggestions : showConsigneeSuggestions;
-    const setShowSuggestions = isConsignor ? setShowConsignorSuggestions : setShowConsigneeSuggestions;
-    const handleSearch = isConsignor ? handleConsignorSearch : handleConsigneeSearch;
-    const handleSuggestionClick = isConsignor ? handleConsignorSuggestionClick : handleConsigneeSuggestionClick;
+  {isEditing ? (
+    <CustomerSearchInput
+      name="consignorGst"
+      value={formData.consignorGst}
+      onChange={handleChange}
+      onSelect={(customer) => {
+        let gstValue = customer.id_number;
+        if (customer.id_type !== "GST Number") {
+          gstValue = `URD - ${customer.id_number}`;
+        }
+        setFormData(prev => ({
+          ...prev,
+          consignor: customer.name,        // also fill name
+          consignorCode: customer.customer_code,
+          consignorGst: gstValue
+        }));
+      }}
+      type="consignor"
+      placeholder=""
+      className="invoice-input customer-input fixed-input"
+      isLightMode={isLightMode}
+      showGstHighlight={true}
+      onOpenCustomerPopup={setPopupCustomerType}
+    />
+  ) : (
+    <span className="customer-GST-value">{formData.consignorGst || "—"}</span>
+  )}
 
-    const noSuggestionsContent = (
-      <>
-        No matching customers found.
-        <button 
-          className="add-customer-btn"
-          onClick={() => {
-            setPopupCustomerType(type);
-            setShowCustomerPopup(true);
-          }}
-        >
-          Add New Customer
-        </button>
-      </>
-    );
-
-    return renderInputWithSuggestions({
-      inputName: name,
-      inputValue: value,
-      onInputChange: handleChange,
-      onSearch: handleSearch,
-      suggestionsList: suggestions,
-      showSuggestions,
-      setShowSuggestions,
-      onSuggestionClick: handleSuggestionClick,
-      placeholder: "",
-      className: "invoice-input customer-input fixed-input",
-      suggestionItemRenderer: (customer) => {
-        const lowerInput = value.toLowerCase();
-        const lowerSuggestion = customer.name.toLowerCase();
-        const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-        const prefix = customer.name.substring(0, prefixIndex + value.length);
-        const rest = customer.name.substring(prefixIndex + value.length);
-        return (
-          <>
-            <span className="suggestion-prefix">{prefix}</span>
-            <span className="suggestion-rest">{rest}</span>
-            <span className="customer-code"> - {customer.customer_code}</span>
-          </>
-        );
-      },
-      noSuggestionsContent
-    });
-  };
-
-  // Reusable function for GST field
-  const renderGstField = (type) => {
-    const isConsignor = type === 'consignor';
-    const gstName = isConsignor ? 'consignorGst' : 'consigneeGst';
-    const gstValue = formData[gstName];
-    const gstSuggestions = isConsignor ? consignorGstSuggestions : consigneeGstSuggestions;
-    const showGstSuggestions = isConsignor ? showConsignorGstSuggestions : showConsigneeGstSuggestions;
-    const setShowGstSuggestions = isConsignor ? setShowConsignorGstSuggestions : setShowConsigneeGstSuggestions;
-    const handleGstSearch = isConsignor ? handleConsignorGstSearch : handleConsigneeGstSearch;
-    const handleSuggestionClick = isConsignor ? handleConsignorSuggestionClick : handleConsigneeSuggestionClick;
-
-    return renderInputWithSuggestions({
-      inputName: gstName,
-      inputValue: gstValue,
-      onInputChange: handleChange,
-      onSearch: handleGstSearch,
-      suggestionsList: gstSuggestions,
-      showSuggestions: showGstSuggestions,
-      setShowSuggestions: setShowGstSuggestions,
-      onSuggestionClick: handleSuggestionClick,
-      placeholder: "",
-      className: "invoice-input customer-input fixed-input",
-      suggestionItemRenderer: (customer) => (
-        <>
-          <span className="suggestion-prefix">{customer.id_number}</span>
-          <span className="customer-code"> - {customer.customer_code}</span>
-        </>
-      ),
-      noSuggestionsContent: null
-    });
+  const handleOpenCustomerPopup = (type) => {
+    setPopupCustomerType(type);
+    setShowCustomerPopup(true);
   };
 
   return (
@@ -1656,27 +1433,59 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         />
       )}
 
+      {showAutoWrite && (
+        <AutoWriteInvoice
+          consignor={formData.consignor}
+          consignee={formData.consignee}
+          onData={handleAutoWriteData}
+          onError={handleAutoWriteError}
+          onLoading={setAutoWriteLoading}
+        />
+      )}
+
       {(activeTab === "view" ||
         activeTab === "update" ||
         activeTab === "delete") && (
-        <div className={`invoice-search ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-          <form onSubmit={handleSearchInvoice} className={`invoice-search-form ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-            <input
-              type="text"
-              placeholder="Enter Invoice Number"
-              value={searchInvoiceNumber}
-              onChange={(e) => setSearchInvoiceNumber(e.target.value)}
-              required
-              className={`invoice-search-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-            />
-            <button 
-              type="submit" 
-              className={`invoice-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-            >
-              <IoSearch className={`invoice-search-icon ${isLightMode ? 'light-mode' : 'dark-mode'}`}/>
-            </button>
-          </form>
-        </div>
+        <>
+          {!showInvoice ? (
+            <div className={`invoice-search ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+              <div className="invoice-search-text">Search Invoice:</div>
+
+              <form
+                onSubmit={handleSearchInvoice}
+                className={`invoice-search-form ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+              >
+                <input
+                  type="text"
+                  placeholder="Enter GR. Number"
+                  value={searchInvoiceNumber}
+                  onChange={(e) => setSearchInvoiceNumber(e.target.value)}
+                  required
+                  className={`invoice-search-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                />
+
+                <button
+                  type="submit"
+                  className={`invoice-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                >
+                  <IoSearch className="invoice-search-icon" />
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="back-to-search-wrapper">
+              <button
+                onClick={() => {
+                  setShowInvoice(false);
+                  setSearchInvoiceNumber('');
+                }}
+                className={`back-to-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+              >
+                🡰 Back to Search
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Only show invoice if in add mode OR if invoice has been found in view/update/delete mode */}
@@ -1685,24 +1494,18 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           {formData.created_at && (
             <div className="invoice-timestamps">
               <div>
-                Created At: {new Date(formData.created_at).toLocaleString()}
-                {shippingStatus && (
-                  <div className="status-info">
-                    <strong>Challan Status:</strong> {shippingStatus.challan_status || "—"}
-                  </div>
-                )}
+                <strong>Challan Status:</strong>
+                <span className={`pm-detail-value ${
+                  formData.challan_status === 'NOT SHIPPED' ? 'pm-status-partial' : 'pm-status-paid'
+                }`}> {formData.challan_status || "—"}</span>
               </div>
               <div>
-                {formData.updated_at && (
-                  <>
-                    Updated At: {new Date(formData.updated_at).toLocaleString()}
-                    {shippingStatus && (
-                      <div className="status-info">
-                        <strong>Payment Status:</strong> {shippingStatus.payment_status || "—"}
-                      </div>
-                    )}
-                  </>
-                )}
+                <strong>Payment Status:</strong> 
+                <span className={`pm-detail-value ${
+                  formData.payment_status === 'Paid' ? 'pm-status-paid' :
+                  formData.payment_status === 'Paid-D' ? 'pm-status-partial' :
+                  'pm-status-pending'
+                }`}> {formData.payment_status || "—"}</span>
               </div>
             </div>
           )}
@@ -1745,7 +1548,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                             <option value="toPay">TO PAY</option>
                             <option value="paid">PAID</option>
                           </select>
-                          {isCheckingPayment && <span>Checking...</span>}
+                          {/* {isCheckingPayment && <span>Checking...</span>} */}
                         </label>
                       </div>
                     )}
@@ -1821,57 +1624,137 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     </div>
                   </div>
                   <div className="consignment-from2 fixed-position">
-                    {/* Consignor GST field */}
-                    <div className="form-group inline">
-                      <strong style={{marginRight: "2px"}}>Consignor GST:</strong>
-                      {isEditing ? (
-                        renderGstField('consignor')
-                      ) : (
-                        <span style={{ width: "113px" }}>
-                          {formData.consignorGst || "—"}
-                        </span>
-                      )}
-                    </div>
                     {/* Consignor Name field */}
                     <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
-                      <strong className="invoice-customerNames fixed-label">Consignor Name:</strong>
+                      <strong style={{marginRight: '2px'}} className="invoice-customerNames fixed-label">Consignor Name:</strong>
                       {isEditing ? (
-                        renderNameField('consignor')
+                        <CustomerSearchInput
+                          name="consignor"
+                          value={formData.consignor}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignor: customer.name,
+                              consignorCode: customer.customer_code,
+                              consignorGst: gstValue
+                            }));
+                          }}
+                          type="consignor"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={false}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                          suggestionDisplayField="id" 
+                        />
                       ) : (
                         <span className="fixed-value">{formData.consignor}</span>
                       )}
                     </div>
-                    <div className="form-group inline codeWidth">
-                      <strong>Consignor Code:</strong>
-                      <span>{formData.consignorCode || "—"}</span>
+
+                    {/* Consignor GST field */}
+                    <div className="form-group inline customer-GST-Fields">
+                      <strong style={{marginRight: "2px"}}>Consignor GST:</strong>
+                      {isEditing ? (
+                        <CustomerSearchInput
+                          name="consignorGst" 
+                          value={formData.consignorGst}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignor: customer.name,
+                              consignorCode: customer.customer_code,
+                              consignorGst: gstValue
+                            }));
+                          }}
+                          type="consignor"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={true}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                        />
+                      ) : (
+                        <span className="customer-GST-value">{formData.consignorGst || "—"}</span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="consignment-to">
                   <div className="consignment-from2 fixed-position">
-                    {/* Consignee GST field */}
-                    <div className="form-group inline">
-                      <strong>Consignee GST:</strong>
-                      {isEditing ? (
-                        renderGstField('consignee')
-                      ) : (
-                        <span style={{ width: "113px" }}>
-                          {formData.consigneeGst || "—"}
-                        </span>
-                      )}
-                    </div>
                     {/* Consignee Name field */}
                     <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
                       <strong className="invoice-customerNames fixed-label">Consignee Name:</strong>
                       {isEditing ? (
-                        renderNameField('consignee')
+                        <CustomerSearchInput
+                          name="consignee"
+                          value={formData.consignee}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignee: customer.name,
+                              consigneeCode: customer.customer_code,
+                              consigneeGst: gstValue
+                            }));
+                          }}
+                          type="consignee"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={false}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                          suggestionDisplayField="id" 
+                        />
                       ) : (
                         <span className="fixed-value">{formData.consignee}</span>
                       )}
                     </div>
-                    <div className="form-group inline codeWidth">
-                      <strong>Consignee Code:</strong>
-                      <span>{formData.consigneeCode || "—"}</span>
+
+                    {/* Consignee GST field */}
+                    <div className="form-group inline customer-GST-Fields">
+                      <strong style={{marginRight: "2px"}}>Consignee GST:</strong>
+                      {isEditing ? (
+                        <CustomerSearchInput
+                          name="consigneeGst" 
+                          value={formData.consigneeGst}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignee: customer.name,
+                              consigneeCode: customer.customer_code,
+                              consigneeGst: gstValue
+                            }));
+                          }}
+                          type="consignee"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={true}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                        />
+                      ) : (
+                        <span className="customer-GST-value">{formData.consigneeGst || "—"}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1891,7 +1774,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     <th>Actual Wt. (KG)</th>
                     <th className="namered">{formData.paymentType === "toPay" ? "TO PAY" : "PAID"}</th>
                     <th>Remarks</th>
-                    {isEditing && <th>Auto</th>}
                     {isEditing && formData.articles.length > 1 && <th>Action</th>}
                   </tr>
                 </thead>
@@ -2023,16 +1905,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           article.remarks || "—"
                         )}
                       </td>
-                      {isEditing && <td>
-                        <button 
-                          onClick={() => handleHistoryButtonClick(index)}
-                          disabled={isFillingArticle}
-                          title="Auto-fill from history"
-                          className={`auto_fill_button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                        >
-                          {isFillingArticle && currentArticleIndex === index ? '...' : <TfiWrite className={"auto_icon"} />}
-                        </button>
-                      </td>}
                       {isEditing && formData.articles.length > 1 && (
                         <td className="action-cell">
                           <button
@@ -2069,7 +1941,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       )}
                     </td>
                     <td></td>
-                    {isEditing && <td></td>}
                     {isEditing && formData.articles.length > 1 && (
                       <td></td>
                     )}
@@ -2095,7 +1966,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         formatNumericValue(formData.hammali === "" ? "0" : formData.hammali)
                       )}
                     </td>
-                    {isEditing && <td></td>}
                     <td></td>
                     {isEditing && formData.articles.length > 1 && (
                       <td></td>
@@ -2122,7 +1992,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         formatNumericValue(formData.otherCharges === "" ? "0" : formData.otherCharges)
                       )}
                     </td>
-                    {isEditing && <td></td>}
                     <td></td>
                     {isEditing && formData.articles.length > 1 && (
                       <td></td>
@@ -2143,7 +2012,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       }
                     </td>
                     <td></td>
-                    {isEditing && <td></td>}
                     {isEditing && formData.articles.length > 1 && <td></td>}
                   </tr>
                 </tbody>
@@ -2169,7 +2037,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span>{formData.goodsType || "—"}</span>
+                      <span>{formData.goodsType || formData.articles[0].saidToContain}</span>
                     )}
                   </div>
                   <div className="form-group inline">
@@ -2232,14 +2100,24 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             )}
             {isEditing ? (
               activeTab === "add" ? (
-                <button
-                  type="button"
-                  onClick={handleGenerateInvoice}
-                  className="generate-btn"
-                  disabled={isVerifying}
-                >
-                  {isVerifying ? "Verifying..." : "Generate Invoice"}
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateInvoice}
+                    className="generate-btn"
+                    disabled={isVerifying}
+                  >
+                    {isVerifying ? "Verifying..." : "Generate Invoice"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAutoWriteClick}
+                    className="auto-write-btn"
+                    disabled={autoWriteLoading}
+                  >
+                    Auto Fill Invoice
+                  </button>
+                </div>
               ) : activeTab === "update" ? (
                 <>
                   <button onClick={handleUpdateInvoice} className="generate-btn update-btn">
@@ -2305,33 +2183,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             />
           </div>
         </div>
-      )}
-
-      {showTransactionHistory && (
-        <AutoWriteTable
-          consignorName={formData.consignor}
-          consigneeName={formData.consignee}
-          hsn={formData.articles[currentArticleIndex]?.hsn}
-          noOfArticles={formData.articles[currentArticleIndex]?.noOfArticles}
-          onComplete={(result) => {
-            if (result) {
-              const updatedArticles = [...formData.articles];
-              updatedArticles[currentArticleIndex] = {
-                ...updatedArticles[currentArticleIndex],
-                saidToContain: result.saidToContain || updatedArticles[currentArticleIndex].saidToContain,
-                taxFree: result.taxFree || updatedArticles[currentArticleIndex].taxFree,
-                weightChargeable: result.weightChargeable || updatedArticles[currentArticleIndex].weightChargeable,
-                actualWeight: result.actualWeight || updatedArticles[currentArticleIndex].actualWeight,
-                hsn: result.hsn || updatedArticles[currentArticleIndex].hsn,
-                to_pay: formData.paymentType === "toPay" ? (result.amount || updatedArticles[currentArticleIndex].to_pay) : updatedArticles[currentArticleIndex].to_pay,
-                paid: formData.paymentType === "paid" ? (result.amount || updatedArticles[currentArticleIndex].paid) : updatedArticles[currentArticleIndex].paid,
-                remarks: result.remarks || updatedArticles[currentArticleIndex].remarks,
-              };
-              setFormData(prev => ({ ...prev, articles: updatedArticles }));
-            }
-            setShowTransactionHistory(false);
-          }}
-        />
       )}
     </div>
   );
