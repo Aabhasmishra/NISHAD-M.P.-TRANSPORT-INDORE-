@@ -1503,7 +1503,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                 <strong>Payment Status:</strong> 
                 <span className={`pm-detail-value ${
                   formData.payment_status === 'Paid' ? 'pm-status-paid' :
-                  formData.payment_status === 'Paid-D' ? 'pm-status-partial' :
+                  (formData.payment_status === 'Paid-D+' || formData.payment_status === 'Paid-D-') ? 'pm-status-partial' :
                   'pm-status-pending'
                 }`}> {formData.payment_status || "—"}</span>
               </div>
