@@ -2,7 +2,7 @@
   font-family: Arial, sans-serif;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 5px 20px 0px 20px;
   min-height: 100vh;
   zoom: 97%;
   position: relative;
@@ -131,7 +131,7 @@
 
 .status-info {
   margin-top: 5px;
-  font-size: 12px;
+  font-size: 14px;
   color: #666;
 }
 
@@ -324,6 +324,11 @@
   white-space: nowrap;
 }
 
+.customer-GST-value {
+  width: 113px;
+  white-space: nowrap;
+}
+
 .enter-names {
   width: 300px;
   white-space: nowrap;
@@ -426,7 +431,6 @@
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  margin-bottom: 10px;
   transition: background-color 0.2s ease-in-out;
 }
 
@@ -599,6 +603,8 @@
 .invoice-actions {
   margin-top: 20px;
   text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
 .generate-btn,
@@ -663,6 +669,36 @@
   background-color: #5a6268;
 }
 
+.auto-write-btn {
+  padding: 10px 20px;
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease-in-out;
+  background-color: #1abc9c;
+  color: white;
+}
+
+.auto-write-btn:hover:not(:disabled) {
+  background-color: #16a085;
+  transform: translateY(-1px);
+}
+
+.auto-write-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dark-mode .auto-write-btn {
+  background-color: #16a085;
+}
+
+.dark-mode .auto-write-btn:hover:not(:disabled) {
+  background-color: #1abc9c;
+}
+
 .invoice-footer {
   display: flex;
   justify-content: space-between;
@@ -709,97 +745,136 @@
 }
 
 .invoice-search {
-  width: 250px;
-  margin-bottom: 10px;
-  padding: 5px;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 28px;
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  width: fit-content;
+  margin: 60px auto; /* center horizontally */
+  transition: all 0.3s ease;
 }
 
 .invoice-search.light-mode {
-  background-color: #f8f9fa;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .invoice-search.dark-mode {
-  background-color: #3c4657;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.invoice-search-text {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dark-mode .invoice-search-text {
+  color: #ffffff;
+}
+
+.light-mode .invoice-search-text {
+  color: #1a1a1a;
 }
 
 .invoice-search-form {
   display: flex;
-  gap: 5px;
-}
-
-.invoice-search-form.light-mode {
-  background-color: #f8f9fa;
-}
-
-.invoice-search-form.dark-mode {
-  background-color: #3c4657;
+  align-items: center;
 }
 
 /* Invoice Search Input */
 .invoice-search-input {
-  width: 189px;
-  padding: 8px 12px;
-  height: 40px;
-  border-radius: 6px;
+  padding: 14px 20px;
   font-size: 16px;
-  border: 1px solid;
-  transition: all 0.2s ease-in-out;
-}
-
-.invoice-search-input.light-mode {
-  background-color: #ffffff;
-  border-color: #ddd;
-  color: #333333;
-}
-
-.invoice-search-input.light-mode:focus {
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+  border-radius: 14px 0 0 14px;
+  border: none;
   outline: none;
+  width: 260px;
+  transition: all 0.3s ease;
 }
 
-.invoice-search-input.dark-mode {
-  background-color: #4a5568;
-  border-color: #718096;
-  color: #f7fafc;
+.dark-mode .invoice-search-input {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
-.invoice-search-input.dark-mode:focus {
-  border-color: #63b3ed;
-  box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.3);
-  outline: none;
+.light-mode .invoice-search-input {
+  background: #f3f3f3;
+  color: #222;
+}
+
+.invoice-search-input:focus {
+  box-shadow: 0 0 0 2px #3b82f6;
 }
 
 .invoice-search-button {
-  display: flex;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s ease-in-out;
+  padding: 14px 22px;
+  border-radius: 0 14px 14px 0;
   border: none;
-  align-items: center;
-  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.invoice-search-button.light-mode {
-  background-color: #6c757d;
-  color: white;
+.dark-mode .invoice-search-button {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
-.invoice-search-button.dark-mode {
-  background-color: #718096;
-  color: white;
+.light-mode .invoice-search-button {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
 }
 
 .invoice-search-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
 .invoice-search-icon {
-  font-size: 21px;
+  font-size: 20px;
+  color: white;
+}
+
+.back-to-search-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.back-to-search-button {
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Dark Mode */
+.dark-mode .back-to-search-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .back-to-search-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Light Mode */
+.light-mode .back-to-search-button {
+  background: #f3f3f3;
+  color: #1a1a1a;
+  border: 1px solid #ddd;
+}
+
+.light-mode .back-to-search-button:hover {
+  background: #e5e5e5;
+  transform: translateY(-2px);
 }
 
 .customer-input {
