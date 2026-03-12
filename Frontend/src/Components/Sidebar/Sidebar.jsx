@@ -1,18 +1,108 @@
 import React, { useState, useEffect } from "react";
-import { FaChevronDown, FaChevronRight, FaPlus, FaEdit, FaFileAlt, FaUser, FaTruck, FaChartBar, FaBars, FaTimes, FaSun, FaMoon } from "react-icons/fa";
+import { 
+  FaChevronDown, FaChevronRight, FaPlus, FaEdit, FaFileAlt, 
+  FaUser, FaTruck, FaChartBar, FaBars, FaSun, FaMoon, 
+  FaExternalLinkAlt, FaTimes
+} from "react-icons/fa";
+import { MdOutlineContentPasteSearch } from "react-icons/md";
 import { MdOutlinePayment, MdDelete } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { FaEye } from "react-icons/fa";
+import { HiDocumentText } from "react-icons/hi2";
 import MyLogo from "../../Images/Logo.png";
 import MyLogo2 from "../../Images/Logo2.png";
-import { HiDocumentText } from "react-icons/hi2";
 import "./Sidebar.css";
 
-const Sidebar = ({ children, open, isLightMode }) => (
-  <div className={`sidebar-container ${open ? "" : "sidebar-container-collapsed"} ${isLightMode ? "light-mode" : "dark-mode"}`}>
-    {children}
-  </div>
-);
+// Thin sidebar (always visible when extended is closed)
+const ThinSidebar = ({ isLightMode, onToggleExtended, onOpenComponent, onOpenLink }) => {
+  return (
+    <div className={`sidebar-thin ${isLightMode ? "light-mode" : "dark-mode"}`}>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={onToggleExtended}
+        title="Open Menu"
+      >
+        <FaBars />
+        <div className="thin-label">Menu</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('InvoiceGenerator', 'add')}
+        title="New Builty"
+      >
+        <FaFileAlt />
+        <div className="thin-label">New Builty</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('InvoiceGenerator', 'view')}
+        title="View Builty"
+      >
+        <FaEye />
+        <div className="thin-label">View Builty</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('Challan', 'add')}
+        title="New Challan"
+      >
+        <IoDocumentTextOutline />
+        <div className="thin-label">New Challan</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('Challan', 'view')}
+        title="View Challan"
+      >
+        <MdOutlineContentPasteSearch />
+        <div className="thin-label">View Challan</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('PaymentManagement', 'add')}
+        title="New Payment Receipt"
+      >
+        <MdOutlinePayment />
+        <div className="thin-label">New Payment</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={onOpenLink}
+        title="Link Aadhaar Status"
+      >
+        <FaExternalLinkAlt />
+        <div className="thin-label">Link Aadhaar</div>
+      </button>
+    </div>
+  );
+};
+
+// Extended sidebar (slides in from left)
+const Sidebar = ({ children, isOpen, isLightMode, onClose }) => {
+  const [shouldRender, setShouldRender] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) setShouldRender(true);
+  }, [isOpen]);
+
+  const handleAnimationEnd = () => {
+    if (!isOpen) setShouldRender(false);
+  };
+
+  return shouldRender ? (
+    <div
+      className={`sidebar-container ${isLightMode ? "light-mode" : "dark-mode"} ${
+        isOpen ? "sidebar-container-open" : "sidebar-container-closing"
+      }`}
+      onAnimationEnd={handleAnimationEnd}
+    >
+      <button className="sidebar-close-button" onClick={onClose} title="Close Menu">
+        <FaTimes />
+      </button>
+      {children}
+    </div>
+  ) : null;
+};
 
 const SidebarBody = ({ children }) => (
   <div className="sidebar-body">
@@ -73,34 +163,22 @@ const LogoIcon = ({ isLightMode }) => (
   </div>
 );
 
-const ThemeToggle = ({ isLightMode, onClick }) => (
-  <div 
-    className={`sidebar-theme-toggle ${isLightMode ? "light-mode" : "dark-mode"}`}
-    onClick={onClick}
-  >
-    {isLightMode ? (
-      <>
-        <FaMoon className="sidebar-theme-icon" />
-        <span>Dark Mode</span>
-      </>
-    ) : (
-      <>
-        <FaSun className="sidebar-theme-icon" />
-        <span>Light Mode</span>
-      </>
-    )}
-  </div>
-);
-
-export default function SidebarComponent({ isLightMode, currentUser, onItemClick, onThemeChange }) {
-  const [open, setOpen] = useState(false);
+// Main component
+export default function SidebarComponent({ 
+  children,          // 👈 add this prop
+  isLightMode, 
+  currentUser, 
+  onItemClick, 
+  onThemeChange 
+}) {
+  const [isExtendedOpen, setIsExtendedOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState({});
 
   useEffect(() => {
-    if (!open) {
+    if (!isExtendedOpen) {
       setOpenSubmenus({});
     }
-  }, [open]);
+  }, [isExtendedOpen]);
 
   const toggleSubmenu = (menuKey) => {
     setOpenSubmenus(prev => {
@@ -114,11 +192,16 @@ export default function SidebarComponent({ isLightMode, currentUser, onItemClick
 
   const handleComponentClick = (component, mode) => {
     onItemClick(component, mode);
-    setOpen(false);
+    setIsExtendedOpen(false); // close extended sidebar after selection
+  };
+
+  const handleExternalLink = () => {
+    window.open("https://eportal.incometax.gov.in/iec/foservices/#/pre-login/link-aadhaar-status", "_blank");
   };
 
   const isAdmin = currentUser === 'Admin';
 
+  // Menu items (unchanged)
   const menuItems = [
     {
       key: "builty",
@@ -357,23 +440,27 @@ export default function SidebarComponent({ isLightMode, currentUser, onItemClick
 
   return (
     <>
-      <button 
-        className={`sidebar-toggle-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <FaTimes className="sidebar-toggle-icon"/> : <FaBars className="sidebar-toggle-icon"/>}
-      </button>
-      
-      <Sidebar open={open} isLightMode={isLightMode}>
+      {/* Thin sidebar is always present when extended is closed */}
+      {!isExtendedOpen && (
+        <ThinSidebar 
+          isLightMode={isLightMode}
+          onToggleExtended={() => setIsExtendedOpen(true)}
+          onOpenComponent={handleComponentClick}
+          onOpenLink={handleExternalLink}
+        />
+      )}
+
+      {/* Extended sidebar with smooth animation */}
+      <Sidebar isOpen={isExtendedOpen} isLightMode={isLightMode} onClose={() => setIsExtendedOpen(false)}>
         <SidebarBody>
           <div className="sidebar-content">
-            {open ? <Logo isLightMode={isLightMode} /> : <LogoIcon isLightMode={isLightMode} />}
+            <Logo isLightMode={isLightMode} />
             <div className="sidebar-links">
               {menuItems.map((item) => (
                 <SidebarLink
                   key={item.key}
                   link={item}
-                  open={open}
+                  open={true} // always open when extended is visible
                   hasSubmenu={item.subItems && item.subItems.length > 0}
                   isSubmenuOpen={openSubmenus[item.key]}
                   onClick={() => item.onClick ? item.onClick() : toggleSubmenu(item.key)}
@@ -384,9 +471,15 @@ export default function SidebarComponent({ isLightMode, currentUser, onItemClick
           </div>
         </SidebarBody>
       </Sidebar>
-      
-      <div className={`sidebar-main-content ${open ? "sidebar-main-content-open" : ""}`}>
-        <div className={`sidebar-content-overlay ${open ? "sidebar-content-overlay-active" : ""}`} onClick={() => setOpen(false)} />
+
+      {/* Overlay only when extended is open */}
+      {isExtendedOpen && (
+        <div className="sidebar-content-overlay sidebar-content-overlay-active" onClick={() => setIsExtendedOpen(false)} />
+      )}
+
+      {/* Main content area (adjust margin based on which sidebar is visible) */}
+      <div className={`sidebar-main-content ${isExtendedOpen ? "sidebar-main-content-extended" : "sidebar-main-content-thin"}`}>
+        {children}   {/* 👈 render the passed content here */}
       </div>
     </>
   );
