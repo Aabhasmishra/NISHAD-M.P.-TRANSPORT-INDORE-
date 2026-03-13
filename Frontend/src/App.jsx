@@ -6,10 +6,11 @@ import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
-import Challan from "./Components/Challan/Challan";
+import Challan from "./Components/Challan2/Challan";
 import CrossingStatement from "./Components/CrossingStatement/CrossingStatement";
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
+import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -17,6 +18,16 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeComponent, setActiveComponent] = useState("InvoiceGenerator");
   const [modeOfView, setModeOfView] = useState("add");
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Listen for path changes (browser back/forward)
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
 
   // Check for existing session on app load
   useEffect(() => {
@@ -24,10 +35,14 @@ const App = () => {
     if (userData) {
       const user = JSON.parse(userData);
       setCurrentUser(user);
-      // console.log(currentUser, user.type, user);
       setIsAuthenticated(true);
     }
   }, []);
+
+  // --- PUBLIC ROUTE: Terms & Conditions (no login required) ---
+  if (currentPath === '/TermsAndConditions') {
+    return <TermsAndConditions />;
+  }
 
   const change_theme = () => {
     setIsLightMode(!isLightMode);
@@ -35,7 +50,6 @@ const App = () => {
   };
 
   const handleLoginSuccess = (user) => {
-    // Save user data in cookie for 3 hours
     Cookies.set('userData', JSON.stringify(user), { expires: 3/24 });
     setIsAuthenticated(true);
     setCurrentUser(user);
@@ -91,7 +105,7 @@ const App = () => {
         onThemeChange={change_theme}
         onLogout={handleLogout}
       >
-        {renderComponent()}   {/* 👈 this becomes the children */}
+        {renderComponent()}
       </MySidebar>
     </div>
   );
