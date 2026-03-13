@@ -6,7 +6,7 @@ import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
-import Challan from "./Components/Challan2/Challan";
+import Challan from "./Components/Challan/Challan";
 import CrossingStatement from "./Components/CrossingStatement/CrossingStatement";
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
