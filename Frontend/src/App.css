@@ -89,11 +89,6 @@
   scrollbar-color: #718096 #2d3748;
 }
 
-/* .main-content {
-  height: 100vh;
-  overflow: auto;
-} */
-
 html {
   scroll-behavior: smooth;
 }
