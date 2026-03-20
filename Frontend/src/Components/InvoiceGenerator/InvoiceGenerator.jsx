@@ -89,6 +89,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const consignorDebounceRef = useRef(null);
   const consigneeDebounceRef = useRef(null);
 
+  // NEW: state for raw GR number input (only used in Add mode while editing)
+  const [grNumberInput, setGrNumberInput] = useState('');
+
   const locationOptions = [
     "Ambikapur", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
     "Dhamtari", "Durg", "Indore", "Jagdalpur", "Janjgir", "Kanker", "Kawardha", 
@@ -215,12 +218,21 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     hideConfirm();
   };
 
-  // Format GR number for display
+  // Format GR number for display (remove GR and leading zeros)
   const formatGRForDisplay = (builtyNo) => {
     if (!builtyNo) return '';
-    // Remove GR prefix and leading zeros
     const numberPart = builtyNo.replace(/^GR0*/, '');
     return numberPart === '' ? '0' : numberPart;
+  };
+
+  // Helper: format raw GR input to backend format (GR + 5-digit zero-padded number)
+  const formatGRForBackend = (rawInput) => {
+    // Remove all non-digit characters
+    const digits = rawInput.replace(/\D/g, '');
+    if (!digits) return null;
+    // Pad with leading zeros to 5 digits
+    const padded = digits.padStart(5, '0');
+    return `GR${padded}`;
   };
 
   const handleCustomerAdded = (newCustomer) => {
@@ -374,6 +386,21 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const handleGenerateInvoice = async (e) => {
     e.preventDefault();
 
+    // For Add mode, validate and format GR number
+    if (activeTab === "add" && isEditing) {
+      if (!grNumberInput.trim()) {
+        showAlert("Please enter GR Number", 'warning');
+        return;
+      }
+      const formattedGR = formatGRForBackend(grNumberInput);
+      if (!formattedGR) {
+        showAlert("Invalid GR Number. Please enter numeric digits only.", 'warning');
+        return;
+      }
+      // Store formatted GR number in formData
+      setFormData(prev => ({ ...prev, invoiceNumber: formattedGR }));
+    }
+
     const isValid = await verifyConsignorConsignee();
     if (!isValid) {
       setIsEditing(true);
@@ -407,51 +434,61 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       const hammaliValue = formData.hammali === "" ? "0" : formData.hammali;
       const otherChargesValue = formData.otherCharges === "" ? "0" : formData.otherCharges;
 
+      // NEW: Include grNo in request body
+      const requestBody = {
+        grNo: formData.invoiceNumber, // formatted GR number
+        date: formattedDate,
+        ewayBillNo: formData.ewayBillNo,
+        fromLocation: formData.fromLocation,
+        consignorCode: formData.consignorCode,
+        consignor: formData.consignor,
+        consignorGst: formData.consignorGst,
+        toLocation: formData.toLocation,
+        consigneeCode: formData.consigneeCode,
+        consignee: formData.consignee,
+        consigneeGst: formData.consigneeGst,
+        articleLength: articlesWithHSN.length,
+        articleNo: articlesWithHSN.map((a) => a.noOfArticles).join("|"),
+        saidToContain: articlesWithHSN.map((a) => a.saidToContain).join("|"),
+        taxFree: articlesWithHSN.map((a) => a.taxFree).join("|"),
+        weightChargeable: articlesWithHSN.map((a) => a.weightChargeable).join("|"),
+        actualWeight: articlesWithHSN.map((a) => a.actualWeight).join("|"),
+        amount: articlesWithHSN.map((a) => 
+          formData.paymentType === "toPay" ? a.to_pay || "0" : a.paid || "0"
+        ).join("|"),
+        hsn: articlesWithHSN.map((a) => a.hsn || "0").join("|"),
+        to_pay: articlesWithHSN.map((a) => a.to_pay).join("|"),
+        paid: articlesWithHSN.map((a) => a.paid).join("|"),
+        remarks: articlesWithHSN.map((a) => a.remarks).join("|"),
+        paymentType: formData.paymentType === "toPay" ? "TO PAY" : "PAID",
+        goodsType: formData.goodsType,
+        valueDeclared: formData.valueDeclared,
+        gstWillBePaidBy: formData.gstPaidBy,
+        motorFreight: motorFreightValue,
+        hammali: hammaliValue,
+        otherCharges: otherChargesValue,
+        payment_status: formData.payment_status
+      };
+
       const response = await fetch(
         "http://43.230.202.198:3000/api/transport-records",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: formattedDate,
-            ewayBillNo: formData.ewayBillNo,
-            fromLocation: formData.fromLocation,
-            consignorCode: formData.consignorCode,
-            consignor: formData.consignor,
-            consignorGst: formData.consignorGst,
-            toLocation: formData.toLocation,
-            consigneeCode: formData.consigneeCode,
-            consignee: formData.consignee,
-            consigneeGst: formData.consigneeGst,
-            articleLength: articlesWithHSN.length,
-            articleNo: articlesWithHSN.map((a) => a.noOfArticles).join("|"),
-            saidToContain: articlesWithHSN.map((a) => a.saidToContain).join("|"),
-            taxFree: articlesWithHSN.map((a) => a.taxFree).join("|"),
-            weightChargeable: articlesWithHSN.map((a) => a.weightChargeable).join("|"),
-            actualWeight: articlesWithHSN.map((a) => a.actualWeight).join("|"),
-            amount: articlesWithHSN.map((a) => 
-              formData.paymentType === "toPay" ? a.to_pay || "0" : a.paid || "0"
-            ).join("|"),
-            hsn: articlesWithHSN.map((a) => a.hsn || "0").join("|"),
-            to_pay: articlesWithHSN.map((a) => a.to_pay).join("|"),
-            paid: articlesWithHSN.map((a) => a.paid).join("|"),
-            remarks: articlesWithHSN.map((a) => a.remarks).join("|"),
-            paymentType: formData.paymentType === "toPay" ? "TO PAY" : "PAID",
-            goodsType: formData.goodsType,
-            valueDeclared: formData.valueDeclared,
-            gstWillBePaidBy: formData.gstPaidBy,
-            motorFreight: motorFreightValue,
-            hammali: hammaliValue,
-            otherCharges: otherChargesValue,
-            payment_status: formData.payment_status
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save invoice");
+        // Handle duplicate GR number error from backend
+        if (data.error && data.error.includes("GR number already exists")) {
+          showAlert("GR number already exists. Please use a different number.", 'error');
+        } else {
+          throw new Error(data.error || "Failed to save invoice");
+        }
+        return;
       } else {
         showAlert("Transport record saved successfully", 'success');
       }
@@ -466,6 +503,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         crossing_status: 'NO',
       }));
       setIsSubmitted(true);
+      // Clear the raw GR input after successful save
+      setGrNumberInput('');
     } catch (err) {
       setErrorMessage(err.message);
     }
@@ -483,6 +522,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       consigneeCode: "",
       consigneeGst: "",
     }));
+    // Reset raw GR input
+    setGrNumberInput('');
   };
 
   const resetForm2 = () => {
@@ -529,6 +570,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     setIsSubmitted(false);
     setErrorMessage("");
     setShowInvoice(false);
+    setGrNumberInput('');
   };
 
   const fetchInvoice = async (invoiceNumber) => {
@@ -869,6 +911,24 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               font-size: 10px !important;
             }
 
+            .showDateCss {
+              width: 55px;
+            }
+
+            .GRNOCss {
+              width: 30px;
+            }
+
+            .printTextWhite, .printTextWhite th, .printTextWhite td, .header-row th:not(:last-child) {
+              color: #ffffff;
+              border-color: white;
+              background: white;
+            }
+
+            .printValueText, .printValueText td:not(:first-child) {
+              color: black;
+            }
+
             .consignment-details {
               font-size: 10px !important;
               margin-bottom: 5px !important;
@@ -877,6 +937,22 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             .consignment-from2 {
               display: flex;
               justify-content: space-between;
+            }
+
+            .gstWillBePaidBy {
+              width: 50px;
+            }
+
+            .valueDeclaredcss {
+              width: 50px;
+            }
+
+            .toLocationCss {
+              width: 65px;
+            }
+
+            .goodsTypeCss {
+              width: 60px;
             }
 
             .fixed-name-field {
@@ -890,7 +966,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             }
 
             .customer-GST-value {
-              width: 93px;
+              width: 111px;
               justify-content: center;
             }
 
@@ -1333,62 +1409,71 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
   const totals = calculateTotals();
 
-  {isEditing ? (
-    <CustomerSearchInput
-      name="consignor"
-      value={formData.consignor}
-      onChange={handleChange}
-      onSelect={(customer) => {
-        let gstValue = customer.id_number;
-        if (customer.id_type !== "GST Number") {
-          gstValue = `URD - ${customer.id_number}`;
-        }
-        setFormData(prev => ({
-          ...prev,
-          consignor: customer.name,
-          consignorCode: customer.customer_code,
-          consignorGst: gstValue
-        }));
-      }}
-      type="consignor"
-      placeholder=""
-      className="invoice-input customer-input fixed-input"
-      isLightMode={isLightMode}
-      showGstHighlight={false}
-      onOpenCustomerPopup={setPopupCustomerType}
-      suggestionDisplayField="id" 
-    />
-  ) : (
-    <span className="fixed-value">{formData.consignor}</span>
-  )}
+  // Helper to render consignor name input (reused from original code)
+  const renderConsignorName = () => {
+    if (isEditing) {
+      return (
+        <CustomerSearchInput
+          name="consignor"
+          value={formData.consignor}
+          onChange={handleChange}
+          onSelect={(customer) => {
+            let gstValue = customer.id_number;
+            if (customer.id_type !== "GST Number") {
+              gstValue = `URD - ${customer.id_number}`;
+            }
+            setFormData(prev => ({
+              ...prev,
+              consignor: customer.name,
+              consignorCode: customer.customer_code,
+              consignorGst: gstValue
+            }));
+          }}
+          type="consignor"
+          placeholder=""
+          className="invoice-input customer-input fixed-input"
+          isLightMode={isLightMode}
+          showGstHighlight={false}
+          onOpenCustomerPopup={setPopupCustomerType}
+          suggestionDisplayField="id" 
+        />
+      );
+    } else {
+      return <span className="fixed-value">{formData.consignor}</span>;
+    }
+  };
 
-  {isEditing ? (
-    <CustomerSearchInput
-      name="consignorGst"
-      value={formData.consignorGst}
-      onChange={handleChange}
-      onSelect={(customer) => {
-        let gstValue = customer.id_number;
-        if (customer.id_type !== "GST Number") {
-          gstValue = `URD - ${customer.id_number}`;
-        }
-        setFormData(prev => ({
-          ...prev,
-          consignor: customer.name,        // also fill name
-          consignorCode: customer.customer_code,
-          consignorGst: gstValue
-        }));
-      }}
-      type="consignor"
-      placeholder=""
-      className="invoice-input customer-input fixed-input"
-      isLightMode={isLightMode}
-      showGstHighlight={true}
-      onOpenCustomerPopup={setPopupCustomerType}
-    />
-  ) : (
-    <span className="customer-GST-value">{formData.consignorGst || "—"}</span>
-  )}
+  const renderConsignorGst = () => {
+    if (isEditing) {
+      return (
+        <CustomerSearchInput
+          name="consignorGst"
+          value={formData.consignorGst}
+          onChange={handleChange}
+          onSelect={(customer) => {
+            let gstValue = customer.id_number;
+            if (customer.id_type !== "GST Number") {
+              gstValue = `URD - ${customer.id_number}`;
+            }
+            setFormData(prev => ({
+              ...prev,
+              consignor: customer.name,
+              consignorCode: customer.customer_code,
+              consignorGst: gstValue
+            }));
+          }}
+          type="consignor"
+          placeholder=""
+          className="invoice-input customer-input fixed-input"
+          isLightMode={isLightMode}
+          showGstHighlight={true}
+          onOpenCustomerPopup={setPopupCustomerType}
+        />
+      );
+    } else {
+      return <span className="customer-GST-value">{formData.consignorGst || "—"}</span>;
+    }
+  };
 
   const handleOpenCustomerPopup = (type) => {
     setPopupCustomerType(type);
@@ -1511,7 +1596,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           )}
 
           <div className={`invoice-container ${isEditing ? "editable" : ""}`} id="print-area">
-            <div className="invoice-header">
+            <div className="invoice-header printTextWhite">
               <div className="company-name">NISHAD M.P. TRANSPORT (INDORE)</div>
               <div className="company-description">
                 Clearing, Forwarding & Transport Agent
@@ -1567,12 +1652,24 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span>{formData.date.split("-").reverse().join("-")}</span>
+                      <span className="showDateCss printValueText">{formData.date.split("-").reverse().join("-")}</span>
                     )}
                   </div>
                   <div className="form-group inline">
                     <strong>G.R. No.:&nbsp;</strong>
-                    <span>{formatGRForDisplay(formData.invoiceNumber) || "—"}</span>
+                    {activeTab === "add" && isEditing ? (
+                      // In Add mode while editing, show input for GR number
+                      <input
+                        type="text"
+                        placeholder="Enter GR number (e.g., 23)"
+                        value={grNumberInput}
+                        onChange={(e) => setGrNumberInput(e.target.value)}
+                        className="invoice-input"
+                        style={{ width: '100px' }}
+                      />
+                    ) : (
+                      <span className="GRNOCss printValueText">{formatGRForDisplay(formData.invoiceNumber) || "—"}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1598,7 +1695,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           ))}
                         </select>
                       ) : (
-                        <span>{formData.fromLocation}</span>
+                        <span className="printValueText">{formData.fromLocation}</span>
                       )}
                     </div>
                     <div className="form-group inline">
@@ -1619,7 +1716,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           ))}
                         </select>
                       ) : (
-                        <span>{formData.toLocation}</span>
+                        <span className="toLocationCss printValueText">{formData.toLocation}</span>
                       )}
                     </div>
                   </div>
@@ -1627,66 +1724,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     {/* Consignor Name field */}
                     <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
                       <strong style={{marginRight: '2px'}} className="invoice-customerNames fixed-label">Consignor Name:</strong>
-                      {isEditing ? (
-                        <CustomerSearchInput
-                          name="consignor"
-                          value={formData.consignor}
-                          onChange={handleChange}
-                          onSelect={(customer) => {
-                            let gstValue = customer.id_number;
-                            if (customer.id_type !== "GST Number") {
-                              gstValue = `URD - ${customer.id_number}`;
-                            }
-                            setFormData(prev => ({
-                              ...prev,
-                              consignor: customer.name,
-                              consignorCode: customer.customer_code,
-                              consignorGst: gstValue
-                            }));
-                          }}
-                          type="consignor"
-                          placeholder=""
-                          className="invoice-input customer-input fixed-input"
-                          isLightMode={isLightMode}
-                          showGstHighlight={false}
-                          onOpenCustomerPopup={handleOpenCustomerPopup}
-                          suggestionDisplayField="id" 
-                        />
-                      ) : (
-                        <span className="fixed-value">{formData.consignor}</span>
-                      )}
+                      {renderConsignorName()}
                     </div>
 
                     {/* Consignor GST field */}
                     <div className="form-group inline customer-GST-Fields">
                       <strong style={{marginRight: "2px"}}>Consignor GST:</strong>
-                      {isEditing ? (
-                        <CustomerSearchInput
-                          name="consignorGst" 
-                          value={formData.consignorGst}
-                          onChange={handleChange}
-                          onSelect={(customer) => {
-                            let gstValue = customer.id_number;
-                            if (customer.id_type !== "GST Number") {
-                              gstValue = `URD - ${customer.id_number}`;
-                            }
-                            setFormData(prev => ({
-                              ...prev,
-                              consignor: customer.name,
-                              consignorCode: customer.customer_code,
-                              consignorGst: gstValue
-                            }));
-                          }}
-                          type="consignor"
-                          placeholder=""
-                          className="invoice-input customer-input fixed-input"
-                          isLightMode={isLightMode}
-                          showGstHighlight={true}
-                          onOpenCustomerPopup={handleOpenCustomerPopup}
-                        />
-                      ) : (
-                        <span className="customer-GST-value">{formData.consignorGst || "—"}</span>
-                      )}
+                      {renderConsignorGst()}
                     </div>
                   </div>
                 </div>
@@ -1721,7 +1765,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           suggestionDisplayField="id" 
                         />
                       ) : (
-                        <span className="fixed-value">{formData.consignee}</span>
+                        <span className="fixed-value printValueText">{formData.consignee}</span>
                       )}
                     </div>
 
@@ -1753,7 +1797,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           onOpenCustomerPopup={handleOpenCustomerPopup}
                         />
                       ) : (
-                        <span className="customer-GST-value">{formData.consigneeGst || "—"}</span>
+                        <span className="customer-GST-value printValueText">{formData.consigneeGst || "—"}</span>
                       )}
                     </div>
                   </div>
@@ -1764,7 +1808,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             <div className="invoice-table">
               <table className="full-table">
                 <thead>
-                  <tr className="header-row">
+                  <tr className="header-row printTextWhite">
                     <th>S. No.</th>
                     <th>No. of Articles</th>
                     <th>Said to Contain</th>
@@ -1775,11 +1819,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     <th className="namered">{formData.paymentType === "toPay" ? "TO PAY" : "PAID"}</th>
                     <th>Remarks</th>
                     {isEditing && formData.articles.length > 1 && <th>Action</th>}
-                  </tr>
+                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="printTextWhite">
                   {formData.articles.map((article, index) => (
-                    <tr key={index} className="article-row">
+                    <tr key={index} className="article-row printTextWhite printValueText">
                       <td>{article.noIndex}</td>
                       <td>
                         {isEditing ? (
@@ -1937,7 +1981,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           className="invoice-input table-input center-input"
                         />
                       ) : (
-                        formatNumericValue(formData.motorFreight === "" ? "0" : formData.motorFreight)
+                        <div className="printValueText">{`${formatNumericValue(formData.motorFreight === "" ? "0" : formData.motorFreight)}`}</div>
                       )}
                     </td>
                     <td></td>
@@ -1963,7 +2007,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           className="invoice-input table-input center-input"
                         />
                       ) : (
-                        formatNumericValue(formData.hammali === "" ? "0" : formData.hammali)
+                        <div className="printValueText">{`${formatNumericValue(formData.hammali === "" ? "0" : formData.hammali)}`}</div>
                       )}
                     </td>
                     <td></td>
@@ -1989,7 +2033,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           className="invoice-input table-input center-input"
                         />
                       ) : (
-                        formatNumericValue(formData.otherCharges === "" ? "0" : formData.otherCharges)
+                        <div className="printValueText">{`${formatNumericValue(formData.otherCharges === "" ? "0" : formData.otherCharges)}`}</div>
                       )}
                     </td>
                     <td></td>
@@ -1997,19 +2041,21 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       <td></td>
                     )}
                   </tr>
-                  <tr className="total-row">
+                  <tr className="total-row printTextWhite">
                     <td>Total</td>
-                    <td>{totals.noOfArticles}</td>
+                    <td><p className="printValueText">{totals.noOfArticles}</p></td>
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td>{formatNumericValue(totals.weightChargeable)}</td>
-                    <td>{formatNumericValue(totals.actualWeight)}</td>
+                    <td><p className="printValueText">{formatNumericValue(totals.weightChargeable)}</p></td>
+                    <td><p className="printValueText">{formatNumericValue(totals.actualWeight)}</p></td>
                     <td>
-                      {formData.paymentType === "toPay" 
-                        ? formatNumericValue(totals.to_pay)
-                        : formatNumericValue(totals.paid)
-                      }
+                      <p className="printValueText">
+                        {formData.paymentType === "toPay" 
+                          ? formatNumericValue(totals.to_pay)
+                          : formatNumericValue(totals.paid)
+                        }
+                      </p>
                     </td>
                     <td></td>
                     {isEditing && formData.articles.length > 1 && <td></td>}
@@ -2023,7 +2069,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               )}
             </div>
 
-            <div className="invoice-footer">
+            <div className="invoice-footer printTextWhite">
               <div className="footer-left">
                 <div className="goods-type-row">
                   <div className={`form-group inline ${!isEditing ? 'GoodsTypeCSS' : ''}`}>
@@ -2037,7 +2083,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span>{formData.goodsType || formData.articles[0].saidToContain}</span>
+                      <span className="goodsTypeCss printValueText">{formData.goodsType || formData.articles[0].saidToContain}</span>
                     )}
                   </div>
                   <div className="form-group inline">
@@ -2051,7 +2097,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span>
+                      <span className="valueDeclaredcss printValueText">
                         {formatNumericValue(formData.valueDeclared)}
                       </span>
                     )}
@@ -2079,7 +2125,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         <option value="Consignee">Consignee</option>
                       </select>
                     ) : (
-                      <span>{formData.gstPaidBy || "—"}</span>
+                      <span className="gstWillBePaidBy printValueText">{formData.gstPaidBy || "—"}</span>
                     )}
                   </div>
                   {!isEditing && (
