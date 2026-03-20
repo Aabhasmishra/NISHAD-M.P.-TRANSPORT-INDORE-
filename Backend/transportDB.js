@@ -53,7 +53,7 @@ async function initialize() {
           -- Status fields (merged from status table)
           challan_status VARCHAR(255) DEFAULT 'NOT SHIPPED',
           payment_status VARCHAR(255) DEFAULT 'Pending',
-          crossing_status VARCHAR(255) DEFAULT 'Book',
+          crossing_status VARCHAR(255) DEFAULT 'NO',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -85,25 +85,21 @@ function calculateTotalAmount(amountString, motorFreight = 0, hammali = 0, other
   );
 }
 
-// Generate new GR number
-async function generateGRNo() {
-  const { rows } = await pool.query(
-    `SELECT gr_no FROM transport_records 
-     ORDER BY gr_no DESC LIMIT 1`
-  );
-
-  if (rows.length === 0) {
-    return "GR00001";
+// Save transport record (GR number provided by frontend)
+async function saveTransportRecord(recordData) {
+  // Validate GR number presence
+  if (!recordData.grNo || recordData.grNo.trim() === "") {
+    throw new Error("GR number is required");
   }
 
-  const lastGRNo = rows[0].gr_no;
-  const numericPart = parseInt(lastGRNo.replace(/\D/g, "")) || 0;
-  return `GR${(numericPart + 1).toString().padStart(5, "0")}`;
-}
+  const grNo = recordData.grNo.trim();
 
-// Save transport record
-async function saveTransportRecord(recordData) {
-  const grNo = await generateGRNo();
+  // Check if GR number already exists
+  const existing = await getTransportRecord(grNo);
+  if (existing) {
+    throw new Error("GR number already exists");
+  }
+
   const [day, month, year] = recordData.date.split('-');
   const formattedDate = `${year}-${month}-${day}`;
   const hsn = recordData.hsn || Array(recordData.articleLength).fill('9999').join('|');
@@ -184,7 +180,7 @@ async function saveTransportRecord(recordData) {
       // Status fields
       recordData.challanStatus || 'NOT SHIPPED',
       recordData.paymentStatus || 'Pending',
-      recordData.crossingStatus || 'Book'
+      recordData.crossingStatus || 'NO'
     ]
   );
 
@@ -328,23 +324,19 @@ async function updateTransportRecord(grNo, recordData) {
 // Update payment information (amount_collected, mode_of_collection, comments)
 async function updatePaymentInfo(grNo, paymentData) {
   const { amountCollected, modeOfCollection, comments } = paymentData;
-  // Normalise field names to database column names
   const amount_collected = amountCollected;
   const mode_of_collection = modeOfCollection;
   const payment_comments = comments;
 
-  // Ensure at least one field is provided
   if (amount_collected === undefined && mode_of_collection === undefined && payment_comments === undefined) {
     throw new Error("No payment fields to update");
   }
 
-  // Fetch current record to check payment_created_at
   const current = await getTransportRecord(grNo);
   if (!current) {
     throw new Error("Transport record not found");
   }
 
-  // Build SET clause dynamically
   const updates = [];
   const values = [];
   let idx = 1;
@@ -362,15 +354,11 @@ async function updatePaymentInfo(grNo, paymentData) {
     values.push(payment_comments);
   }
 
-  // Always set payment_updated_at to NOW()
   updates.push(`payment_updated_at = NOW()`);
-
-  // If payment_created_at is null, set it to NOW() as well
   if (!current.payment_created_at) {
     updates.push(`payment_created_at = NOW()`);
   }
 
-  // Construct and execute query
   const query = `UPDATE transport_records SET ${updates.join(', ')} WHERE gr_no = $${idx} RETURNING *`;
   values.push(grNo);
 
@@ -381,12 +369,10 @@ async function updatePaymentInfo(grNo, paymentData) {
 // Update status information (challan_status, payment_status, crossing_status)
 async function updateStatusInfo(grNo, statusData) {
   const { challanStatus, paymentStatus, crossingStatus } = statusData;
-  // Map to database column names
   const challan_status = challanStatus;
   const payment_status = paymentStatus;
   const crossing_status = crossingStatus;
 
-  // Ensure at least one field is provided
   if (challan_status === undefined && payment_status === undefined && crossing_status === undefined) {
     throw new Error("No status fields to update");
   }
@@ -426,7 +412,6 @@ async function deleteTransportRecord(grNo) {
 
 async function inspectDatabase() {
   try {
-    // 1. Fetch column metadata (original order)
     const columnsQuery = `
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
@@ -436,33 +421,23 @@ async function inspectDatabase() {
     const columnsResult = await pool.query(columnsQuery);
     const originalColumns = columnsResult.rows;
 
-    // 2. Fetch all rows (as objects)
     const contentResult = await pool.query('SELECT * FROM transport_records ORDER BY gr_no DESC');
     const rows = contentResult.rows;
 
-    // 3. Define the desired column order
-    //    Start with gr_no and status columns
     const baseOrder = ['gr_no', 'challan_status', 'payment_status', 'crossing_status'];
-    //    End with created_at and updated_at
     const endOrder = ['created_at', 'updated_at'];
 
-    //    Get all column names from original metadata
     const allColumnNames = originalColumns.map(col => col.column_name);
-
-    //    Identify columns that are not in baseOrder or endOrder
     const middleColumns = allColumnNames.filter(
       name => !baseOrder.includes(name) && !endOrder.includes(name)
     );
 
-    //    Final order = base + middle + end
     const finalOrder = [...baseOrder, ...middleColumns, ...endOrder];
 
-    // 4. Reorder the columns array to match finalOrder
     const orderedColumns = finalOrder.map(colName => 
       originalColumns.find(col => col.column_name === colName)
     );
 
-    // 5. Reorder each row’s properties to follow finalOrder
     const orderedRows = rows.map(row => {
       const orderedRow = {};
       finalOrder.forEach(colName => {
@@ -471,7 +446,6 @@ async function inspectDatabase() {
       return orderedRow;
     });
 
-    // 6. Return the restructured result
     return {
       database: 'mp_transport',
       tables: [{
