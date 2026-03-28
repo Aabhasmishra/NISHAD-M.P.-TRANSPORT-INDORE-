@@ -951,6 +951,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           .total-row {
             height: 30px;
           }
+
+          .GRNOCss {
+            position: relative;
+            top: -10px;
+            right: 10px;
+          }
         `;
       }
 
@@ -1240,7 +1246,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               visibility: hidden !important;
             }
 
-            .total-row td:nth-child(8) p{
+            .driver-copy .total-row td:nth-child(8) p{
               visibility: hidden !important;
             }
           ` : ''}
@@ -1256,7 +1262,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         `;
       }
 
-      if (hideCopyLabels) {
+      if (usePrint2Styles) {
         css += `
           .consignor-copy .textShiftLeft:nth-child(6) {
             left: -3px;
