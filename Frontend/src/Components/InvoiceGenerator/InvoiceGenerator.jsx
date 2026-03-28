@@ -88,8 +88,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const [showInvoice, setShowInvoice] = useState(false);
   const consignorDebounceRef = useRef(null);
   const consigneeDebounceRef = useRef(null);
-
-  // NEW: state for raw GR number input (only used in Add mode while editing)
   const [grNumberInput, setGrNumberInput] = useState('');
 
   const locationOptions = [
@@ -218,21 +216,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     hideConfirm();
   };
 
-  // Format GR number for display (remove GR and leading zeros)
+  // Format GR number for display
   const formatGRForDisplay = (builtyNo) => {
     if (!builtyNo) return '';
+    // Remove GR prefix and leading zeros
     const numberPart = builtyNo.replace(/^GR0*/, '');
     return numberPart === '' ? '0' : numberPart;
-  };
-
-  // Helper: format raw GR input to backend format (GR + 5-digit zero-padded number)
-  const formatGRForBackend = (rawInput) => {
-    // Remove all non-digit characters
-    const digits = rawInput.replace(/\D/g, '');
-    if (!digits) return null;
-    // Pad with leading zeros to 5 digits
-    const padded = digits.padStart(5, '0');
-    return `GR${padded}`;
   };
 
   const handleCustomerAdded = (newCustomer) => {
@@ -383,6 +372,20 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     }
   };
 
+  const formatGRForBackend = (input) => {
+    if (input.startsWith("GR")) {
+      let numPart = input.slice(2).replace(/^0+/, '');
+      if (numPart === '') numPart = '0';
+      input = "GR" + numPart.padStart(6, "0");
+    } else {
+      // Remove any non-digit prefix (like "R", etc.) and leading zeros
+      let numPart = input.replace(/^[^0-9]*/, '').replace(/^0+/, '');
+      if (numPart === '') numPart = '0';
+      input = "GR" + numPart.padStart(6, "0");
+    }
+    return input;
+  };
+
   const handleGenerateInvoice = async (e) => {
     e.preventDefault();
 
@@ -522,7 +525,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       consigneeCode: "",
       consigneeGst: "",
     }));
-    // Reset raw GR input
     setGrNumberInput('');
   };
 
@@ -579,7 +581,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         `http://43.230.202.198:3000/api/transport-records?grNo=${invoiceNumber}`
       );
       const data = await response.json();
-
+      
       if (!response.ok) {
         showAlert(data.error || "Invoice not found", 'error');
         return;
@@ -597,7 +599,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           hsn: data.hsn ? data.hsn.split("|")[i] || "" : "",
           to_pay: (data.paid == 0) ? data.amount.split("|")[i] || "" : 0,
           paid: (data.to_pay == 0) ? data.amount.split("|")[i] || "" : 0,
-          remarks: data.remarks.split("|")[i] || "",
+          remarks: data.remarks ? data.remarks.split("|")[i] : "",
         });
       }
 
@@ -657,11 +659,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     if (input.startsWith("GR")) {
       let numPart = input.slice(2).replace(/^0+/, '');
       if (numPart === '') numPart = '0';
-      input = "GR" + numPart.padStart(5, "0");
+      input = "GR" + numPart.padStart(6, "0");
     } else {
       let numPart = input.replace(/^0+/, '');
       if (numPart === '') numPart = '0';
-      input = "GR" + numPart.padStart(5, "0");
+      input = "GR" + numPart.padStart(6, "0");
     }
 
     fetchInvoice(input);
@@ -797,7 +799,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     });
   };
 
-  const handlePrint = (pageSize = 'A4') => {
+  const handlePrintBase = ({ hideCopyLabels = false, usePrint2Styles = false } = {}) => {
     const printWindow = window.open('', '_blank');
     
     const originalInvoiceElement = document.getElementById('print-area');
@@ -813,8 +815,483 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       { label: 'DRIVER COPY' }
     ];
 
-    // Check payment type from formData
     const isPaidType = formData.paymentType === "paid";
+
+    // Build the dynamic CSS string with conditional rules
+    const getStyles = () => {
+      let css = `
+        @page {
+          size: A4;
+          margin: 7mm;
+        }
+
+        body {
+          margin: 0;
+          padding: 7mm;
+          background: white !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          font-size: 10px;
+          width: 196mm;
+          height: 283mm;
+        }
+
+        .print-container {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 3mm;
+        }
+
+        .invoice-copy {
+          flex: 1;
+          position: relative;
+          min-height: 0;
+        }
+
+        .invoice-container {
+          border: 1px solid #000 !important;
+          margin: 0 auto;
+          padding: 8px !important;
+          height: 100%;
+          box-sizing: border-box;
+          transform: scale(0.82);
+          transform-origin: top left;
+          width: 121.95%;
+        }
+
+        .copy-label {
+          position: absolute;
+          top: 6px;
+          right: 12px;
+          font-weight: bold;
+          font-size: 11px;
+          color: #000;
+          margin: 0;
+          z-index: 1000;
+        }
+
+        .footer-right .copy-label {
+          position: static !important;
+          font-weight: bold;
+          font-size: 11px;
+          color: #000;
+          margin: 0;
+          text-align: right;
+        }
+
+        body * {
+          visibility: visible !important;
+        }
+
+        .no-print,
+        .invoice-actions,
+        .invoice-tabs,
+        .error-message,
+        .search-container,
+        .suggestions-list,
+        .invoice-timestamps {
+          display: none !important;
+        }
+
+        .company-name {
+          font-size: 15px !important;
+        }
+      `;
+
+      // Add print2 specific styles if needed
+      if (usePrint2Styles) {
+        css += `
+          .company-name {
+            display: none !important;
+          }
+
+          .printTextWhite, .printTextWhite th, .printTextWhite td, .header-row th:not(:last-child) {
+            color: #ffffff !important;
+            border-color: white !important;
+            background: white !important;
+          }
+
+          .printValueText, .printValueText td {
+            color: black !important;
+            font-size: 12px !important;
+          }
+
+          .article-row {
+            height: 25px;
+          }
+
+          .textShiftUp {
+            position: relative;
+            top: -20px;
+          }
+
+          .textShiftUp2 {
+            position: relative;
+            top: -10px;
+            right: 20px;
+          }
+
+          .textShiftUp3 {
+            position: relative;
+            top: -20px;
+          }
+
+          .textShiftLeft {
+            position: relative;
+            left: -12px;
+          }
+
+          .textShiftDown {
+            position: relative;
+            bottom: 7px;
+          }
+
+          .total-row {
+            height: 30px;
+          }
+        `;
+      }
+
+      css += `
+        .company-description {
+          font-size: 10px !important;
+          margin-bottom: 3px !important;
+        }
+
+        .company-address {
+          font-size: 10px !important;
+        }
+
+        .showDateCss {
+          width: 80px;
+        }
+
+        .GRNOCss {
+          width: 30px;
+        }
+
+        .MFHOCText {
+          font-size: 9px;
+        }
+
+        .consignment-details {
+          font-size: 10px !important;
+          margin-bottom: 5px !important;
+        }
+
+        .consignment-from2 {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .gstWillBePaidBy {
+          width: 50px;
+        }
+
+        .valueDeclaredcss {
+          width: 50px;
+        }
+
+        .toLocationCss {
+          width: 65px;
+        }
+
+        .goodsTypeCss {
+          width: 60px;
+        }
+
+        .fixed-name-field {
+          width: 350px;
+        }
+
+        .customer-GST-Fields,
+        .customer-GST-value {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .customer-GST-value {
+          width: 111px;
+          justify-content: center;
+        }
+
+        .form-group.inline {
+          margin-bottom: 1px !important;
+        }
+
+        .invoice-table {
+          margin-bottom: 3px !important;
+          overflow: hidden;
+        }
+
+        .invoice-table table {
+          width: 100% !important;
+          table-layout: fixed !important;
+        }
+      `;
+
+      // Table cell styles – different for print2
+      if (usePrint2Styles) {
+        css += `
+          .invoice-table td {
+            font-size: 12px !important;
+            padding: 2px 3px !important;
+            line-height: 1.1 !important;
+          }
+          .invoice-table th {
+            font-size: 9px !important;
+            padding: 3px !important;
+          }
+        `;
+      } else {
+        css += `
+          .invoice-table th,
+          .invoice-table td {
+            font-size: 10px !important;
+            padding: 2px 3px !important;
+            line-height: 1.1 !important;
+          }
+        `;
+      }
+
+      css += `
+        .invoice-table th:nth-child(1),
+        .invoice-table td:nth-child(1) {
+          width: ${PRINT_COLUMN_WIDTHS.serialNo} !important;
+        }
+
+        .invoice-table th:nth-child(2),
+        .invoice-table td:nth-child(2) {
+          width: ${PRINT_COLUMN_WIDTHS.noOfArticles} !important;
+        }
+
+        .invoice-table th:nth-child(3),
+        .invoice-table td:nth-child(3) {
+          width: ${PRINT_COLUMN_WIDTHS.saidToContain} !important;
+        }
+
+        .invoice-table th:nth-child(4),
+        .invoice-table td:nth-child(4) {
+          width: ${PRINT_COLUMN_WIDTHS.hsn} !important;
+        }
+
+        .invoice-table th:nth-child(5),
+        .invoice-table td:nth-child(5) {
+          width: ${PRINT_COLUMN_WIDTHS.taxFree} !important;
+        }
+
+        .invoice-table th:nth-child(6),
+        .invoice-table td:nth-child(6) {
+          width: ${PRINT_COLUMN_WIDTHS.weightChargeable} !important;
+        }
+
+        .invoice-table th:nth-child(7),
+        .invoice-table td:nth-child(7) {
+          width: ${PRINT_COLUMN_WIDTHS.actualWeight} !important;
+        }
+
+        .invoice-table th:nth-child(8),
+        .invoice-table td:nth-child(8) {
+          width: ${PRINT_COLUMN_WIDTHS.payment} !important;
+        }
+
+        .invoice-table th:nth-child(9),
+        .invoice-table td:nth-child(9) {
+          width: ${PRINT_COLUMN_WIDTHS.remarks} !important;
+        }
+
+        .invoice-table th:nth-child(10),
+        .invoice-table td:nth-child(10) {
+          width: ${PRINT_COLUMN_WIDTHS.auto} !important;
+        }
+
+        .invoice-table th:nth-child(11),
+        .invoice-table td:nth-child(11) {
+          width: ${PRINT_COLUMN_WIDTHS.action} !important;
+        }
+
+        .invoice-table th:nth-child(10),
+        .invoice-table td:nth-child(10),
+        .invoice-table th:nth-child(11),
+        .invoice-table td:nth-child(11) {
+          display: none !important;
+        }
+
+        ${isPaidType ? `
+          .driver-copy .invoice-table td:nth-child(8) {
+            visibility: hidden !important;
+          }
+          
+          .driver-copy .invoice-table td:nth-child(8)::after {
+            content: "" !important;
+          }
+        ` : ''}
+
+        .invoice-input {
+          font-size: 9px !important;
+          padding: 1px 2px !important;
+        }
+
+        .table-input {
+          padding: 1px 2px !important;
+        }
+
+        .invoice-footer {
+          font-size: 10px !important;
+          margin-top: 2px !important;
+        }
+
+        .goods-type-row {
+          margin-bottom: 0px !important;
+        }
+
+        .GoodsTypeCSS {
+          margin-right: 120px;
+        }
+
+        .spaceForSign {
+          width: 85px;
+        }
+
+        .footer-below {
+          margin-top: 1px !important;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .invoice-header {
+          margin-bottom: 5px !important;
+        }
+
+        .address-left,
+        .address-right {
+          font-size: 9px !important;
+        }
+
+        .gstin {
+          width: 310px;
+          font-size: 10px !important;
+          text-align: left;
+          padding-left: 35px;
+        }
+
+        .payment-type-selector {
+          font-size: 9px !important;
+        }
+
+        .form-group.inline {
+          gap: 2px !important;
+        }
+
+        @media print {
+          body {
+            margin: 0 !important;
+            padding: 7mm !important;
+            width: 210mm;
+            height: 297mm;
+            box-sizing: border-box;
+          }
+
+          .print-container {
+            width: 196mm;
+            height: 289mm;
+            display: flex;
+            flex-direction: column;
+            gap: 3mm;
+          }
+
+          .invoice-copy {
+            flex: 1;
+            height: calc((283mm - 6mm) / 3);
+            min-height: 0;
+            position: relative;
+          }
+
+          .invoice-container {
+            border: 1px solid #000 !important;
+            margin: 0 auto !important;
+            padding: 8px !important;
+            height: 100%;
+            transform: scale(0.82);
+            transform-origin: top left;
+            width: 121.95%;
+            box-sizing: border-box;
+          }
+
+          .copy-label {
+            display: none !important;
+          }
+
+          .footer-right .copy-label {
+            display: block !important;
+            position: static !important;
+            font-weight: bold;
+            font-size: 11px;
+            color: #000;
+            margin: 0;
+            text-align: right;
+          }
+
+          ${isPaidType ? `
+            .driver-copy .invoice-table td:nth-child(8) div {
+              visibility: hidden !important;
+            }
+
+            .total-row td:nth-child(8) p{
+              visibility: hidden !important;
+            }
+          ` : ''}
+        }
+      `;
+
+      // Override copy label color if hideCopyLabels is true
+      if (hideCopyLabels) {
+        css += `
+          .copy-label, .footer-right .copy-label {
+            color: white !important;
+          }
+        `;
+      }
+
+      if (hideCopyLabels) {
+        css += `
+          .consignor-copy .textShiftLeft:nth-child(6) {
+            left: -3px;
+          }
+
+          .consignor-copy .total-row td:not(:nth-child(2)) {
+            bottom: -5px;
+            left: 5px;
+          }
+
+          .consignor-copy .textShiftDown {
+            bottom: 1px;
+          }
+
+          .driver-copy .textShiftUp {
+            top: -20px;
+          }
+
+          .driver-copy .textShiftLeft {
+            bottom: 7px;
+          }
+
+          .driver-copy .textShiftDown {
+            bottom: 11px;
+          }
+
+          .driver-copy .total-row p {
+            position: relative;
+            bottom: 8px;
+          }
+        `;
+      }
+
+      return css;
+    };
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -822,366 +1299,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         <head>
           <title>Invoice Print</title>
           ${styles}
-          <style>
-            @page {
-              size: A4;
-              margin: 7mm;
-            }
-
-            body {
-              margin: 0;
-              padding: 7mm;
-              background: white !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-              font-size: 10px;
-              width: 196mm;
-              height: 283mm;
-            }
-
-            .print-container {
-              width: 100%;
-              height: 100%;
-              display: flex;
-              flex-direction: column;
-              gap: 3mm;
-            }
-
-            .invoice-copy {
-              flex: 1;
-              position: relative;
-              min-height: 0;
-            }
-
-            .invoice-container {
-              border: 1px solid #000 !important;
-              margin: 0 auto;
-              padding: 8px !important;
-              height: 100%;
-              box-sizing: border-box;
-              transform: scale(0.82);
-              transform-origin: top left;
-              width: 121.95%;
-            }
-
-            .copy-label {
-              position: absolute;
-              top: 6px;
-              right: 12px;
-              font-weight: bold;
-              font-size: 11px;
-              color: #000;
-              margin: 0;
-              z-index: 1000;
-            }
-
-            .footer-right .copy-label {
-              position: static !important;
-              font-weight: bold;
-              font-size: 11px;
-              color: #000;
-              margin: 0;
-              text-align: right;
-            }
-
-            body * {
-              visibility: visible !important;
-            }
-
-            .no-print,
-            .invoice-actions,
-            .invoice-tabs,
-            .error-message,
-            .search-container,
-            .suggestions-list,
-            .invoice-timestamps {
-              display: none !important;
-            }
-
-            .company-name {
-              font-size: 15px !important;
-            }
-
-            .company-description {
-              font-size: 10px !important;
-              margin-bottom: 3px !important;
-            }
-
-            .company-address {
-              font-size: 10px !important;
-            }
-
-            .showDateCss {
-              width: 55px;
-            }
-
-            .GRNOCss {
-              width: 30px;
-            }
-
-            .printTextWhite, .printTextWhite th, .printTextWhite td, .header-row th:not(:last-child) {
-              color: #ffffff;
-              border-color: white;
-              background: white;
-            }
-
-            .printValueText, .printValueText td:not(:first-child) {
-              color: black;
-            }
-
-            .consignment-details {
-              font-size: 10px !important;
-              margin-bottom: 5px !important;
-            }
-
-            .consignment-from2 {
-              display: flex;
-              justify-content: space-between;
-            }
-
-            .gstWillBePaidBy {
-              width: 50px;
-            }
-
-            .valueDeclaredcss {
-              width: 50px;
-            }
-
-            .toLocationCss {
-              width: 65px;
-            }
-
-            .goodsTypeCss {
-              width: 60px;
-            }
-
-            .fixed-name-field {
-              width: 350px;
-            }
-
-            .customer-GST-Fields,
-            .customer-GST-value {
-              display: flex;
-              justify-content: flex-end;
-            }
-
-            .customer-GST-value {
-              width: 111px;
-              justify-content: center;
-            }
-
-            .form-group.inline {
-              margin-bottom: 1px !important;
-            }
-
-            .invoice-table {
-              margin-bottom: 3px !important;
-            }
-
-            .invoice-table table {
-              width: 100% !important;
-              table-layout: fixed !important;
-            }
-
-            .invoice-table th,
-            .invoice-table td {
-              word-wrap: break-word !important;
-              overflow-wrap: break-word !important;
-              font-size: 9px !important;
-              padding: 2px 3px !important;
-              line-height: 1.1 !important;
-            }
-
-            .invoice-table th {
-              font-size: 9px !important;
-              padding: 3px !important;
-            }
-
-            .invoice-table th:nth-child(1),
-            .invoice-table td:nth-child(1) {
-              width: ${PRINT_COLUMN_WIDTHS.serialNo} !important;
-            }
-
-            .invoice-table th:nth-child(2),
-            .invoice-table td:nth-child(2) {
-              width: ${PRINT_COLUMN_WIDTHS.noOfArticles} !important;
-            }
-
-            .invoice-table th:nth-child(3),
-            .invoice-table td:nth-child(3) {
-              width: ${PRINT_COLUMN_WIDTHS.saidToContain} !important;
-            }
-
-            .invoice-table th:nth-child(4),
-            .invoice-table td:nth-child(4) {
-              width: ${PRINT_COLUMN_WIDTHS.hsn} !important;
-            }
-
-            .invoice-table th:nth-child(5),
-            .invoice-table td:nth-child(5) {
-              width: ${PRINT_COLUMN_WIDTHS.taxFree} !important;
-            }
-
-            .invoice-table th:nth-child(6),
-            .invoice-table td:nth-child(6) {
-              width: ${PRINT_COLUMN_WIDTHS.weightChargeable} !important;
-            }
-
-            .invoice-table th:nth-child(7),
-            .invoice-table td:nth-child(7) {
-              width: ${PRINT_COLUMN_WIDTHS.actualWeight} !important;
-            }
-
-            .invoice-table th:nth-child(8),
-            .invoice-table td:nth-child(8) {
-              width: ${PRINT_COLUMN_WIDTHS.payment} !important;
-            }
-
-            .invoice-table th:nth-child(9),
-            .invoice-table td:nth-child(9) {
-              width: ${PRINT_COLUMN_WIDTHS.remarks} !important;
-            }
-
-            .invoice-table th:nth-child(10),
-            .invoice-table td:nth-child(10) {
-              width: ${PRINT_COLUMN_WIDTHS.auto} !important;
-            }
-
-            .invoice-table th:nth-child(11),
-            .invoice-table td:nth-child(11) {
-              width: ${PRINT_COLUMN_WIDTHS.action} !important;
-            }
-
-            .invoice-table th:nth-child(10),
-            .invoice-table td:nth-child(10),
-            .invoice-table th:nth-child(11),
-            .invoice-table td:nth-child(11) {
-              display: none !important;
-            }
-
-            ${isPaidType ? `
-              .driver-copy .invoice-table td:nth-child(8) {
-                visibility: hidden !important;
-              }
-              
-              .driver-copy .invoice-table td:nth-child(8)::after {
-                content: "" !important;
-              }
-            ` : ''}
-
-            .invoice-input {
-              font-size: 9px !important;
-              padding: 1px 2px !important;
-            }
-
-            .table-input {
-              padding: 1px 2px !important;
-            }
-
-            .invoice-footer {
-              font-size: 10px !important;
-              margin-top: 2px !important;
-            }
-
-            .goods-type-row {
-              margin-bottom: 0px !important;
-            }
-
-            .GoodsTypeCSS {
-              margin-right: 120px;
-            }
-
-            .spaceForSign {
-              width: 85px;
-            }
-
-            .footer-below {
-              margin-top: 1px !important;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-
-            .invoice-header {
-              margin-bottom: 5px !important;
-            }
-
-            .address-left,
-            .address-right {
-              font-size: 9px !important;
-            }
-
-            .gstin {
-              width: 310px;
-              font-size: 10px !important;
-              text-align: left;
-              padding-left: 35px;
-            }
-
-            .payment-type-selector {
-              font-size: 9px !important;
-            }
-
-            .form-group.inline {
-              gap: 2px !important;
-            }
-
-            @media print {
-              body {
-                margin: 0 !important;
-                padding: 7mm !important;
-                width: 210mm;
-                height: 297mm;
-                box-sizing: border-box;
-              }
-
-              .print-container {
-                width: 196mm;
-                height: 283mm;
-                display: flex;
-                flex-direction: column;
-                gap: 3mm;
-              }
-
-              .invoice-copy {
-                flex: 1;
-                height: calc((283mm - 6mm) / 3);
-                min-height: 0;
-                position: relative;
-              }
-
-              .invoice-container {
-                border: 1px solid #000 !important;
-                margin: 0 auto !important;
-                padding: 8px !important;
-                height: 100%;
-                transform: scale(0.82);
-                transform-origin: top left;
-                width: 121.95%;
-                box-sizing: border-box;
-              }
-
-              .copy-label {
-                display: none !important;
-              }
-
-              .footer-right .copy-label {
-                display: block !important;
-                position: static !important;
-                font-weight: bold;
-                font-size: 11px;
-                color: #000;
-                margin: 0;
-                text-align: right;
-              }
-
-              ${isPaidType ? `
-                .driver-copy .invoice-table td:nth-child(8) {
-                  visibility: hidden !important;
-                }
-              ` : ''}
-            }
-          </style>
+          <style>${getStyles()}</style>
         </head>
         <body class="light-mode">
           <div class="print-container">
@@ -1192,8 +1310,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                 `<p class="copy-label">${copy.label}</p>`
               );
               
-              // Add driver-copy class only for driver copy
-              const copyClass = copy.label === 'DRIVER COPY' ? 'driver-copy' : '';
+              // Assign distinct CSS class based on copy label
+              let copyClass = '';
+              if (copy.label === 'CONSIGNOR COPY') copyClass = 'consignor-copy';
+              else if (copy.label === 'CONSIGNEE COPY') copyClass = 'consignee-copy';
+              else if (copy.label === 'DRIVER COPY') copyClass = 'driver-copy';
               
               return `
                 <div class="invoice-copy ${copyClass}">
@@ -1215,6 +1336,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     `);
     printWindow.document.close();
   };
+
+  // Original handlePrint: shows copy labels, no print2 styles
+  const handlePrint = () => handlePrintBase({ hideCopyLabels: false, usePrint2Styles: false });
+
+  // Original handlePrint2: hides copy labels, uses print2 styles
+  const handlePrint2 = () => handlePrintBase({ hideCopyLabels: true, usePrint2Styles: true });
 
   // Helper function to ensure exactly 3 rows in the table
   const ensureThreeRowsInTable = (html) => {
@@ -1409,71 +1536,62 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
   const totals = calculateTotals();
 
-  // Helper to render consignor name input (reused from original code)
-  const renderConsignorName = () => {
-    if (isEditing) {
-      return (
-        <CustomerSearchInput
-          name="consignor"
-          value={formData.consignor}
-          onChange={handleChange}
-          onSelect={(customer) => {
-            let gstValue = customer.id_number;
-            if (customer.id_type !== "GST Number") {
-              gstValue = `URD - ${customer.id_number}`;
-            }
-            setFormData(prev => ({
-              ...prev,
-              consignor: customer.name,
-              consignorCode: customer.customer_code,
-              consignorGst: gstValue
-            }));
-          }}
-          type="consignor"
-          placeholder=""
-          className="invoice-input customer-input fixed-input"
-          isLightMode={isLightMode}
-          showGstHighlight={false}
-          onOpenCustomerPopup={setPopupCustomerType}
-          suggestionDisplayField="id" 
-        />
-      );
-    } else {
-      return <span className="fixed-value">{formData.consignor}</span>;
-    }
-  };
+  {isEditing ? (
+    <CustomerSearchInput
+      name="consignor"
+      value={formData.consignor}
+      onChange={handleChange}
+      onSelect={(customer) => {
+        let gstValue = customer.id_number;
+        if (customer.id_type !== "GST Number") {
+          gstValue = `URD - ${customer.id_number}`;
+        }
+        setFormData(prev => ({
+          ...prev,
+          consignor: customer.name,
+          consignorCode: customer.customer_code,
+          consignorGst: gstValue
+        }));
+      }}
+      type="consignor"
+      placeholder=""
+      className="invoice-input customer-input fixed-input"
+      isLightMode={isLightMode}
+      showGstHighlight={false}
+      onOpenCustomerPopup={setPopupCustomerType}
+      suggestionDisplayField="id" 
+    />
+  ) : (
+    <span className="fixed-value">{formData.consignor}</span>
+  )}
 
-  const renderConsignorGst = () => {
-    if (isEditing) {
-      return (
-        <CustomerSearchInput
-          name="consignorGst"
-          value={formData.consignorGst}
-          onChange={handleChange}
-          onSelect={(customer) => {
-            let gstValue = customer.id_number;
-            if (customer.id_type !== "GST Number") {
-              gstValue = `URD - ${customer.id_number}`;
-            }
-            setFormData(prev => ({
-              ...prev,
-              consignor: customer.name,
-              consignorCode: customer.customer_code,
-              consignorGst: gstValue
-            }));
-          }}
-          type="consignor"
-          placeholder=""
-          className="invoice-input customer-input fixed-input"
-          isLightMode={isLightMode}
-          showGstHighlight={true}
-          onOpenCustomerPopup={setPopupCustomerType}
-        />
-      );
-    } else {
-      return <span className="customer-GST-value">{formData.consignorGst || "—"}</span>;
-    }
-  };
+  {isEditing ? (
+    <CustomerSearchInput
+      name="consignorGst"
+      value={formData.consignorGst}
+      onChange={handleChange}
+      onSelect={(customer) => {
+        let gstValue = customer.id_number;
+        if (customer.id_type !== "GST Number") {
+          gstValue = `URD - ${customer.id_number}`;
+        }
+        setFormData(prev => ({
+          ...prev,
+          consignor: customer.name,        // also fill name
+          consignorCode: customer.customer_code,
+          consignorGst: gstValue
+        }));
+      }}
+      type="consignor"
+      placeholder=""
+      className="invoice-input customer-input fixed-input"
+      isLightMode={isLightMode}
+      showGstHighlight={true}
+      onOpenCustomerPopup={setPopupCustomerType}
+    />
+  ) : (
+    <span className="customer-GST-value">{formData.consignorGst || "—"}</span>
+  )}
 
   const handleOpenCustomerPopup = (type) => {
     setPopupCustomerType(type);
@@ -1652,7 +1770,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span className="showDateCss printValueText">{formData.date.split("-").reverse().join("-")}</span>
+                      <span className="showDateCss printValueText textShiftUp2">{formData.date.split("-").reverse().join("-")}</span>
                     )}
                   </div>
                   <div className="form-group inline">
@@ -1695,7 +1813,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           ))}
                         </select>
                       ) : (
-                        <span className="printValueText">{formData.fromLocation}</span>
+                        <span className="printValueText textShiftUp">{formData.fromLocation}</span>
                       )}
                     </div>
                     <div className="form-group inline">
@@ -1716,7 +1834,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           ))}
                         </select>
                       ) : (
-                        <span className="toLocationCss printValueText">{formData.toLocation}</span>
+                        <span className="toLocationCss printValueText textShiftUp2">{formData.toLocation}</span>
                       )}
                     </div>
                   </div>
@@ -1724,13 +1842,66 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     {/* Consignor Name field */}
                     <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field`}>
                       <strong style={{marginRight: '2px'}} className="invoice-customerNames fixed-label">Consignor Name:</strong>
-                      {renderConsignorName()}
+                      {isEditing ? (
+                        <CustomerSearchInput
+                          name="consignor"
+                          value={formData.consignor}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignor: customer.name,
+                              consignorCode: customer.customer_code,
+                              consignorGst: gstValue
+                            }));
+                          }}
+                          type="consignor"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={false}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                          suggestionDisplayField="id" 
+                        />
+                      ) : (
+                        <span className="fixed-value printValueText textShiftUp">{formData.consignor}</span>
+                      )}
                     </div>
 
                     {/* Consignor GST field */}
                     <div className="form-group inline customer-GST-Fields">
                       <strong style={{marginRight: "2px"}}>Consignor GST:</strong>
-                      {renderConsignorGst()}
+                      {isEditing ? (
+                        <CustomerSearchInput
+                          name="consignorGst" 
+                          value={formData.consignorGst}
+                          onChange={handleChange}
+                          onSelect={(customer) => {
+                            let gstValue = customer.id_number;
+                            if (customer.id_type !== "GST Number") {
+                              gstValue = `URD - ${customer.id_number}`;
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              consignor: customer.name,
+                              consignorCode: customer.customer_code,
+                              consignorGst: gstValue
+                            }));
+                          }}
+                          type="consignor"
+                          placeholder=""
+                          className="invoice-input customer-input fixed-input"
+                          isLightMode={isLightMode}
+                          showGstHighlight={true}
+                          onOpenCustomerPopup={handleOpenCustomerPopup}
+                        />
+                      ) : (
+                        <span className="customer-GST-value printValueText textShiftUp2">{formData.consignorGst || "—"}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1765,7 +1936,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           suggestionDisplayField="id" 
                         />
                       ) : (
-                        <span className="fixed-value printValueText">{formData.consignee}</span>
+                        <span className="fixed-value printValueText textShiftUp">{formData.consignee}</span>
                       )}
                     </div>
 
@@ -1797,7 +1968,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           onOpenCustomerPopup={handleOpenCustomerPopup}
                         />
                       ) : (
-                        <span className="customer-GST-value printValueText">{formData.consigneeGst || "—"}</span>
+                        <span className="customer-GST-value printValueText textShiftUp2">{formData.consigneeGst || "—"}</span>
                       )}
                     </div>
                   </div>
@@ -1805,7 +1976,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               </div>
             </div>
 
-            <div className="invoice-table">
+            <div className="invoice-table textShiftUp3">
               <table className="full-table">
                 <thead>
                   <tr className="header-row printTextWhite">
@@ -1819,13 +1990,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     <th className="namered">{formData.paymentType === "toPay" ? "TO PAY" : "PAID"}</th>
                     <th>Remarks</th>
                     {isEditing && formData.articles.length > 1 && <th>Action</th>}
-                   </tr>
+                  </tr>
                 </thead>
                 <tbody className="printTextWhite">
                   {formData.articles.map((article, index) => (
                     <tr key={index} className="article-row printTextWhite printValueText">
-                      <td>{article.noIndex}</td>
-                      <td>
+                      <td className="textShiftLeft">{article.noIndex}</td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <input
                             type="text"
@@ -1839,7 +2010,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           article.noOfArticles || "—"
                         )}
                       </td>
-                      <td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <input
                             type="text"
@@ -1853,7 +2024,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           article.saidToContain || "—"
                         )}
                       </td>
-                      <td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <input
                             type="text"
@@ -1866,7 +2037,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           article.hsn || "—"
                         )}
                       </td>
-                      <td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <select
                             name="taxFree"
@@ -1881,7 +2052,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           article.taxFree || "—"
                         )}
                       </td>
-                      <td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <input
                             type="text"
@@ -1894,7 +2065,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                           formatNumericValue(article.weightChargeable)
                         )}
                       </td>
-                      <td>
+                      <td className="textShiftLeft">
                         {isEditing ? (
                           <input
                             type="text"
@@ -1964,7 +2135,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     </tr>
                   ))}
                   <tr>
-                    <td><b>Motor Freight</b></td>
+                    <td><b className="MFHOCText">Motor Freight</b></td>
                     <td></td>
                     <td></td>
                     <td></td>
@@ -1990,7 +2161,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     )}
                   </tr>
                   <tr>
-                    <td><b>Hammali</b></td>
+                    <td><b className="MFHOCText">Hammali</b></td>
                     <td></td>
                     <td></td>
                     <td></td>
@@ -2016,7 +2187,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     )}
                   </tr>
                   <tr>
-                    <td><b>Other Charges</b></td>
+                    <td><b className="MFHOCText">Other Charges</b></td>
                     <td></td>
                     <td></td>
                     <td></td>
@@ -2043,11 +2214,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                   </tr>
                   <tr className="total-row printTextWhite">
                     <td>Total</td>
-                    <td><p className="printValueText">{totals.noOfArticles}</p></td>
+                    <td><p className="printValueText textShiftLeft">{totals.noOfArticles}</p></td>
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td><p className="printValueText">{formatNumericValue(totals.weightChargeable)}</p></td>
+                    <td><p className="printValueText textShiftLeft">{formatNumericValue(totals.weightChargeable)}</p></td>
                     <td><p className="printValueText">{formatNumericValue(totals.actualWeight)}</p></td>
                     <td>
                       <p className="printValueText">
@@ -2069,7 +2240,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               )}
             </div>
 
-            <div className="invoice-footer printTextWhite">
+            <div className="invoice-footer printTextWhite textShiftUp3">
               <div className="footer-left">
                 <div className="goods-type-row">
                   <div className={`form-group inline ${!isEditing ? 'GoodsTypeCSS' : ''}`}>
@@ -2083,7 +2254,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span className="goodsTypeCss printValueText">{formData.goodsType || formData.articles[0].saidToContain}</span>
+                      <span className="goodsTypeCss printValueText textShiftDown">{formData.goodsType || formData.articles[0].saidToContain}</span>
                     )}
                   </div>
                   <div className="form-group inline">
@@ -2097,7 +2268,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span className="valueDeclaredcss printValueText">
+                      <span className="valueDeclaredcss printValueText textShiftDown">
                         {formatNumericValue(formData.valueDeclared)}
                       </span>
                     )}
@@ -2125,7 +2296,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         <option value="Consignee">Consignee</option>
                       </select>
                     ) : (
-                      <span className="gstWillBePaidBy printValueText">{formData.gstPaidBy || "—"}</span>
+                      <span className="gstWillBePaidBy printValueText textShiftDown">{formData.gstPaidBy || "—"}</span>
                     )}
                   </div>
                   {!isEditing && (
@@ -2182,7 +2353,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                   </button>
                 )}
                 {activeTab === "add" && isSubmitted && (
-                  <button onClick={resetForm2} className="edit-btn">
+                  <button onClick={resetForm2} className="edit-btn" style={{marginTop: '-9px', marginRight: '3px'}}>
                     Create New
                   </button>
                 )}
@@ -2192,9 +2363,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                   </button>
                 )}
                 {(activeTab === "add" || activeTab === "view") && isSubmitted && (
-                  <button onClick={handlePrint} className="print-btn">
-                    Print
-                  </button>
+                  <div style={{marginTop: '-12px'}}>
+                    <button onClick={handlePrint2} className="print-btn">
+                      Print
+                    </button>
+                    <button onClick={handlePrint} className="generate-btn" style={{margin: '3px'}}>
+                      Download
+                    </button>
+                  </div>
                 )}
                 {activeTab === "delete" && (
                   <>
