@@ -1,5 +1,6 @@
 module.exports = (transportDB) => {
   const router = require('express').Router();
+  const puppeteer = require("puppeteer");
 
   // Save transport record
   router.post('/transport-records', async (req, res) => {
@@ -106,6 +107,44 @@ module.exports = (transportDB) => {
       }
     } catch (err) {
       res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post("/generate-pdf", async (req, res) => {
+    try {
+      const { html } = req.body;
+
+      if (!html) {
+        return res.status(400).json({ error: "HTML content is required" });
+      }
+
+      const browser = await puppeteer.launch({
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      });
+
+      const page = await browser.newPage();
+
+      // Set HTML from frontend
+      await page.setContent(html, { waitUntil: "networkidle0" });
+
+      // Generate PDF
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+      });
+
+      await browser.close();
+
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": "inline; filename=invoice.pdf",
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 
