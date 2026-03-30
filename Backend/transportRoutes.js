@@ -113,8 +113,6 @@ module.exports = (transportDB) => {
   router.post("/generate-pdf", async (req, res) => {
     try {
       const { html } = req.body;
-      console.log("PDF API HIT");
-      console.log("HTML length:", html.length);
 
       if (!html) {
         return res.status(400).json({ error: "HTML content is required" });
@@ -143,7 +141,11 @@ module.exports = (transportDB) => {
         "Content-Disposition": "inline; filename=invoice.pdf",
       });
 
-      res.send(pdfBuffer);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Length", pdfBuffer.length);
+      res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
+
+      res.end(pdfBuffer);
     } catch (error) {
       console.error("PDF generation error:", error);
       res.status(500).json({ error: "Failed to generate PDF" });
