@@ -132,6 +132,8 @@ module.exports = (transportDB) => {
       const pdfBuffer = await page.pdf({
         format: "A4",
         printBackground: true,
+        preferCSSPageSize: true,
+        scale: 0.82
       });
 
       await browser.close();
