@@ -113,6 +113,7 @@ module.exports = (transportDB) => {
   router.post("/generate-pdf", async (req, res) => {
     try {
       const { html } = req.body;
+      console.log("PDF API HIT");
 
       if (!html) {
         return res.status(400).json({ error: "HTML content is required" });
