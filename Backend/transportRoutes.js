@@ -133,7 +133,6 @@ module.exports = (transportDB) => {
         format: "A4",
         printBackground: true,
         preferCSSPageSize: true,
-        scale: 1
       });
 
       await browser.close();
