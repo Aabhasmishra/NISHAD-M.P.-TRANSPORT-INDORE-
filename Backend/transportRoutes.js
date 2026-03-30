@@ -114,6 +114,7 @@ module.exports = (transportDB) => {
     try {
       const { html } = req.body;
       console.log("PDF API HIT");
+      console.log("HTML length:", html.length);
 
       if (!html) {
         return res.status(400).json({ error: "HTML content is required" });
