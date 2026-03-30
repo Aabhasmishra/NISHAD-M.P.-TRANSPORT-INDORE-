@@ -822,7 +822,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       let css = `
         @page {
           size: A4;
-          margin: 7mm;
+          margin: 0;
         }
 
         body {
@@ -834,6 +834,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           font-size: 10px;
           width: 196mm;
           height: 283mm;
+          box-sizing: border-box;
         }
 
         .print-container {
@@ -903,6 +904,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       // Add print2 specific styles if needed
       if (usePrint2Styles) {
         css += `
+          .GRNOCss {
+            position: relative;
+            top: -8px;
+            right: 10px;
+          }
+
           .company-name {
             display: none !important;
           }
@@ -950,12 +957,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .total-row {
             height: 30px;
-          }
-
-          .GRNOCss {
-            position: relative;
-            top: -10px;
-            right: 10px;
           }
         `;
       }
@@ -1192,22 +1193,23 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           gap: 2px !important;
         }
 
+        /* Print-specific overrides to ensure consistency */
         @media print {
-          body {
-            margin: 0 !important;
-            padding: 7mm !important;
-            width: 210mm;
-            height: 297mm;
-            box-sizing: border-box;
-          }
+        body {
+          margin: 0 !important;
+          padding: 7mm;
+          width: 230mm;
+          height: 297mm;
+          box-sizing: border-box;
+        }
 
-          .print-container {
-            width: 196mm;
-            height: 289mm;
-            display: flex;
-            flex-direction: column;
-            gap: 3mm;
-          }
+        .print-container {
+          width: 220mm;
+          height: 290mm;          /* Exactly the printable height (297mm - 2*7mm) */
+          display: flex;
+          flex-direction: column;
+          gap: 2mm;              /* Reduced gap to save vertical space */
+        }
 
           .invoice-copy {
             flex: 1;
@@ -1310,18 +1312,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         <body class="light-mode">
           <div class="print-container">
             ${copies.map((copy, index) => {
-              // Replace the copy label in footer area
               const copyHTML = modifiedInvoiceHTML.replace(
                 '<p class="copy-label">Driver Copy</p>',
                 `<p class="copy-label">${copy.label}</p>`
               );
-              
-              // Assign distinct CSS class based on copy label
               let copyClass = '';
               if (copy.label === 'CONSIGNOR COPY') copyClass = 'consignor-copy';
               else if (copy.label === 'CONSIGNEE COPY') copyClass = 'consignee-copy';
               else if (copy.label === 'DRIVER COPY') copyClass = 'driver-copy';
-              
               return `
                 <div class="invoice-copy ${copyClass}">
                   ${copyHTML}
