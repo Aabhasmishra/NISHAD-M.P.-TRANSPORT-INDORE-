@@ -973,6 +973,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             right: 30px;
             background-color: transparent;
           }
+
+          .goodsTypePrCss {
+            left: 15px;
+          }
         `;
       }
 
@@ -1317,7 +1321,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignor-copy .textShiftDown {
-            top: 2px;
+            top: 8px;
+            z-index: 1;
           }
 
           .consignee-copy .textShiftUp {
@@ -1335,15 +1340,16 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .total-row td:nth-child(7) {
-            top: 10px;
-          }
-
-          .consignee-copy .total-row td:nth-child(8) {
             top: 15px;
           }
 
+          .consignee-copy .total-row td:nth-child(8) {
+            top: 20px;
+          }
+
           .consignee-copy .textShiftUp2, .consignee-copy .GRNOCss  {
-            top: 40px;
+            top: 45px;
+            z-index: 1;
           }
 
           .consignee-copy .invoice-table th {
@@ -1352,7 +1358,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .textShiftDown {
-            top: 15px;
+            top: 5px;
             z-index: 100;
           }
 
@@ -1362,11 +1368,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .driver-copy .textShiftUp {
             top: 40px;
+            left: 15px;
             z-index: 100;
           }
 
           .driver-copy .textShiftUp2, .driver-copy .GRNOCss {
             top: 50px;
+            right: 50px;
             z-index: 100;
           }
 
@@ -1375,12 +1383,20 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             z-index: 1;
           }
 
+          .driver-copy .invoice-table td:nth-child(8), .driver-copy .invoice-table td:nth-child(9) {
+            right: 30px;
+          }
+
           .driver-copy .textShiftLeft {
             bottom: 7px;
           }
 
-          .driver-copy .total-row th {
-            top: 30px;
+          .driver-copy .total-row td:nth-child(2), .driver-copy .total-row td:nth-child(6) {
+            top: 10px;
+          }
+
+          .driver-copy .total-row td:nth-child(7) {
+            top: 6px;
           }
 
           .driver-copy .total-row td:nth-child(8) {
@@ -1388,7 +1404,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .driver-copy .textShiftDown {
-            top: 70px;
+            top: 80px;
             background-color: transparent;
           }
         `;
