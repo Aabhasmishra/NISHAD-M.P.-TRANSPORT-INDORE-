@@ -1266,6 +1266,22 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       if (usePrint2Styles) {
         css += `
+          .consignor-copy .textShiftUp {
+            top: 5px;
+          }
+            
+          .consignor-copy .textShiftUp2, .GRNOCss {
+            top: 0px;
+          }
+          
+          .consignor-copy .invoice-table {
+            height: 230px;
+          }
+
+          .consignor-copy .invoice-table {
+            top: 10px;
+          }
+          
           .consignor-copy .textShiftLeft:nth-child(6) {
             left: -3px;
           }
@@ -1279,7 +1295,27 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             bottom: 1px;
           }
 
+          .consignee-copy .textShiftUp {
+            top: -10px;
+          }
+
+          .consignee-copy .textShiftUp2 {
+            top: 0px;
+          }
+
+          .consignee-copy .invoice-table td:nth-child(8), .consignee-copy .invoice-table td:nth-child(9) {
+            right: 20px;
+          }
+
           .driver-copy .textShiftUp {
+            top: -40px;
+          }
+
+          .driver-copy .textShiftUp2, .driver-copy .GRNOCss {
+            top: -20px;
+          }
+
+          .driver-copy .invoice-table {
             top: -20px;
           }
 
@@ -1288,12 +1324,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .driver-copy .textShiftDown {
-            bottom: 11px;
+            bottom: 10px;
           }
 
           .driver-copy .total-row p {
             position: relative;
-            bottom: 8px;
+            bottom: 5px;
           }
         `;
       }
