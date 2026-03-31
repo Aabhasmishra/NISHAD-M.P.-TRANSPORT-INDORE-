@@ -907,7 +907,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           .GRNOCss {
             position: relative;
             top: -8px;
-            right: 10px;
+            right: 30px;
           }
 
           .company-name {
@@ -937,7 +937,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           .textShiftUp2 {
             position: relative;
             top: -10px;
-            right: 30px;
+            right: 40px;
           }
 
           .textShiftUp3 {
@@ -957,7 +957,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .invoice-table td:nth-child(8), .invoice-table td:nth-child(9) {
             right: 20px;
-            top: 10px;
+            top: 5px;
           }
           
           .total-row {
@@ -1289,7 +1289,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           .consignor-copy .textShiftUp2, .GRNOCss {
             top: 20px;
           }
-          
+
           .consignor-copy .invoice-table {
             height: 230px;
           }
@@ -1320,11 +1320,28 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .textShiftUp {
-            top: -10px;
+            top: 30px;
+          }
+
+          .consignee-copy .invoice-table {
+            top: 30px;
+            height: 250px;
+          }
+
+          .consignee-copy .total-row p {
+            top: 10px;
+          }
+
+          .consignee-copy .total-row td:nth-child(7) {
+            top: 10px;
+          }
+
+          .consignee-copy .total-row td:nth-child(8) {
+            top: 15px;
           }
 
           .consignee-copy .textShiftUp2, .consignee-copy .GRNOCss  {
-            top: 10px;
+            top: 30px;
           }
 
           .consignee-copy .invoice-table th {
@@ -1332,12 +1349,21 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             background-color: transparent;
           }
 
-          .driver-copy .textShiftUp {
-            top: -40px;
+          .consignee-copy .textShiftDown {
+            top: 5px;
+            z-index: 100;
           }
 
-          .driver-copy .textShiftUp2, .driver-copy .GRNOCss {
-            
+          .consignee-copy .invoice-footer {
+            height: 100px;
+          }
+
+          .driver-copy .textShiftUp {
+            top: 30px;
+          }
+
+          .driver-copy .textShiftUp2 {
+            top: 20px;
           }
 
           .driver-copy .invoice-table {
