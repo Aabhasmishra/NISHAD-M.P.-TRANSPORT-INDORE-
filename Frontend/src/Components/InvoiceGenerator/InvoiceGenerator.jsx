@@ -1363,7 +1363,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .goodsTypePrCss {
-            bottom: 10px;
+            top: -2px;
           }
 
           .driver-copy .textShiftUp {
@@ -1385,6 +1385,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .driver-copy .invoice-table td:nth-child(8), .driver-copy .invoice-table td:nth-child(9) {
             right: 30px;
+            bottom: 5px;
           }
 
           .driver-copy .textShiftLeft {
@@ -1404,8 +1405,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .driver-copy .textShiftDown {
-            top: 80px;
+            top: 75px;
             background-color: transparent;
+          }
+
+          .driver-copy .goodsTypePrCss {
+            top: 68px;
           }
         `;
       }
