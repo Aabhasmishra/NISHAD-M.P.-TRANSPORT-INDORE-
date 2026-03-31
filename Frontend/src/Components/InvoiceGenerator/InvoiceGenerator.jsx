@@ -969,7 +969,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .total-row td:nth-child(8) p{
-            top: 0px;
+            top: 10px;
             right: 30px;
             background-color: transparent;
           }
@@ -1313,6 +1313,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .consignor-copy .total-row td:nth-child(7) {
             left: -10px;
+            top: 5px;
           }
 
           .consignor-copy .textShiftDown {
@@ -1321,6 +1322,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .consignee-copy .textShiftUp {
             top: 30px;
+            left: 15px;
           }
 
           .consignee-copy .invoice-table {
@@ -1341,7 +1343,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .textShiftUp2, .consignee-copy .GRNOCss  {
-            top: 30px;
+            top: 40px;
           }
 
           .consignee-copy .invoice-table th {
@@ -1350,37 +1352,44 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
 
           .consignee-copy .textShiftDown {
-            top: 5px;
+            top: 15px;
             z-index: 100;
           }
 
-          .consignee-copy .invoice-footer {
-            height: 100px;
+          .consignee-copy .goodsTypePrCss {
+            bottom: 10px;
           }
 
           .driver-copy .textShiftUp {
-            top: 30px;
+            top: 40px;
+            z-index: 100;
           }
 
-          .driver-copy .textShiftUp2 {
-            top: 20px;
+          .driver-copy .textShiftUp2, .driver-copy .GRNOCss {
+            top: 50px;
+            z-index: 100;
           }
 
           .driver-copy .invoice-table {
-            top: -20px;
+            top: 50px;
+            z-index: 1;
           }
 
           .driver-copy .textShiftLeft {
             bottom: 7px;
           }
 
-          .driver-copy .textShiftDown {
-            bottom: 10px;
+          .driver-copy .total-row th {
+            top: 30px;
           }
 
-          .driver-copy .total-row p {
-            position: relative;
-            bottom: 5px;
+          .driver-copy .total-row td:nth-child(8) {
+            top: 6px;
+          }
+
+          .driver-copy .textShiftDown {
+            top: 70px;
+            background-color: transparent;
           }
         `;
       }
@@ -2345,7 +2354,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                         className="invoice-input"
                       />
                     ) : (
-                      <span className="goodsTypeCss printValueText textShiftDown">{formData.goodsType || formData.articles[0].saidToContain}</span>
+                      <span className="goodsTypeCss printValueText textShiftDown goodsTypePrCss">{formData.goodsType || formData.articles[0].saidToContain}</span>
                     )}
                   </div>
                   <div className="form-group inline">
