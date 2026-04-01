@@ -151,7 +151,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
             try {
                 let formattedBuilty = builtyNo.trim().toUpperCase();
                 if (!formattedBuilty.startsWith("GR")) {
-                    formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(5, "0");
+                    formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(6, "0");
                 }
                 
                 const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${formattedBuilty}`);
@@ -306,6 +306,15 @@ const Challan = ({ isLightMode, modeOfView }) => {
                 if (statusCheck.isAssigned) {
                 throw new Error(`Builty ${statusCheck.builtyNo} is already assigned to Challan ${statusCheck.assignedTo}.`);
         }
+
+        // In handleSubmit, after e.preventDefault()
+        for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        if (!row.builty_no || row.builty_no.trim() === '') {
+            deleteRow(i);
+        }
+        }
+        // Then continue with validation, using the updated rows...
 
         const payload = { ...formData, builty_no: builtyNos.join(' | ') };
         const url = mode === 'update' ? `http://43.230.202.198:3000/api/challan/${challanNo}` : 'http://43.230.202.198:3000/api/challan';
@@ -861,7 +870,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                         <div className="challan-form-row">
                                         <div className={`challan-form-group`}>
                                             <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>From</label>
-                                            {mode !== 'view' && mode !== 'delete' ? (
+                                            {mode !== 'view' && mode !== 'delete' && challanEditMode ? (
                                                 <select
                                                     name="from"
                                                     value={formData.from}
@@ -891,7 +900,7 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                         </div>
                                         <div className={`challan-form-group`}>
                                             <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Destination</label>
-                                            {mode !== 'view' && mode !== 'delete' ? (
+                                            {mode !== 'view' && mode !== 'delete' && challanEditMode ? (
                                             <select
                                                 name="destination"
                                                 value={formData.destination}
