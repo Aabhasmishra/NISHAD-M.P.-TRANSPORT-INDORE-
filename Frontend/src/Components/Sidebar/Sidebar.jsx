@@ -15,66 +15,75 @@ import "./Sidebar.css";
 
 // Thin sidebar (always visible when extended is closed)
 const ThinSidebar = ({ isLightMode, onToggleExtended, onOpenComponent, onOpenLink }) => {
-  return (
-    <div className={`sidebar-thin ${isLightMode ? "light-mode" : "dark-mode"}`}>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={onToggleExtended}
-        title="Open Menu"
-      >
-        <FaBars />
-        <div className="thin-label">Menu</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => onOpenComponent('InvoiceGenerator', 'add')}
-        title="New Builty"
-      >
-        <FaFileAlt />
+  return (
+    <div className={`sidebar-thin ${isLightMode ? "light-mode" : "dark-mode"}`}>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={onToggleExtended}
+        title="Open Menu"
+      >
+        <FaBars />
+        <div className="thin-label">Menu</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('InvoiceGenerator', 'add')}
+        title="New Builty"
+      >
+        <FaFileAlt />
         <div className="thin-label">New Builty</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => onOpenComponent('InvoiceGenerator', 'view')}
-        title="View Builty"
-      >
-        <FaEye />
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('InvoiceGenerator', 'view')}
+        title="View Builty"
+      >
+        <FaEye />
         <div className="thin-label">View Builty</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => onOpenComponent('Challan', 'add')}
-        title="New Challan"
-      >
-        <IoDocumentTextOutline />
+      </button>
+      {/* New Add Customer button */}
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('CustomerManagement', 'add')}
+        title="Add Customer"
+      >
+        <FaUser />
+        <div className="thin-label">Add Customer</div>
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('Challan', 'add')}
+        title="New Challan"
+      >
+        <IoDocumentTextOutline />
         <div className="thin-label">New Challan</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => onOpenComponent('Challan', 'view')}
-        title="View Challan"
-      >
-        <MdOutlineContentPasteSearch />
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('Challan', 'view')}
+        title="View Challan"
+      >
+        <MdOutlineContentPasteSearch />
         <div className="thin-label">View Challan</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={() => onOpenComponent('PaymentManagement', 'add')}
-        title="New Payment Receipt"
-      >
-        <MdOutlinePayment />
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={() => onOpenComponent('PaymentManagement', 'add')}
+        title="New Payment Receipt"
+      >
+        <MdOutlinePayment />
         <div className="thin-label">New Payment</div>
-      </button>
-      <button 
-        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
-        onClick={onOpenLink}
-        title="Link Aadhaar Status"
-      >
-        <FaExternalLinkAlt />
+      </button>
+      <button 
+        className={`sidebar-thin-button ${isLightMode ? "light-mode" : "dark-mode"}`}
+        onClick={onOpenLink}
+        title="Link Aadhaar Status"
+      >
+        <FaExternalLinkAlt />
         <div className="thin-label">Link Aadhaar</div>
-      </button>
-    </div>
-  );
+      </button>
+    </div>
+  );
 };
 
 // Extended sidebar (slides in from left)
