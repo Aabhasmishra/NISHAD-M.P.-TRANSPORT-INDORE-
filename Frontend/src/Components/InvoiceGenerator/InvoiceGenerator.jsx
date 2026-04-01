@@ -939,6 +939,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             top: -10px;
             right: 40px;
           }
+            
+          .toLocationCss {
+            position: relative;
+            right: 65px;
+            text-align: right;
+          }
 
           .textShiftUp3 {
             position: relative;
@@ -1376,6 +1382,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             top: 50px;
             right: 50px;
             z-index: 100;
+          }
+
+          .driver-copy .toLocationCss {
+            right: 75px;
           }
 
           .driver-copy .invoice-table {
