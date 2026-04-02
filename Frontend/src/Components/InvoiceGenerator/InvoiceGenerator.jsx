@@ -248,13 +248,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       const consignorRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignor
-        )}&id_number=${encodeURIComponent(formData.consignorIdNumber)}`
+        )}&id_number=${encodeURIComponent(formData.consignorGst)}`
       );
       const consignorData = await consignorRes.json();
 
       if (!consignorData.valid) {
         showAlert(
-          consignorData.message || "Consignor details not found in database",
+          "Consignor details not found in database",
           "error"
         );
         return false;
@@ -264,20 +264,17 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       const consigneeRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignee
-        )}&id_number=${encodeURIComponent(formData.consigneeIdNumber)}`
+        )}&id_number=${encodeURIComponent(formData.consigneeGst)}`
       );
       const consigneeData = await consigneeRes.json();
 
       if (!consigneeData.valid) {
         showAlert(
-          consigneeData.message || "Consignee details not found in database",
+          "Consignee details not found in database",
           "error"
         );
         return false;
       }
-
-      // Both are valid – optionally store a flag or just return true
-      // (The backend no longer returns customer_code, id_type, etc.)
       return true;
     } catch (err) {
       setErrorMessage(err.message);
@@ -665,32 +662,51 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       setIsVerifying(true);
       setErrorMessage("");
 
-      const consignorRes = await fetch(
-        `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
-          formData.consignor
-        )}`
+      // Helper to fetch full customer details after validation
+      const fetchCustomerDetails = async (name, idNumber) => {
+        const validateRes = await fetch(
+          `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(name)}&id_number=${encodeURIComponent(idNumber)}`
+        );
+        const validateData = await validateRes.json();
+        if (!validateData.valid) {
+          throw new Error(`Customer "${name}" with ID "${idNumber}" not found`);
+        }
+
+        // 2. Get full details using search endpoint
+        const searchRes = await fetch(
+          `http://43.230.202.198:3000/api/customers/search?q=${encodeURIComponent(name)}`
+        );
+        const searchResults = await searchRes.json();
+        const customer = searchResults.find(c => c.id_number === idNumber);
+        if (!customer) {
+          throw new Error(`Details for "${name}" (ID: ${idNumber}) not found in search results`);
+        }
+
+        // Build GST string exactly as before
+        let gst = `URD - ${customer.id_number}`;
+        if (customer.id_type === "GST Number") {
+          gst = customer.id_number;
+        }
+
+        return {
+          code: customer.customer_code,
+          gst: gst
+        };
+      };
+
+      // Validate and fetch consignor details
+      const consignorDetails = await fetchCustomerDetails(
+        formData.consignor,
+        formData.consignorGst   // this field holds the ID number (e.g., GST or Aadhar)
       );
-      const consignorData = await consignorRes.json();
 
-      if (!consignorData.customer_code) {
-        showAlert("Consignor not found in database", 'error');
-        setIsVerifying(false);
-        return;
-      }
-
-      const consigneeRes = await fetch(
-        `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
-          formData.consignee
-        )}`
+      // Validate and fetch consignee details
+      const consigneeDetails = await fetchCustomerDetails(
+        formData.consignee,
+        formData.consigneeGst   // this field holds the ID number
       );
-      const consigneeData = await consigneeRes.json();
 
-      if (!consigneeData.customer_code) {
-        showAlert("Consignee not found in database", 'error');
-        setIsVerifying(false);
-        return;
-      }
-
+      // Continue with the rest of the update (unchanged)
       const [day, month, year] = formData.date.split("-");
       const formattedDate = `${year}-${month}-${day}`;
 
@@ -703,12 +719,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         ewayBillNo: formData.ewayBillNo,
         fromLocation: formData.fromLocation,
         consignor: formData.consignor,
-        consignorCode: consignorData.customer_code,
-        consignorGst: consignorData.gstin,
+        consignorCode: consignorDetails.code,
+        consignorGst: consignorDetails.gst,
         toLocation: formData.toLocation,
         consignee: formData.consignee,
-        consigneeCode: consigneeData.customer_code,
-        consigneeGst: consigneeData.gstin,
+        consigneeCode: consigneeDetails.code,
+        consigneeGst: consigneeDetails.gst,
         articleLength: formData.articles.length,
         articleNo: formData.articles.map((a) => a.noOfArticles).join("|"),
         saidToContain: formData.articles.map((a) => a.saidToContain).join("|"),
@@ -758,9 +774,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       }));
 
       showAlert("Transport record updated successfully", 'success');
+      setShowInvoice(false);
     } catch (err) {
       console.error("Update error:", err);
       setErrorMessage(err.message);
+      showAlert(err.message, 'error');
     } finally {
       setIsVerifying(false);
     }
