@@ -1,21 +1,25 @@
 module.exports = (customersDB) => {
   const router = require('express').Router();
 
-  // Get customer by name
+  // Validate customer by name and ID number
   router.get('/customers', async (req, res) => {
     try {
-      const customer = await customersDB.getCustomerByName(req.query.name);
-      if (customer) {
-        const response = {
-          ...customer,
-          gstin: customer.id_type === "GST Number" ? customer.id_number : `URD - ${customer.id_number}`
-        };
-        res.json(response);
+      const { name, id_number } = req.query;
+      if (!name || !id_number) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: "Both 'name' and 'id_number' query parameters are required" 
+        });
+      }
+
+      const isValid = await customersDB.getCustomerByName(name, id_number);
+      if (isValid) {
+        res.json({ valid: true, message: "Customer details are valid" });
       } else {
-        res.status(404).json({ error: "Customer not found" });
+        res.status(404).json({ valid: false, message: "Customer details not found" });
       }
     } catch (err) {
-      res.status(400).json({ error: err.message });
+      res.status(500).json({ valid: false, error: err.message });
     }
   });
 
