@@ -9,7 +9,7 @@ const pool = new Pool({
   database: process.env.DB_NAME || "mp_transport",
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000, 
+  connectionTimeoutMillis: 2000,
 });
 
 // Connect to DB and initialize customers table
@@ -72,13 +72,15 @@ async function generateCustomerCode(name) {
   return `${prefix}${nextNum.toString().padStart(4, "0")}`;
 }
 
-// Get customer by name
-async function getCustomerByName(name) {
+async function getCustomerByName(name, id_number) {
+  if (!name || !id_number) {
+    return false;
+  }
   const { rows } = await pool.query(
-    `SELECT * FROM customers WHERE name ILIKE $1 LIMIT 1`,
-    [`%${name}%`]
+    `SELECT EXISTS(SELECT 1 FROM customers WHERE name ILIKE $1 AND id_number = $2) AS exists`,
+    [name, id_number]
   );
-  return rows[0];
+  return rows[0]?.exists === true;
 }
 
 // Get all customer names
@@ -127,13 +129,17 @@ async function createCustomer(customerData) {
 
 // Update customer
 async function updateCustomerByName(name, customerData) {
-  // First get the current customer to find their customer_code
-  const currentCustomer = await getCustomerByName(name);
-  if (!currentCustomer) {
+  // First get the current customer to find their customer_code (by name only)
+  const { rows: currentRows } = await pool.query(
+    `SELECT customer_code FROM customers WHERE name = $1`,
+    [name]
+  );
+  if (currentRows.length === 0) {
     return false;
   }
+  const currentCustomer = currentRows[0];
 
-  // Check if ID number already exists
+  // Check if ID number already exists (excluding current customer)
   const existingCustomer = await checkIdNumberExists(customerData.idNumber, currentCustomer.customer_code);
   if (existingCustomer) {
     throw new Error(`A customer with the same ID number already exists. The ID number '${customerData.idNumber}' is already registered under customer '${existingCustomer.name}'. Please use a different ID number.`);
@@ -193,7 +199,6 @@ async function inspectDatabase() {
   }
 }
 
-
 // Search customers by name, customer code, or ID number (substring match).
 async function searchCustomers(query) {
   if (!query || query.trim() === '') {
@@ -201,8 +206,6 @@ async function searchCustomers(query) {
   }
 
   const searchTerm = query.trim();
-  // Use ILIKE for case-insensitive matching
-  // Relevance: exact match (1), starts with (2), contains (3)
   const sql = `
     SELECT 
       customer_code,
@@ -226,9 +229,9 @@ async function searchCustomers(query) {
     LIMIT 20
   `;
 
-  const exact = searchTerm;           // exact match (with no wildcards)
-  const startsWith = `${searchTerm}%`; // starts with
-  const contains = `%${searchTerm}%`;  // contains
+  const exact = searchTerm;
+  const startsWith = `${searchTerm}%`;
+  const contains = `%${searchTerm}%`;
 
   const { rows } = await pool.query(sql, [exact, startsWith, contains]);
   return rows;
