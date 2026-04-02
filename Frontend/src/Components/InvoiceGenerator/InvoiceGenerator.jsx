@@ -244,49 +244,40 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     setIsVerifying(true);
     setErrorMessage("");
     try {
+      // 1. Validate consignor
       const consignorRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignor
-        )}`
+        )}&id_number=${encodeURIComponent(formData.consignorIdNumber)}`
       );
       const consignorData = await consignorRes.json();
 
-      if (!consignorData.customer_code) {
-        showAlert("Consignor not found in database", 'error');
+      if (!consignorData.valid) {
+        showAlert(
+          consignorData.message || "Consignor details not found in database",
+          "error"
+        );
         return false;
       }
 
+      // 2. Validate consignee
       const consigneeRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignee
-        )}`
+        )}&id_number=${encodeURIComponent(formData.consigneeIdNumber)}`
       );
       const consigneeData = await consigneeRes.json();
 
-      if (!consigneeData.customer_code) {
-        showAlert("Consignee not found in database", 'error');
+      if (!consigneeData.valid) {
+        showAlert(
+          consigneeData.message || "Consignee details not found in database",
+          "error"
+        );
         return false;
       }
 
-      let consignorGst = `URD - ${consignorData.id_number}`;
-      let consigneeGst = `URD - ${consigneeData.id_number}`;
-
-      if (consignorData && consignorData.id_type === "GST Number") {
-          consignorGst = consignorData.id_number;
-      }
-
-      if (consigneeData && consigneeData.id_type === "GST Number") {
-          consigneeGst = consigneeData.id_number;
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        consignorCode: consignorData.customer_code,
-        consignorGst: consignorGst,
-        consigneeCode: consigneeData.customer_code,
-        consigneeGst: consigneeGst,
-      }));
-
+      // Both are valid – optionally store a flag or just return true
+      // (The backend no longer returns customer_code, id_type, etc.)
       return true;
     } catch (err) {
       setErrorMessage(err.message);
