@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import UserManagement from "./Components/UserManagement/UserManagement";
 import MySidebar from "./Components/Sidebar/Sidebar";
-import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
+import InvoiceGenerator from "./Components/InvoiceGenerator/3";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
-import Challan from "./Components/Challan/Challan";
+import Challan from "./Components/Challan2/Challan";
 import CrossingStatement from "./Components/CrossingStatement/CrossingStatement";
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
@@ -80,7 +80,7 @@ const App = () => {
       case 'InvoiceGenerator':
         return <InvoiceGenerator key={`InvoiceGenerator-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
       case 'Challan':
-        return <Challan key={`Challan-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <Challan key={`Challan-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} currentUser={currentUser.type} />;
       case 'CrossingStatement':
         return <CrossingStatement key={`CrossingStatement-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
       case 'UserManagement':
