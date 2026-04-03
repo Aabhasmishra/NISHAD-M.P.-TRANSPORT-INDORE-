@@ -32,11 +32,15 @@ module.exports = (transportDB) => {
     }
   });
 
-  // Get transport history
+  // Get transport history using unique customer codes
   router.get('/transport-records/history', async (req, res) => {
     try {
-      const { consignor, consignee } = req.query;
-      res.json(await transportDB.getTransportHistory(consignor || '', consignee || ''));
+      const { consignorCode, consigneeCode } = req.query;
+      if (!consignorCode || !consigneeCode) {
+        return res.status(400).json({ error: "consignorCode and consigneeCode are required" });
+      }
+      const history = await transportDB.getTransportHistory(consignorCode, consigneeCode);
+      res.json(history);
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
@@ -133,6 +137,7 @@ module.exports = (transportDB) => {
         format: "A4",
         printBackground: true,
         preferCSSPageSize: true,
+        scale: 0.82
       });
 
       await browser.close();
