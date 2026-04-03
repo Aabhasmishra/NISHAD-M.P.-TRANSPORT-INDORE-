@@ -1,19 +1,21 @@
-const { Client } = require("pg");
+const { Pool } = require("pg");
 require("dotenv").config();
 
-const db = new Client({
+const pool = new Pool({
   host: process.env.DB_HOST || "43.230.202.198",
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || "mp_transport",
   password: process.env.DB_PASSWORD || 'abcde"',
   database: process.env.DB_NAME || "mp_transport",
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
+// Connect to DB and initialize customers table
 async function initialize() {
-  await db.connect();
-
   try {
-    await db.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS customers (
         customer_code VARCHAR(50) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -26,7 +28,7 @@ async function initialize() {
     `);
 
     try {
-      await db.query(`
+      await pool.query(`
         ALTER TABLE customers 
         DROP COLUMN IF EXISTS gst
       `);
@@ -41,6 +43,7 @@ async function initialize() {
   }
 }
 
+// Check if ID number already exists
 async function checkIdNumberExists(idNumber, excludeCustomerCode = null) {
   let query = `SELECT customer_code, name FROM customers WHERE id_number = $1`;
   let params = [idNumber];
@@ -50,13 +53,14 @@ async function checkIdNumberExists(idNumber, excludeCustomerCode = null) {
     params.push(excludeCustomerCode);
   }
   
-  const { rows } = await db.query(query, params);
+  const { rows } = await pool.query(query, params);
   return rows.length > 0 ? rows[0] : null;
 }
 
+// Generate customer code (C0001, A0001, etc.)
 async function generateCustomerCode(name) {
   const prefix = name.charAt(0).toUpperCase();
-  const { rows } = await db.query(
+  const { rows } = await pool.query(
     `SELECT customer_code FROM customers 
      WHERE customer_code LIKE $1 
      ORDER BY customer_code DESC LIMIT 1`,
@@ -68,62 +72,43 @@ async function generateCustomerCode(name) {
   return `${prefix}${nextNum.toString().padStart(4, "0")}`;
 }
 
-async function getCustomerByName(name) {
-  const { rows } = await db.query(
-    `SELECT * FROM customers WHERE name ILIKE $1 LIMIT 1`,
-    [`%${name}%`]
-  );
-  return rows[0];
-}
-
-// Search by ID Number only 
-async function searchCustomersByIdNumber(idNumber) {
-  if (!idNumber || idNumber.trim() === '') {
-    return [];
+async function getCustomerByName(name, id_number) {
+  if (!name || !id_number) {
+    return false;
   }
-
-  const searchTerm = `%${idNumber.trim()}%`;
-  const sql = `
-    SELECT 
-      customer_code,
-      name,
-      id_type,
-      id_number,
-      contact_number,
-      type,
-      created_at
-    FROM customers
-    WHERE id_number ILIKE $1
-    ORDER BY name
-    LIMIT 20
-  `;
-
-  const { rows } = await db.query(sql, [searchTerm]);
-  return rows;
+  const { rows } = await pool.query(
+    `SELECT EXISTS(SELECT 1 FROM customers WHERE name ILIKE $1 AND id_number = $2) AS exists`,
+    [name, id_number]
+  );
+  return rows[0]?.exists === true;
 }
 
+// Get all customer names
 async function getAllCustomerNames() {
-  const { rows } = await db.query(
+  const { rows } = await pool.query(
     `SELECT name FROM customers ORDER BY name ASC`
   );
   return rows.map(row => row.name);
 }
 
+// Get all customers
 async function getAllCustomers() {
-  const { rows } = await db.query(
+  const { rows } = await pool.query(
     `SELECT * FROM customers ORDER BY name ASC`
   );
   return rows;
 }
 
+// Create customer
 async function createCustomer(customerData) {
+  // Check if ID number already exists
   const existingCustomer = await checkIdNumberExists(customerData.idNumber);
   if (existingCustomer) {
     throw new Error(`A customer with the same ID number already exists. The ID number '${customerData.idNumber}' is already registered under customer '${existingCustomer.name}'. Please use a different ID number.`);
   }
 
   const code = await generateCustomerCode(customerData.name);
-  await db.query(
+  await pool.query(
     `INSERT INTO customers 
      (customer_code, name, type, id_type, id_number, contact_number)
      VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -142,18 +127,25 @@ async function createCustomer(customerData) {
   };
 }
 
+// Update customer
 async function updateCustomerByName(name, customerData) {
-  const currentCustomer = await getCustomerByName(name);
-  if (!currentCustomer) {
+  // First get the current customer to find their customer_code (by name only)
+  const { rows: currentRows } = await pool.query(
+    `SELECT customer_code FROM customers WHERE name = $1`,
+    [name]
+  );
+  if (currentRows.length === 0) {
     return false;
   }
+  const currentCustomer = currentRows[0];
 
+  // Check if ID number already exists (excluding current customer)
   const existingCustomer = await checkIdNumberExists(customerData.idNumber, currentCustomer.customer_code);
   if (existingCustomer) {
     throw new Error(`A customer with the same ID number already exists. The ID number '${customerData.idNumber}' is already registered under customer '${existingCustomer.name}'. Please use a different ID number.`);
   }
 
-  const { rowCount } = await db.query(
+  const { rowCount } = await pool.query(
     `UPDATE customers SET
      name = $1, type = $2, id_type = $3, id_number = $4, contact_number = $5
      WHERE name = $6`,
@@ -169,8 +161,9 @@ async function updateCustomerByName(name, customerData) {
   return rowCount > 0;
 }
 
+// Delete customer
 async function deleteCustomerByName(name) {
-  const { rowCount } = await db.query(
+  const { rowCount } = await pool.query(
     `DELETE FROM customers WHERE name = $1`,
     [name]
   );
@@ -179,6 +172,7 @@ async function deleteCustomerByName(name) {
 
 async function inspectDatabase() {
   try {
+    // Get table structure
     const columnsQuery = `
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
@@ -186,8 +180,10 @@ async function inspectDatabase() {
       ORDER BY ordinal_position
     `;
     
-    const columnsResult = await db.query(columnsQuery);
-    const contentResult = await db.query('SELECT * FROM customers ORDER BY customer_code');
+    const columnsResult = await pool.query(columnsQuery);
+    
+    // Get table content
+    const contentResult = await pool.query('SELECT * FROM customers ORDER BY customer_code');
     
     return {
       database: 'mp_transport',
@@ -203,6 +199,50 @@ async function inspectDatabase() {
   }
 }
 
+// Search customers by name, customer code, or ID number (substring match).
+async function searchCustomers(query) {
+  if (!query || query.trim() === '') {
+    return [];
+  }
+
+  const searchTerm = query.trim();
+  const sql = `
+    SELECT 
+      customer_code,
+      name,
+      id_type,
+      id_number,
+      contact_number,
+      type,
+      created_at,
+      CASE 
+        WHEN name ILIKE $1 OR customer_code ILIKE $1 OR id_number ILIKE $1 THEN 1
+        WHEN name ILIKE $2 OR customer_code ILIKE $2 OR id_number ILIKE $2 THEN 2
+        ELSE 3
+      END as relevance
+    FROM customers
+    WHERE 
+      name ILIKE $3 OR 
+      customer_code ILIKE $3 OR 
+      id_number ILIKE $3
+    ORDER BY relevance, name
+    LIMIT 20
+  `;
+
+  const exact = searchTerm;
+  const startsWith = `${searchTerm}%`;
+  const contains = `%${searchTerm}%`;
+
+  const { rows } = await pool.query(sql, [exact, startsWith, contains]);
+  return rows;
+}
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await pool.end();
+  process.exit(0);
+});
+
 module.exports = {
   initialize,
   getCustomerByName,
@@ -212,5 +252,5 @@ module.exports = {
   updateCustomerByName,
   deleteCustomerByName,
   inspectDatabase,
-  searchCustomersByIdNumber
+  searchCustomers
 };
