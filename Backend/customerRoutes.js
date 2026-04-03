@@ -120,10 +120,22 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Search customers
+  // Search customers (partial match for suggestions OR exact lookup by name+id)
   router.get('/customers/search', async (req, res) => {
     try {
-      const { q } = req.query;
+      const { q, name, id_number } = req.query;
+      
+      // If name and id_number are provided, do exact lookup
+      if (name && id_number) {
+        const customer = await customersDB.getCustomerByName(name, id_number);
+        if (customer) {
+          return res.json(customer);
+        } else {
+          return res.status(404).json({ error: "Customer not found with the given name and ID number" });
+        }
+      }
+      
+      // Otherwise, do partial search for suggestions
       const results = await customersDB.searchCustomers(q || '');
       res.json(results);
     } catch (err) {
