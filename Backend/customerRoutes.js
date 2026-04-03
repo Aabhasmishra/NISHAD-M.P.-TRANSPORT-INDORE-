@@ -132,5 +132,22 @@ module.exports = (customersDB) => {
     }
   });
 
+  // Search customers by ID number only (partial match allowed)
+  router.get('/customers/searchByID', async (req, res) => {
+    try {
+      const { id_number } = req.query;
+
+      if (!id_number || id_number.trim() === '') {
+        return res.status(400).json({ error: "ID number is required for search" });
+      }
+
+      const results = await customersDB.searchCustomersByIdNumber(id_number.trim());
+      res.json(results);
+    } catch (err) {
+      console.error('Customer search error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   return router;
 };
