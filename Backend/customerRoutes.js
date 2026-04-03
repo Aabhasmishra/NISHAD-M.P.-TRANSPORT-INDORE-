@@ -1,26 +1,29 @@
 module.exports = (customersDB) => {
   const router = require('express').Router();
 
-  // Get customer by name (unchanged)
+  // Validate customer by name and ID number
   router.get('/customers', async (req, res) => {
     try {
-      console.log("Customer Routes Called");
-      const customer = await customersDB.getCustomerByName(req.query.name);
-      if (customer) {
-        const response = {
-          ...customer,
-          gstin: customer.id_type === "GST Number" ? customer.id_number : "UIN"
-        };
-        res.json(response);
+      const { name, id_number } = req.query;
+      if (!name || !id_number) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: "Both 'name' and 'id_number' query parameters are required" 
+        });
+      }
+
+      const isValid = await customersDB.getCustomerByName(name, id_number);
+      if (isValid) {
+        res.json({ valid: true, message: "Customer details are valid" });
       } else {
-        res.status(404).json({ error: "Customer not found" });
+        res.status(404).json({ valid: false, message: "Customer details not found" });
       }
     } catch (err) {
-      res.status(400).json({ error: err.message });
+      res.status(500).json({ valid: false, error: err.message });
     }
   });
 
-  // Get all customer names (unchanged)
+  // Get all customer names
   router.get('/customers/all-names', async (req, res) => {
     try {
       const names = await customersDB.getAllCustomerNames();
@@ -30,7 +33,7 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Get all customers (unchanged)
+  // Get all customers
   router.get('/customers/all', async (req, res) => {
     try {
       const customers = await customersDB.getAllCustomers();
@@ -40,7 +43,7 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Create customer (unchanged)
+  // Create customer
   router.post('/customers', async (req, res) => {
     try {
       const result = await customersDB.createCustomer(req.body);
@@ -64,7 +67,7 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Update customer (unchanged)
+  // Update customer
   router.put('/customers/:name', async (req, res) => {
     try {
       const success = await customersDB.updateCustomerByName(req.params.name, req.body);
@@ -94,7 +97,7 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Delete customer (unchanged)
+  // Delete customer
   router.delete('/customers/:name', async (req, res) => {
     try {
       const success = await customersDB.deleteCustomerByName(req.params.name);
@@ -117,16 +120,11 @@ module.exports = (customersDB) => {
     }
   });
 
-  // Search customers by ID number only (partial match allowed)
+  // Search customers (partial match for suggestions OR exact lookup by name+id)
   router.get('/customers/search', async (req, res) => {
     try {
-      const { id_number } = req.query;
-
-      if (!id_number || id_number.trim() === '') {
-        return res.status(400).json({ error: "ID number is required for search" });
-      }
-
-      const results = await customersDB.searchCustomersByIdNumber(id_number.trim());
+      const { q } = req.query;
+      const results = await customersDB.searchCustomers(q || '');
       res.json(results);
     } catch (err) {
       console.error('Customer search error:', err);
