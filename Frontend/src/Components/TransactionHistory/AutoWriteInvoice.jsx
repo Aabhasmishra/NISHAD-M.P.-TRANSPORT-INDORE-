@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { formatNumericValue } from '../HelpFulComponents/FormatNumericValue';
 
-const AutoWriteInvoice = ({ consignor, consignee, onData, onError, onLoading }) => {
+const AutoWriteInvoice = ({ consignorCode, consigneeCode, onData, onError, onLoading }) => {
   useEffect(() => {
-    if (!consignor || !consignee) {
-      onError?.('Consignor and consignee are required');
+    if (!consignorCode || !consigneeCode) {
+      onError?.('Consignor code and consignee code are required');
       onData?.(null);
       return;
     }
@@ -12,7 +12,7 @@ const AutoWriteInvoice = ({ consignor, consignee, onData, onError, onLoading }) 
     const fetchLatestInvoice = async () => {
       onLoading?.(true);
       try {
-        const url = `http://43.230.202.198:3000/api/transport-records/history?consignor=${encodeURIComponent(consignor)}&consignee=${encodeURIComponent(consignee)}`;
+        const url = `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(consignorCode)}&consigneeCode=${encodeURIComponent(consigneeCode)}`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -24,10 +24,9 @@ const AutoWriteInvoice = ({ consignor, consignee, onData, onError, onLoading }) 
           onData?.(null);
           return;
         }
-
+        
         const sorted = [...data].sort((a, b) => {
           const getLastModified = (record) => {
-            // console.log(record);
             const created = new Date(record.created_at);
             const updated = record.updated_at ? new Date(record.updated_at) : null;
             return updated && updated > created ? updated : created;
@@ -54,7 +53,7 @@ const AutoWriteInvoice = ({ consignor, consignee, onData, onError, onLoading }) 
     };
 
     fetchLatestInvoice();
-  }, [consignor, consignee, onData, onError, onLoading]);
+  }, [consignorCode, consigneeCode, onData, onError, onLoading]);
 
   return null;
 };
