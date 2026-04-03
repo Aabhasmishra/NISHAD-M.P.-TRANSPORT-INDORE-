@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./CustomerManagement.css";
 import PopupAlert from "../PopupAlert/PopupAlert";
+import CustomerSearchInput from "../HelpFulComponents/CustomerSearchInput";
 
 const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose, onCustomerAdded }) => {
   const [addFormData, setAddFormData] = useState({
@@ -12,6 +13,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   });
 
   const [customerName, setCustomerName] = useState("");
+  const [selectedUpdateCustomerId, setSelectedUpdateCustomerId] = useState(""); // NEW: store selected customer ID for update
   const [updateFormData, setUpdateFormData] = useState({
     name: "",
     oldNameForSearch: "",
@@ -24,21 +26,18 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
 
   // State for View Customer Details
   const [viewCustomerName, setViewCustomerName] = useState("");
+  const [selectedViewCustomerId, setSelectedViewCustomerId] = useState(""); // NEW: store selected customer ID for view
   const [customerDetails, setCustomerDetails] = useState(null);
   const [isViewingCustomer, setIsViewingCustomer] = useState(false);
 
   // State for Delete Customer
   const [deleteCustomerName, setDeleteCustomerName] = useState("");
+  const [selectedDeleteCustomerId, setSelectedDeleteCustomerId] = useState(""); // NEW: store selected customer ID for delete
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
 
   // State to track which form to show
   const [activeForm, setActiveForm] = useState(modeOfView);
-
-  // State for search suggestions
-  const [allCustomerNames, setAllCustomerNames] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // State for PopupAlert
   const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
@@ -53,45 +52,8 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
     setAlert({ message: '', type: 'info', show: false });
   };
 
-  // Fetch all customer names when component mounts
-  useEffect(() => {
-    const fetchCustomerNames = async () => {
-      try {
-        const response = await fetch('http://43.230.202.198:3000/api/customers/all-names');
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        setAllCustomerNames(data);
-      } catch (error) {
-        console.error('Failed to fetch customer names:', error);
-        showAlert('Failed to fetch customer names', 'error');
-      }
-    };
-    fetchCustomerNames();
-  }, []);
-
-  // Handle search input changes and show suggestions
-  const handleSearchInputChange = (e, setSearchTerm) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    if (value.length > 0) {
-      const filteredSuggestions = allCustomerNames.filter(name =>
-        name.toLowerCase().startsWith(value.toLowerCase())
-      );
-      setSuggestions(filteredSuggestions);
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
-
-  // Handle suggestion selection
-  const handleSuggestionClick = (suggestion, setSearchTerm) => {
-    setSearchTerm(suggestion);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
+  // Dummy function for onOpenCustomerPopup – we don't want the "Add New Customer" button in these search fields
+  const dummyPopupHandler = () => {};
 
   // Handle input changes for Add form
   const handleAddInputChange = (e) => {
@@ -138,11 +100,6 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
           contactNumber: "",
         });
         
-        // Refresh customer names after adding a new one
-        const namesResponse = await fetch('http://43.230.202.198:3000/api/customers/all-names');
-        const namesData = await namesResponse.json();
-        setAllCustomerNames(namesData);
-        
         // Call callback if provided
         if (onCustomerAdded) {
           onCustomerAdded(data);
@@ -160,37 +117,43 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
     }
   };
 
-  // Find Customer for Update
+  // Find Customer for Update (using name + ID)
   const handleCustomerSearch = async (e) => {
     e.preventDefault();
 
-    // Check if customer exists in our local suggestions
-    const customerExists = allCustomerNames.some(name => 
-      name.toLowerCase() === customerName.toLowerCase()
-    );
-    
-    if (!customerExists) {
-      showAlert('No matching customers found', 'error');
+    if (!customerName) {
+      showAlert('Please enter a customer name', 'error');
+      return;
+    }
+    if (!selectedUpdateCustomerId) {
+      showAlert('Please select a customer from the suggestions', 'error');
       return;
     }
 
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(customerName)}`
+        `http://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedUpdateCustomerId)}`
       );
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (!response.ok || data.error) throw new Error(data.error || 'Customer not found');
+
+      console.log(data); // data is an array
+
+      // ✅ Extract the first customer from the array
+      if (!data.length) {
+        throw new Error('No customer found with that ID number');
+      }
+      const customer = data[0];
+
       const updatedData = {
-        ...data,
-        oldNameForSearch: data.name
+        ...customer,
+        oldNameForSearch: customer.name
       };
-      
       setUpdateFormData(updatedData);
       setIsCustomerFound(true);
     } catch (error) {
       showAlert(error.message, 'error');
     }
-    // console.log(updateFormData);
   };
 
   // Update Customer
@@ -212,15 +175,12 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
         }
       );
       const data = await response.json();
-      // console.log(data, updateFormData);
       
       if (response.ok) {
         showAlert(data.message || 'Customer updated successfully!', 'success');
         setCustomerName("");
+        setSelectedUpdateCustomerId(""); // Clear selected ID
         setIsCustomerFound(false);
-        const namesResponse = await fetch('http://43.230.202.198:3000/api/customers/all-names');
-        const namesData = await namesResponse.json();
-        setAllCustomerNames(namesData);
       } else {
         throw new Error(data.error || 'Failed to update customer');
       }
@@ -229,16 +189,34 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
     }
   };
 
-  // View Customer Details
+  // View Customer Details (with name + ID)
   const handleViewCustomerSearch = async (e) => {
     e.preventDefault();
+
+    if (!viewCustomerName) {
+      showAlert('Please enter a customer name', 'error');
+      return;
+    }
+    if (!selectedViewCustomerId) {
+      showAlert('Please select a customer from the suggestions', 'error');
+      return;
+    }
+
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(viewCustomerName)}`
+        `http://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedViewCustomerId)}`
       );
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      setCustomerDetails(data);
+
+      if (!response.ok || data.error) throw new Error(data.error || 'Customer not found');
+
+      if (data.length === 0) {
+        throw new Error('No customer found with that ID number');
+      }
+
+      const customer = data[0];
+      setCustomerDetails(customer);
+      console.log(customer);
       setIsViewingCustomer(true);
     } catch (error) {
       showAlert(error.message, 'error');
@@ -248,13 +226,29 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   // Find Customer for Deletion
   const handleDeleteCustomerSearch = async (e) => {
     e.preventDefault();
+
+    if (!deleteCustomerName) {
+      showAlert('Please enter a customer name', 'error');
+      return;
+    }
+    if (!selectedDeleteCustomerId) {
+      showAlert('Please select a customer from the suggestions', 'error');
+      return;
+    }
+
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(deleteCustomerName)}`
+        `http://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedDeleteCustomerId)}`
       );
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      setCustomerToDelete(data);
+      if (!response.ok || data.error) throw new Error(data.error || 'Customer not found');
+
+      // ✅ Extract first customer
+      if (!data.length) {
+        throw new Error('No customer found with that ID number');
+      }
+      const customer = data[0];
+      setCustomerToDelete(customer);
       setIsDeletingCustomer(true);
     } catch (error) {
       showAlert(error.message, 'error');
@@ -276,11 +270,8 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
         showAlert(data.message || 'Customer deleted successfully!', 'success');
         setIsDeletingCustomer(false);
         setDeleteCustomerName("");
+        setSelectedDeleteCustomerId(""); // Clear selected ID
         setCustomerToDelete(null);
-        // Refresh customer names after deletion
-        const namesResponse = await fetch('http://43.230.202.198:3000/api/customers/all-names');
-        const namesData = await namesResponse.json();
-        setAllCustomerNames(namesData);
       } else {
         throw new Error(data.error || 'Failed to delete customer');
       }
@@ -439,44 +430,32 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
           <form onSubmit={isCustomerFound ? handleUpdateSubmit : handleCustomerSearch}>
             <div className="form-group">
               <label>Customer Name:</label>
-              <div className="search-container">
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => handleSearchInputChange(e, setCustomerName)}
-                  required
-                  disabled={isCustomerFound}
-                  className="no-outline"
-                />
-                {suggestions.length > 0 ? (
-                  <ul className="suggestions-list">
-                    {suggestions.map((suggestion, index) => {
-                      const lowerInput = customerName.toLowerCase();
-                      const lowerSuggestion = suggestion.toLowerCase();
-                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                      const prefix = suggestion.substring(0, prefixIndex + customerName.length);
-                      const rest = suggestion.substring(prefixIndex + customerName.length);
-                      
-                      return (
-                        <li 
-                          key={index}
-                          className="suggestion-item"
-                          onClick={() => handleSuggestionClick(suggestion, setCustomerName)}
-                        >
-                          <span className="suggestion-prefix">{prefix}</span>
-                          <span className="suggestion-rest">{rest}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  showSuggestions && (
-                    <div className="no-suggestions">
-                      No matching customers found
-                    </div>
-                  )
-                )}
-              </div>
+              <CustomerSearchInput
+                name="customerName"
+                value={customerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setSelectedUpdateCustomerId(""); // Clear ID when user types manually
+                }}
+                onSelect={(customer) => {
+                  setCustomerName(customer.name);
+                  // Store the ID – prefer customer_code, fallback to id_number
+                  const customerId = customer.id_number || "";
+                  setSelectedUpdateCustomerId(customerId);
+                  // Optional: You can also log or use the ID elsewhere
+                  console.log(`Selected customer: ${customer.name} with ID: ${customerId}`);
+                }}
+                type="update"
+                placeholder=""
+                className="no-outline"
+                isLightMode={isLightMode}
+                showGstHighlight={false}
+                onOpenCustomerPopup={dummyPopupHandler}
+                suggestionDisplayField="id"
+                showAddNewButton={false}
+                emptyMessage="No matching customers found"
+                disabled={isCustomerFound}
+              />
             </div>
 
             {!isCustomerFound ? (
@@ -531,7 +510,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                   <label>ID Number:</label>
                   <input
                     type="text"
-                    name="id_number"  // Changed from "idNumber"
+                    name="id_number"
                     value={updateFormData.id_number}
                     onChange={handleUpdateInputChange}
                     required
@@ -545,7 +524,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                   <label>Contact Number:</label>
                   <input
                     type="tel"
-                    name="contact_number"  // Changed from "contactNumber"
+                    name="contact_number"
                     value={updateFormData.contact_number}
                     onChange={handleUpdateInputChange}
                     required
@@ -558,6 +537,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
                 <div className="button-group">
                   <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
                     setCustomerName("");
+                    setSelectedUpdateCustomerId("");
                     setIsCustomerFound(false);
                   }}>
                     Cancel
@@ -578,50 +558,36 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
           <form onSubmit={handleViewCustomerSearch}>
             <div className="form-group">
               <label>Customer Name:</label>
-              <div className="search-container">
-                <input
-                  type="text"
-                  value={viewCustomerName}
-                  onChange={(e) => handleSearchInputChange(e, setViewCustomerName)}
-                  required
-                  disabled={isViewingCustomer}
-                  className="no-outline"
-                />
-                {suggestions.length > 0 ? (
-                  <ul className="suggestions-list">
-                    {suggestions.map((suggestion, index) => {
-                      const lowerInput = viewCustomerName.toLowerCase();
-                      const lowerSuggestion = suggestion.toLowerCase();
-                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                      const prefix = suggestion.substring(0, prefixIndex + viewCustomerName.length);
-                      const rest = suggestion.substring(prefixIndex + viewCustomerName.length);
-                      
-                      return (
-                        <li 
-                          key={index}
-                          className="suggestion-item"
-                          onClick={() => handleSuggestionClick(suggestion, setViewCustomerName)}
-                        >
-                          <span className="suggestion-prefix">{prefix}</span>
-                          <span className="suggestion-rest">{rest}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  showSuggestions && (
-                    <div className="no-suggestions">
-                      No matching customers found
-                    </div>
-                  )
-                )}
-              </div>
+              <CustomerSearchInput
+                name="viewCustomerName"
+                value={viewCustomerName}
+                onChange={(e) => {
+                  setViewCustomerName(e.target.value);
+                  setSelectedViewCustomerId(""); // Clear ID when typing manually
+                }}
+                onSelect={(customer) => {
+                  setViewCustomerName(customer.name);
+                  const customerId = customer.id_number || "";
+                  setSelectedViewCustomerId(customerId);
+                  console.log(`Selected customer for view: ${customer.name} with ID: ${customerId}`);
+                }}
+                type="view"
+                placeholder=""
+                className="no-outline"
+                isLightMode={isLightMode}
+                showGstHighlight={false}
+                onOpenCustomerPopup={dummyPopupHandler}
+                suggestionDisplayField="id"
+                showAddNewButton={false}
+                emptyMessage="No matching customers found"
+                disabled={isViewingCustomer}
+              />
             </div>
             {!isViewingCustomer ? (
               <button type="submit" className="submit-btn">
                 Find Customer
               </button>
-            ) : ('')}
+            ) : null}
           </form>
 
           {isViewingCustomer && customerDetails && (
@@ -700,6 +666,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
               <div className="button-group">
                 <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
                   setViewCustomerName("");
+                  setSelectedViewCustomerId("");
                   setIsViewingCustomer(false);
                   setCustomerDetails(null);
                 }}>
@@ -717,44 +684,30 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
           <form onSubmit={handleDeleteCustomerSearch}>
             <div className="form-group">
               <label>Customer Name:</label>
-              <div className="search-container">
-                <input
-                  type="text"
-                  value={deleteCustomerName}
-                  onChange={(e) => handleSearchInputChange(e, setDeleteCustomerName)}
-                  required
-                  disabled={isDeletingCustomer}
-                  className="no-outline"
-                />
-                {suggestions.length > 0 ? (
-                  <ul className="suggestions-list">
-                    {suggestions.map((suggestion, index) => {
-                      const lowerInput = deleteCustomerName.toLowerCase();
-                      const lowerSuggestion = suggestion.toLowerCase();
-                      const prefixIndex = lowerSuggestion.indexOf(lowerInput);
-                      const prefix = suggestion.substring(0, prefixIndex + deleteCustomerName.length);
-                      const rest = suggestion.substring(prefixIndex + deleteCustomerName.length);
-                      
-                      return (
-                        <li 
-                          key={index}
-                          className="suggestion-item"
-                          onClick={() => handleSuggestionClick(suggestion, setDeleteCustomerName)}
-                        >
-                          <span className="suggestion-prefix">{prefix}</span>
-                          <span className="suggestion-rest">{rest}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  showSuggestions && (
-                    <div className="no-suggestions">
-                      No matching customers found
-                    </div>
-                  )
-                )}
-              </div>
+              <CustomerSearchInput
+                name="deleteCustomerName"
+                value={deleteCustomerName}
+                onChange={(e) => {
+                  setDeleteCustomerName(e.target.value);
+                  setSelectedDeleteCustomerId(""); // Clear ID when typing manually
+                }}
+                onSelect={(customer) => {
+                  setDeleteCustomerName(customer.name);
+                  const customerId = customer.id_number || "";
+                  setSelectedDeleteCustomerId(customerId);
+                  console.log(`Selected customer for deletion: ${customer.name} with ID: ${customerId}`);
+                }}
+                type="delete"
+                placeholder=""
+                className="no-outline"
+                isLightMode={isLightMode}
+                showGstHighlight={false}
+                onOpenCustomerPopup={dummyPopupHandler}
+                suggestionDisplayField="id"
+                showAddNewButton={false}
+                emptyMessage="No matching customers found"
+                disabled={isDeletingCustomer}
+              />
             </div>
             
             {!isDeletingCustomer && (
@@ -766,74 +719,75 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
 
           {isDeletingCustomer && customerToDelete && (
             <div>
-            <div className="customer-details-view">
-              <div className="form-group">
-                <label>Customer Code:</label>
-                <input
-                  type="text"
-                  value={customerToDelete.customer_code || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>Name:</label>
-                <input
-                  type="text"
-                  value={customerToDelete.name || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
+              <div className="customer-details-view">
+                <div className="form-group">
+                  <label>Customer Code:</label>
+                  <input
+                    type="text"
+                    value={customerToDelete.customer_code || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Name:</label>
+                  <input
+                    type="text"
+                    value={customerToDelete.name || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Type:</label>
-                <input
-                  type="text"
-                  value={customerToDelete.type || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
+                <div className="form-group">
+                  <label>Type:</label>
+                  <input
+                    type="text"
+                    value={customerToDelete.type || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>ID Type:</label>
-                <input
-                  type="text"
-                  value={customerToDelete.id_type || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
+                <div className="form-group">
+                  <label>ID Type:</label>
+                  <input
+                    type="text"
+                    value={customerToDelete.id_type || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>ID Number:</label>
-                <input
-                  type="text"
-                  value={customerToDelete.id_number || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
+                <div className="form-group">
+                  <label>ID Number:</label>
+                  <input
+                    type="text"
+                    value={customerToDelete.id_number || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Contact Number:</label>
-                <input
-                  type="tel"
-                  value={customerToDelete.contact_number || ""}
-                  readOnly
-                  className="no-outline readonly-field"
-                />
-              </div>
+                <div className="form-group">
+                  <label>Contact Number:</label>
+                  <input
+                    type="tel"
+                    value={customerToDelete.contact_number || ""}
+                    readOnly
+                    className="no-outline readonly-field"
+                  />
+                </div>
 
-              <div className="warning-message">
-                <p>⚠️ Are you sure you want to delete this customer? This action cannot be undone.</p>
-              </div>
+                <div className="warning-message">
+                  <p>⚠️ Are you sure you want to delete this customer? This action cannot be undone.</p>
+                </div>
               </div>
               <div className="button-group">
                 <button type="button" className="danger-btn customer-cancel-btn" onClick={() => {
                   setDeleteCustomerName("");
+                  setSelectedDeleteCustomerId("");
                   setIsDeletingCustomer(false);
                   setCustomerToDelete(null);
                 }}>
