@@ -157,12 +157,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   }, [formData.paymentType]);
 
   const checkPaymentTypeConsistency = async () => {
-    if (!formData.consignor || !formData.consignee) return;
+    if (!formData.consignorCode || !formData.consigneeCode) return;
     
     setIsCheckingPayment(true);
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/transport-records/history?consignor=${encodeURIComponent(formData.consignor)}&consignee=${encodeURIComponent(formData.consignee)}`
+        `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(formData.consignorCode)}&consigneeCode=${encodeURIComponent(formData.consigneeCode)}`
       );
       
       if (!response.ok) {
@@ -1765,8 +1765,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       {showAutoWrite && (
         <AutoWriteInvoice
-          consignor={formData.consignorCode}
-          consignee={formData.consigneeCode}
+          consignorCode={formData.consignorCode}
+          consigneeCode={formData.consigneeCode}
           onData={handleAutoWriteData}
           onError={handleAutoWriteError}
           onLoading={setAutoWriteLoading}
