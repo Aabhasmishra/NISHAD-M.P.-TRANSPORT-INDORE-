@@ -237,6 +237,32 @@ async function searchCustomers(query) {
   return rows;
 }
 
+// Search by ID Number only
+async function searchCustomersByIdNumber(idNumber) {
+  if (!idNumber || idNumber.trim() === '') {
+    return [];
+  }
+
+  const searchTerm = `%${idNumber.trim()}%`;
+  const sql = `
+    SELECT 
+      customer_code,
+      name,
+      id_type,
+      id_number,
+      contact_number,
+      type,
+      created_at
+    FROM customers
+    WHERE id_number ILIKE $1
+    ORDER BY name
+    LIMIT 20
+  `;
+
+  const { rows } = await db.query(sql, [searchTerm]);
+  return rows;
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   await pool.end();
