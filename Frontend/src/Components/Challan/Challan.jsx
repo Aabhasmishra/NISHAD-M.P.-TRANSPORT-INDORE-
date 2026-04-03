@@ -10,7 +10,7 @@ const IoPrint = () => <svg stroke="currentColor" fill="currentColor" strokeWidth
 const IoCreate = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M448 360.2V163.8c3.3-1.9 6.6-3.8 9.6-6 22.2-16.3 35.4-41.8 35.4-69.8 0-49.2-40.1-89.3-89.3-89.3-31.5 0-59.5 16.5-75.6 41.3-16.2-24.8-44.1-41.3-75.6-41.3C123.1 0 83 40.1 83 89.3c0 28 13.1 53.5 35.4 69.8 3 2.2 6.3 4.1 9.6 6v196.3c-3.3 1.9-6.6 3.8-9.6 6C123.1 369.2 110 394.7 110 422.7c0 49.2 40.1 89.3 89.3 89.3 31.5 0 59.5-16.5 75.6-41.3 16.2 24.8 44.1 41.3 75.6 41.3 49.2 0 89.3-40.1 89.3-89.3 0-28-13.1-53.5-35.4-69.8-3-2.2-6.3-4.1-9.6-6zM256 314.7c-49.2 0-89.3-40.1-89.3-89.3s40.1-89.3 89.3-89.3 89.3 40.1 89.3 89.3-40.1 89.3-89.3 89.3z"></path></svg>;
 const IoEdit = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M384 224v184a40 40 0 01-40 40H104a40 40 0 01-40-40V168a40 40 0 0140-40h167.48M336 64h112v112M224 288L440 72"></path></svg>;
 
-const Challan = ({ isLightMode, modeOfView }) => {
+const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     // Form states
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split("T")[0],
@@ -1079,12 +1079,14 @@ const Challan = ({ isLightMode, modeOfView }) => {
                                 >
                                     <IoEdit /> Update This Challan
                                 </button>
-                                <button 
-                                    onClick={handleDeleteMode}
-                                    className={`challan-delete-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                                >
-                                    <IoTrash /> Delete This Challan
-                                </button>
+                                {(currentUser === 'Admin') && (
+                                    <button 
+                                        onClick={handleDeleteMode}
+                                        className={`challan-delete-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                                    >
+                                        <IoTrash /> Delete This Challan
+                                    </button>
+                                )}
                                 {challanBackButton("Back to Search")}
                             </div>
                         )}
