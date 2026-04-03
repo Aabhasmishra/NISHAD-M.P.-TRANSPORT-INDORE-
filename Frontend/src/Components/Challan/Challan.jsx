@@ -497,7 +497,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
                             <tr class="challan-table-header">
                                 <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                 <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th><th>Collection</th>
+                                <th>To Pay</th><th>Paid</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -513,7 +513,6 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
                                     <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
                                     <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
                                     <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
-                                    <td class="text-center">${row.index <= rows.length ? Number(row.payment_collected) : ''}</td>
                                 </tr>
                             `).join('')}
                             ${rows.some(row => row.builty_no) && `
@@ -523,7 +522,6 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
                                     <td class="text-center">${calculateTotals().weight}</td><td></td>
                                     <td class="text-center">${calculateTotals().to_pay}</td>
                                     <td class="text-center">${calculateTotals().paid}</td>
-                                    <td class="text-center">${calculateTotals().payment_collected}</td>
                                 </tr>
                             `}
                         </tbody>
