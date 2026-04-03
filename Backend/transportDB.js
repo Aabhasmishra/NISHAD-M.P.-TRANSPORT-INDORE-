@@ -98,7 +98,7 @@ async function generateGRNo() {
 
   const lastGRNo = rows[0].gr_no;
   const numericPart = parseInt(lastGRNo.replace(/\D/g, "")) || 0;
-  return `GR${(numericPart + 1).toString().padStart(5, "0")}`;
+  return `GR${(numericPart + 1).toString().padStart(6, "0")}`;
 }
 
 // Save transport record
