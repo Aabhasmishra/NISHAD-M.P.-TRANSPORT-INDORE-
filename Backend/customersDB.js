@@ -76,7 +76,7 @@ async function getCustomerByName(name) {
   return rows[0];
 }
 
-// ========== NEW FUNCTION: Search by ID Number only ==========
+// Search by ID Number only 
 async function searchCustomersByIdNumber(idNumber) {
   if (!idNumber || idNumber.trim() === '') {
     return [];
@@ -98,33 +98,6 @@ async function searchCustomersByIdNumber(idNumber) {
     LIMIT 20
   `;
 
-  const { rows } = await db.query(sql, [searchTerm]);
-  return rows;
-}
-// ============================================================
-
-// (Optional) Keep old search function if needed elsewhere, but not used by the route
-async function searchCustomers(query) {
-  // This function is no longer used for the /search endpoint.
-  // You may delete it or keep it for other purposes.
-  if (!query || query.trim() === '') {
-    return [];
-  }
-  const searchTerm = `%${query.trim()}%`;
-  const sql = `
-    SELECT 
-      customer_code,
-      name,
-      id_type,
-      id_number,
-      contact_number,
-      type,
-      created_at
-    FROM customers
-    WHERE id_number ILIKE $1   -- Only ID number
-    ORDER BY name
-    LIMIT 20
-  `;
   const { rows } = await db.query(sql, [searchTerm]);
   return rows;
 }
