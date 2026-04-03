@@ -278,5 +278,6 @@ module.exports = {
   updateCustomerByName,
   deleteCustomerByName,
   inspectDatabase,
-  searchCustomers
+  searchCustomers,
+  searchCustomersByIdNumber
 };
