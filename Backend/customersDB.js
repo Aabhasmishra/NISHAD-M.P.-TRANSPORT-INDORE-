@@ -259,7 +259,7 @@ async function searchCustomersByIdNumber(idNumber) {
     LIMIT 20
   `;
 
-  const { rows } = await db.query(sql, [searchTerm]);
+  const { rows } = await pool.query(sql, [searchTerm]);
   return rows;
 }
 
