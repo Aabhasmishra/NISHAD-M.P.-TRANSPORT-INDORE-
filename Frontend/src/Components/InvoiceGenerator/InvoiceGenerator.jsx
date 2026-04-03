@@ -377,21 +377,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const handleGenerateInvoice = async (e) => {
     e.preventDefault();
 
-    // For Add mode, validate and format GR number
-    if (activeTab === "add" && isEditing) {
-      if (!grNumberInput.trim()) {
-        showAlert("Please enter GR Number", 'warning');
-        return;
-      }
-      const formattedGR = formatGRForBackend(grNumberInput);
-      if (!formattedGR) {
-        showAlert("Invalid GR Number. Please enter numeric digits only.", 'warning');
-        return;
-      }
-      // Store formatted GR number in formData
-      setFormData(prev => ({ ...prev, invoiceNumber: formattedGR }));
-    }
-
     const isValid = await verifyConsignorConsignee();
     if (!isValid) {
       setIsEditing(true);
@@ -1780,8 +1765,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       {showAutoWrite && (
         <AutoWriteInvoice
-          consignor={formData.consignor}
-          consignee={formData.consignee}
+          consignor={formData.consignorCode}
+          consignee={formData.consigneeCode}
           onData={handleAutoWriteData}
           onError={handleAutoWriteError}
           onLoading={setAutoWriteLoading}
@@ -1921,11 +1906,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       // In Add mode while editing, show input for GR number
                       <input
                         type="text"
-                        placeholder="Enter GR number (e.g., 23)"
+                        placeholder="Auto Generate"
                         value={grNumberInput}
                         onChange={(e) => setGrNumberInput(e.target.value)}
                         className="invoice-input"
                         style={{ width: '100px' }}
+                        readOnly={true} 
                       />
                     ) : (
                       <span className="GRNOCss printValueText">{formatGRForDisplay(formData.invoiceNumber) || "—"}</span>
