@@ -359,12 +359,12 @@ export default function SidebarComponent({
           icon: <FaEdit />,
           onClick: () => handleComponentClick('CustomerManagement', 'update')
         },
-        ...(isAdmin ? [{
+        {
           label: "Delete Customer", 
           href: "#", 
           icon: <MdDelete />,
           onClick: () => handleComponentClick('CustomerManagement', 'delete')
-        }] : [])
+        }
       ]
     },
     ...(isAdmin ? [{
