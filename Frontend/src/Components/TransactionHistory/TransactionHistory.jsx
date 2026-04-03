@@ -1,63 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import './TransactionHistory.css';
-import { FaArrowLeft } from "react-icons/fa";
 
-const TransactionHistory = ({ isLightMode, consignorName, consigneeName, onClose }) => {
-  const [allCustomerNames, setAllCustomerNames] = useState([]);
-  const [consignor, setConsignor] = useState(consignorName || '');
-  const [consignee, setConsignee] = useState(consigneeName || '');
+const TransactionHistory = ({ 
+  isLightMode, 
+  consignorName = '',
+  consigneeName = '',
+  consignorCode = '',
+  consigneeCode = '',
+  onClose
+}) => {
   const [transportRecords, setTransportRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [expandedInvoice, setExpandedInvoice] = useState(null);
-  const [viewMode, setViewMode] = useState('table'); 
-  const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Fetch history when codes are available
   useEffect(() => {
-    const fetchCustomerNames = async () => {
-      try {
-        const response = await fetch('http://43.230.202.198:3000/api/customers/all-names');
-        const data = await response.json();
-        setAllCustomerNames(data);
-      } catch (err) {
-        console.error('Failed to fetch customer names:', err);
-      }
-    };
-    fetchCustomerNames();
-  }, []);
-
-  useEffect(() => {
-    if (consignorName && consigneeName) {
+    if (consignorCode && consigneeCode) {
       fetchTransportRecords();
+    } else {
+      // Optionally show a message if codes missing
+      setError('Customer codes not provided. Cannot fetch transaction history.');
     }
-  }, [consignorName, consigneeName]);
+  }, [consignorCode, consigneeCode]);
 
   const fetchTransportRecords = async () => {
-    if (!consignor || !consignee) {
-      setError('Please enter both consignor and consignee names');
-      return;
-    }
+    if (!consignorCode || !consigneeCode) return;
 
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(
-        `http://43.230.202.198:3000/api/transport-records/history?consignor=${encodeURIComponent(consignor)}&consignee=${encodeURIComponent(consignee)}`
-      );
+      const url = `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(consignorCode)}&consigneeCode=${encodeURIComponent(consigneeCode)}`;
+      const response = await fetch(url);
       const data = await response.json();
       
       if (response.ok) {
-        // Sort by GR number in descending order
         const sortedRecords = data.sort((a, b) => b.gr_no - a.gr_no);
         setTransportRecords(sortedRecords);
-        setExpandedInvoice(null);
-        setViewMode('table');
       } else {
         throw new Error(data.error || 'Failed to fetch transport records');
       }
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(err.message);
       setTransportRecords([]);
     } finally {
@@ -65,45 +51,180 @@ const TransactionHistory = ({ isLightMode, consignorName, consigneeName, onClose
     }
   };
 
-  const handleViewInvoice = (grNo) => {
-    setExpandedInvoice(grNo);
-    setViewMode('invoice');
-    
-    setPosition({
-      x: window.innerWidth / 2 - 450,
-      y: window.innerHeight / 2 - 300  
-    });
-  };
-
-  const handleBackToTable = () => {
-    setViewMode('table');
-    setExpandedInvoice(null);
-  };
-
   const getDisplayDate = (record) => {
     const createdAt = new Date(record.created_at);
     const updatedAt = record.updated_at ? new Date(record.updated_at) : null;
-    
     if (updatedAt && updatedAt > createdAt) {
       return updatedAt.toLocaleString();
     }
     return createdAt.toLocaleString();
   };
 
-  // Dragging functionality
+  // Open invoice in a new tab
+  const openInvoiceInNewTab = (record) => {
+    const articles = [];
+    const articleNos = record.article_no?.split('|') || [];
+    const saidToContains = record.said_to_contain?.split('|') || [];
+    const taxFrees = record.tax_free?.split('|') || [];
+    const weightChargeables = record.weight_chargeable?.split('|') || [];
+    const actualWeights = record.actual_weight?.split('|') || [];
+    const hsns = record.hsn?.split('|') || [];
+    const amounts = record.amount?.split('|') || [];
+    const remarks = record.remarks?.split('|') || [];
+
+    for (let i = 0; i < record.article_length; i++) {
+      articles.push({
+        noIndex: i + 1,
+        noOfArticles: articleNos[i] || '',
+        saidToContain: saidToContains[i] || '',
+        taxFree: taxFrees[i] || 'No',
+        weightChargeable: weightChargeables[i] || '',
+        actualWeight: actualWeights[i] || '',
+        hsn: hsns[i] || '',
+        amount: amounts[i] || '',
+        remarks: remarks[i] || ''
+      });
+    }
+
+    const totalArticles = articleNos.reduce((sum, val) => sum + (Number(val) || 0), 0);
+    const totalWeightChargeable = weightChargeables.reduce((sum, val) => sum + (Number(val) || 0), 0);
+    const totalActualWeight = actualWeights.reduce((sum, val) => sum + (Number(val) || 0), 0);
+    const totalAmount = amounts.reduce((sum, val) => sum + (Number(val) || 0), 0);
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Invoice - ${record.gr_no}</title>
+        <style>
+          * { margin:0; padding:0; box-sizing:border-box; }
+          body { font-family: Arial, sans-serif; background:#fff; padding:20px; color:#000; }
+          .invoice-container { max-width:1200px; margin:0 auto; background:#fff; border:1px solid #ddd; padding:20px; }
+          .company-name { font-size:24px; font-weight:bold; text-align:center; }
+          .company-description { text-align:center; font-size:14px; margin-bottom:10px; }
+          .company-address { display:flex; justify-content:space-between; border-top:1px solid #000; border-bottom:1px solid #000; padding:8px 0; margin-bottom:15px; font-size:12px; }
+          .address-left, .address-right { flex:1; }
+          .invoice-meta { display:flex; justify-content:space-between; margin-bottom:20px; padding:8px; background:#f9f9f9; }
+          .consignment-details { display:flex; justify-content:space-between; margin-bottom:20px; gap:20px; }
+          .consignment-from, .consignment-to { flex:1; border:1px solid #ccc; padding:10px; }
+          .form-group { margin-bottom:6px; }
+          .form-group strong { display:inline-block; width:130px; }
+          .payment-type { margin-bottom:20px; padding:8px; background:#f0f0f0; }
+          table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+          th, td { border:1px solid #000; padding:6px; text-align:left; font-size:12px; }
+          th { background:#f2f2f2; }
+          .total-row { background:#f9f9f9; font-weight:bold; }
+          .invoice-footer { display:flex; justify-content:space-between; margin-top:30px; padding-top:20px; border-top:1px solid #ccc; }
+          .footer-left { flex:2; }
+          .footer-right { flex:1; text-align:center; }
+          .signature { margin-top:40px; border-top:1px solid #000; padding-top:5px; width:200px; text-align:center; }
+          @media print { body { padding:0; } .invoice-container { border:none; } }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="company-name">M.P. TRANSPORT (INDORE)</div>
+          <div class="company-description">Clearing, Forwarding & Transport Agent</div>
+          <div class="company-address">
+            <div class="address-left">
+              <div><strong>H.O.:</strong> 180, New Loha Mandi, Indore (M.P.) - 452001</div>
+              <div><strong>B.O.:</strong> 0771-2575983, 94253-15983</div>
+            </div>
+            <div class="address-right">
+              <div><strong>Mob:</strong> 94250-82053</div>
+              <div><strong>Ph:</strong> (0731)-2466047, 2364333, 2466379</div>
+              <div><strong>GSTIN:</strong> 23AACPT2351B1ZA</div>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div><strong>G.R. No.:</strong> ${record.gr_no}</div>
+            <div><strong>Date:</strong> ${new Date(record.date).toLocaleDateString()}</div>
+            <div><strong>e-way Bill no.:</strong> ${record.eway_bill_no || ''}</div>
+          </div>
+          <div class="consignment-details">
+            <div class="consignment-from">
+              <div class="form-group"><strong>From:</strong> ${record.from_location}</div>
+              <div class="form-group"><strong>Consignor Code:</strong> ${record.consignor_code}</div>
+              <div class="form-group"><strong>Consignor Name:</strong> ${record.consignor_name}</div>
+              <div class="form-group"><strong>Consignor GST:</strong> ${record.consignor_gst}</div>
+            </div>
+            <div class="consignment-to">
+              <div class="form-group"><strong>To:</strong> ${record.to_location}</div>
+              <div class="form-group"><strong>Consignee Code:</strong> ${record.consignee_code}</div>
+              <div class="form-group"><strong>Consignee Name:</strong> ${record.consignee_name}</div>
+              <div class="form-group"><strong>Consignee GST:</strong> ${record.consignee_gst}</div>
+            </div>
+          </div>
+          <div class="payment-type"><strong>Payment Type:</strong> ${record.payment_type === 'TO PAY' ? 'TO PAY' : 'PAID'}</div>
+          <table>
+            <thead><tr><th>Index</th><th>No. of Articles</th><th>Said to Contain</th><th>HSN</th><th>Tax Free</th><th>Weight Chargeable</th><th>Actual Weight</th><th>${record.paid == 0 ? 'TO PAY' : 'PAID'}</th><th>Remarks</th></tr></thead>
+            <tbody>
+              ${articles.map(art => `
+                <tr>
+                  <td>${art.noIndex}</td>
+                  <td>${art.noOfArticles}</td>
+                  <td>${art.saidToContain}</td>
+                  <td>${art.hsn}</td>
+                  <td>${art.taxFree}</td>
+                  <td>${art.weightChargeable}</td>
+                  <td>${art.actualWeight}</td>
+                  <td>${art.amount}</td>
+                  <td>${art.remarks}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row">
+                <td>Total</td>
+                <td>${totalArticles}</td>
+                <td></td><td></td><td></td>
+                <td>${totalWeightChargeable}</td>
+                <td>${totalActualWeight}</td>
+                <td>${totalAmount}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="invoice-footer">
+            <div class="footer-left">
+              <div><strong>Goods Type:</strong> ${record.goods_type}</div>
+              <div><strong>Value Declared:</strong> ${record.value_declared}</div>
+              <div><strong>GST Will be Paid By:</strong> ${record.gst_will_be_paid_by}</div>
+              <p><strong>Subject to Indore Jurisdiction</strong></p>
+              <p><strong>AT OWNER'S RISK</strong></p>
+            </div>
+            <div class="footer-right">
+              <p>Driver Copy</p>
+              <div class="signature">${record.driver_name || ''}</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+    } else {
+      alert('Please allow pop-ups to view the invoice.');
+    }
+  };
+
+  // Dragging logic
   const handleMouseDown = (e) => {
-    if (viewMode === 'invoice') return; 
-    
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
+    // Only allow dragging if clicking on the header (target is header or its child)
+    if (e.target.closest('.th-window-header')) {
+      setIsDragging(true);
+      setDragOffset({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
+    }
   };
 
   const handleMouseMove = (e) => {
-    if (!isDragging || viewMode === 'invoice') return;
-    
+    if (!isDragging) return;
     setPosition({
       x: e.clientX - dragOffset.x,
       y: e.clientY - dragOffset.y
@@ -116,14 +237,23 @@ const TransactionHistory = ({ isLightMode, consignorName, consigneeName, onClose
 
   useEffect(() => {
     setPosition({
-      x: window.innerWidth / 2 - 300, 
-      y: window.innerHeight / 2 - 200 
+      x: window.innerWidth / 2 - 300,
+      y: window.innerHeight / 2 - 200
     });
   }, []);
 
+  // Safe close handler
+  const handleClose = () => {
+    if (onClose && typeof onClose === 'function') {
+      onClose();
+    } else {
+      console.warn('onClose prop is missing or not a function');
+    }
+  };
+
   return (
     <div 
-      className={`th-floating-window ${isLightMode ? 'th-light-mode' : 'th-dark-mode'} ${viewMode === 'invoice' ? 'th-invoice-mode' : ''}`}
+      className={`th-floating-window ${isLightMode ? 'th-light-mode' : 'th-dark-mode'}`}
       style={{
         position: 'fixed',
         left: `${position.x}px`,
@@ -137,251 +267,60 @@ const TransactionHistory = ({ isLightMode, consignorName, consigneeName, onClose
       <div 
         className="th-window-header"
         onMouseDown={handleMouseDown}
-        style={{ cursor: viewMode === 'table' ? 'move' : 'default' }}
+        style={{ cursor: 'move' }}
       >
-        <div className="th-window-title">
-          Transaction History
-        </div>
-        <button className="th-window-close" onClick={onClose}>×</button>
+        <div className="th-window-title">Transaction History</div>
+        <button className="th-window-close" onClick={handleClose}>×</button>
       </div>
       
       <div className="th-window-content">
-        {viewMode === 'table' ? (
-          <>
-            <div className="th-popup-header">
-              <div className="th-consignor-consignee">
-                <div><strong>Consignor:</strong> {consignor}</div>
-                <div><strong>Consignee:</strong> {consignee}</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="th-loading">Loading...</div>
-            ) : error ? (
-              <div className="th-error-message">{error}</div>
-            ) : transportRecords.length > 0 ? (
-              <div className="th-table-container">
-                <table className="th-history-table">
-                  <thead>
-                    <tr>
-                      <th>Transaction No.</th>
-                      <th>GR No.</th>
-                      <th>Date</th>
-                      <th>Created/Updated At</th>
-                      <th>From</th>
-                      <th>To</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transportRecords.map((record, index) => (
-                      <tr key={record.gr_no}>
-                        <td>{index + 1}</td>
-                        <td>{record.gr_no}</td>
-                        <td>{new Date(record.date).toLocaleDateString()}</td>
-                        <td>{getDisplayDate(record)}</td>
-                        <td>{record.from_location}</td>
-                        <td>{record.to_location}</td>
-                        <td>
-                          <button 
-                            onClick={() => handleViewInvoice(record.gr_no)}
-                            className="th-view-btn"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="th-no-records">No transaction records found</div>
-            )}
-          </>
-        ) : (
-          <div className="th-invoice-view">
-            <button 
-              onClick={handleBackToTable}
-              className="th-back-btn"
-            >
-              <FaArrowLeft /> Back to Transactions
-            </button>
-            
-            {transportRecords
-              .filter(record => record.gr_no === expandedInvoice)
-              .map(record => (
-                <div key={record.gr_no} className="th-full-invoice">
-                  <div className="th-invoice-header">
-                    <div className="th-company-name">M.P. TRANSPORT (INDORE)</div>
-                    <div className="th-company-description">Clearing, Forwarding & Transport Agent</div>
-                    
-                    <div className="th-company-address">
-                      <div className="th-address-left">
-                        <div><strong>H.O.:</strong> 180, New Loha Mandi, Indore (M.P.) - 452001</div>
-                        <div><strong>B.O.:</strong> 0771-2575983, 94253-15983</div>
-                      </div>
-                      <div className="th-address-right">
-                        <div><strong>Mob:</strong> 94250-82053</div>
-                        <div><strong>Ph:</strong> (0731)-2466047, 2364333, 2466379</div>
-                        <div><strong>GSTIN:</strong> 23AACPT2351B1ZA</div>
-                      </div>
-                    </div>
-
-                    <div className="th-invoice-meta">
-                      <div className="th-form-group th-inline">
-                        <strong>G.R. No.:&nbsp;</strong>
-                        <span>{record.gr_no}</span>
-                      </div>
-                      <div className="th-form-group th-inline th-show-date">
-                        <strong>Date:&nbsp;</strong>
-                        <span>{new Date(record.date).toLocaleDateString()}</span>
-                      </div>
-                      <div className="th-form-group th-inline">
-                        <strong>e-way Bill no.:&nbsp;</strong>
-                        <span>{record.eway_bill_no}</span>
-                      </div>
-                    </div>
-
-                    <div className="th-consignment-details">
-                      <div className="th-consignment-from">
-                        <div className="th-form-group th-inline">
-                          <strong>From:</strong>
-                          <span>{record.from_location}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignor Code:</strong>
-                          <span>{record.consignor_code}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignor Name:</strong>
-                          <span>{record.consignor_name}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignor GST:</strong>
-                          <span>{record.consignor_gst}</span>
-                        </div>
-                      </div>
-                      <div className="th-consignment-to">
-                        <div className="th-form-group th-inline">
-                          <strong>To:</strong>
-                          <span>{record.to_location}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignee Code:</strong>
-                          <span>{record.consignee_code}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignee Name:</strong>
-                          <span>{record.consignee_name}</span>
-                        </div>
-                        <div className="th-form-group th-inline">
-                          <strong>Consignee GST:</strong>
-                          <span>{record.consignee_gst}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="th-payment-type">
-                    <div className="th-form-group">
-                      <label>
-                        <strong>Payment Type: </strong>
-                        <span>{record.payment_type === 'TO PAY' ? 'TO PAY' : 'PAID'}</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="th-invoice-table">
-                    <table>
-                      <thead>
-                        <tr className="th-header-row">
-                          <th>Index</th>
-                          <th>No. of Articles</th>
-                          <th>Said to Contain</th>
-                          <th>HSN</th>
-                          <th>Tax Free (Yes/No)</th>
-                          <th>Weight Chargeable</th>
-                          <th>Actual Weight</th>
-                          <th>{record.paid == 0 ? 'TO PAY' : 'PAID'}</th>
-                          <th>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {record.articles.map((article, idx) => {
-                          const articleNos = record.article_no?.split('|') || [];
-                          const saidToContains = record.said_to_contain?.split('|') || [];
-                          const taxFrees = record.tax_free?.split('|') || [];
-                          const weightChargeables = record.weight_chargeable?.split('|') || [];
-                          const actualWeights = record.actual_weight?.split('|') || [];
-                          const hsns = record.hsn?.split('|') || [];
-                          const amounts = record.amount?.split('|') || [];
-                          const remarks = record.remarks?.split('|') || [];
-
-                          return (
-                            <tr key={idx}>
-                              <td>{idx + 1}</td>
-                              <td>{articleNos[idx] || ''}</td>
-                              <td>{saidToContains[idx] || ''}</td>
-                              <td>{hsns[idx] || ''}</td>
-                              <td>{taxFrees[idx] || 'No'}</td>
-                              <td>{weightChargeables[idx] || ''}</td>
-                              <td>{actualWeights[idx] || ''}</td>
-                              <td>{amounts[idx] || ''}</td>
-                              <td>{remarks[idx] || ''}</td>
-                            </tr>
-                          );
-                        })}
-                        <tr className="th-total-row">
-                          <td>Total</td>
-                          <td>{
-                            record.article_no?.split('|').reduce((sum, val) => sum + (Number(val) || 0), 0)
-                          }</td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td>{
-                            record.weight_chargeable?.split('|').reduce((sum, val) => sum + (Number(val) || 0), 0)
-                          }</td>
-                          <td>{
-                            record.actual_weight?.split('|').reduce((sum, val) => sum + (Number(val) || 0), 0)
-                          }</td>
-                          <td>{
-                            record.amount?.split('|').reduce((sum, val) => sum + (Number(val) || 0), 0)
-                          }</td>
-                          <td></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="th-invoice-footer">
-                    <div className="th-footer-left">
-                      <div className="th-form-group th-inline">
-                        <strong>Goods Type:</strong>
-                        <span>{record.goods_type}</span>
-                      </div>
-                      <div className="th-form-group th-inline">
-                        <strong>Value Declared:</strong>
-                        <span>{record.value_declared}</span>
-                      </div>
-                      <div className="th-form-group th-inline">
-                        <strong>GST Will be Paid By:</strong>
-                        <span>{record.gst_will_be_paid_by}</span>
-                      </div>
-                      <p><strong>Subject to Indore Jurisdiction</strong></p>
-                      <p><strong>AT OWNER'S RISK</strong></p>
-                    </div>
-                    <div className="th-footer-right">
-                      <p>Driver Copy</p>
-                      <div className="th-form-group th-inline th-signature">
-                        <p className="th-signature">{record.driver_name}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        <div className="th-popup-header">
+          <div className="th-consignor-consignee">
+            <div><strong>Consignor:</strong> {consignorName || 'Not provided'}</div>
+            <div><strong>Consignee:</strong> {consigneeName || 'Not provided'}</div>
           </div>
+        </div>
+
+        {loading ? (
+          <div className="th-loading">Loading...</div>
+        ) : error ? (
+          <div className="th-error-message">{error}</div>
+        ) : transportRecords.length > 0 ? (
+          <div className="th-table-container">
+            <table className="th-history-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>GR No.</th>
+                  <th>Date</th>
+                  <th>Created/Updated At</th>
+                  <th>From</th>
+                  <th>To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transportRecords.map((record, index) => (
+                  <tr key={record.gr_no}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <button 
+                        onClick={() => openInvoiceInNewTab(record)}
+                        className="th-gr-link"
+                      >
+                        {record.gr_no}
+                      </button>
+                    </td>
+                    <td>{new Date(record.date).toLocaleDateString()}</td>
+                    <td>{getDisplayDate(record)}</td>
+                    <td>{record.from_location}</td>
+                    <td>{record.to_location}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="th-no-records">No transaction records found</div>
         )}
       </div>
     </div>
