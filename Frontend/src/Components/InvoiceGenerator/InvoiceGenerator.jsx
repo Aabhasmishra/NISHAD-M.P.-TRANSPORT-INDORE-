@@ -1772,6 +1772,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           isLightMode={isLightMode}
           consignorName={formData.consignor}
           consigneeName={formData.consignee}
+          consignorCode={formData.consignorCode}
+          consigneeCode={formData.consigneeCode}
           onClose={() => setOpenPopUp(false)}
         />
       )}
