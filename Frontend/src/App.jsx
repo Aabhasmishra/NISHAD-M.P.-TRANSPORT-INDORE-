@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import UserManagement from "./Components/UserManagement/UserManagement";
 import MySidebar from "./Components/Sidebar/Sidebar";
-import InvoiceGenerator from "./Components/InvoiceGenerator/3";
+import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
