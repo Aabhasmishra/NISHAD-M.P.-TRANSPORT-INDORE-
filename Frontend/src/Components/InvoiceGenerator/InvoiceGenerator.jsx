@@ -59,7 +59,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     gstPaidBy: "Consignor",
     motorFreight: "",
     hammali: "",
-    otherCharges: "",
+    otherCharges: "10",
     created_at: "",
     updated_at: "",
     
@@ -243,20 +243,26 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const verifyConsignorConsignee = async () => {
     setIsVerifying(true);
     setErrorMessage("");
+
+    const cleanIdNumber = (value) => {
+      const str = (value || "").trim();
+      return str.startsWith("URD - ") ? str.replace("URD - ", "").trim() : str;
+    };
+
     try {
+      const consignorId = cleanIdNumber(formData.consignorGst);
+      const consigneeId = cleanIdNumber(formData.consigneeGst);
+
       // 1. Validate consignor
       const consignorRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignor
-        )}&id_number=${encodeURIComponent(formData.consignorGst)}`
+        )}&id_number=${encodeURIComponent(consignorId)}`
       );
       const consignorData = await consignorRes.json();
 
       if (!consignorData.valid) {
-        showAlert(
-          "Consignor details not found in database",
-          "error"
-        );
+        showAlert("Consignor details not found in database", "error");
         return false;
       }
 
@@ -264,17 +270,15 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       const consigneeRes = await fetch(
         `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
           formData.consignee
-        )}&id_number=${encodeURIComponent(formData.consigneeGst)}`
+        )}&id_number=${encodeURIComponent(consigneeId)}`
       );
       const consigneeData = await consigneeRes.json();
 
       if (!consigneeData.valid) {
-        showAlert(
-          "Consignee details not found in database",
-          "error"
-        );
+        showAlert("Consignee details not found in database", "error");
         return false;
       }
+
       return true;
     } catch (err) {
       setErrorMessage(err.message);
@@ -534,7 +538,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       gstPaidBy: "Consignor",
       motorFreight: "",
       hammali: "",
-      otherCharges: "",
+      otherCharges: "10",
       created_at: "",
       updated_at: "",
       challan_status: 'NOT SHIPPED',
