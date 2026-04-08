@@ -35,11 +35,11 @@ module.exports = (transportDB) => {
   // Get transport history using unique customer codes
   router.get('/transport-records/history', async (req, res) => {
     try {
-      const { consignorCode, consigneeCode } = req.query;
-      if (!consignorCode || !consigneeCode) {
-        return res.status(400).json({ error: "consignorCode and consigneeCode are required" });
+      const { consignorGst, consigeeGst } = req.query;
+      if (!consignorGst || !consigeeGst) {
+        return res.status(400).json({ error: "consignorGst and consigeeGst are required" });
       }
-      const history = await transportDB.getTransportHistory(consignorCode, consigneeCode);
+      const history = await transportDB.getTransportHistory(consignorGst, consigeeGst);
       res.json(history);
     } catch (err) {
       res.status(400).json({ error: err.message });
