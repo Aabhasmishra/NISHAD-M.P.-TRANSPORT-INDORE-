@@ -162,7 +162,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
     setIsCheckingPayment(true);
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(formData.consignorCode)}&consigneeCode=${encodeURIComponent(formData.consigneeCode)}`
+        `http://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(formData.consignorGst)}&consigeeGst=${encodeURIComponent(formData.consigneeGst)}`
       );
       
       if (!response.ok) {
@@ -1761,16 +1761,16 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           isLightMode={isLightMode}
           consignorName={formData.consignor}
           consigneeName={formData.consignee}
-          consignorCode={formData.consignorCode}
-          consigneeCode={formData.consigneeCode}
+          consignorGst={formData.consignorGst}
+          consigeeGst={formData.consigneeGst}
           onClose={() => setOpenPopUp(false)}
         />
       )}
 
       {showAutoWrite && (
         <AutoWriteInvoice
-          consignorCode={formData.consignorCode}
-          consigneeCode={formData.consigneeCode}
+          consignorGst={formData.consignorGst}
+          consigeeGst={formData.consigneeGst}
           onData={handleAutoWriteData}
           onError={handleAutoWriteError}
           onLoading={setAutoWriteLoading}
