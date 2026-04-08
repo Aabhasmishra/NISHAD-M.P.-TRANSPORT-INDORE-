@@ -5,8 +5,8 @@ const TransactionHistory = ({
   isLightMode, 
   consignorName = '',
   consigneeName = '',
-  consignorCode = '',
-  consigneeCode = '',
+  consignorGst = '',
+  consigeeGst = '',
   onClose
 }) => {
   const [transportRecords, setTransportRecords] = useState([]);
@@ -16,23 +16,23 @@ const TransactionHistory = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Fetch history when codes are available
+  // Fetch history when GSTs are available
   useEffect(() => {
-    if (consignorCode && consigneeCode) {
+    if (consignorGst && consigeeGst) {
       fetchTransportRecords();
     } else {
-      // Optionally show a message if codes missing
-      setError('Customer codes not provided. Cannot fetch transaction history.');
+      // Optionally show a message if GSTs missing
+      setError('Customer GSTs not provided. Cannot fetch transaction history.');
     }
-  }, [consignorCode, consigneeCode]);
+  }, [consignorGst, consigeeGst]);
 
   const fetchTransportRecords = async () => {
-    if (!consignorCode || !consigneeCode) return;
+    if (!consignorGst || !consigeeGst) return;
 
     setLoading(true);
     setError('');
     try {
-      const url = `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(consignorCode)}&consigneeCode=${encodeURIComponent(consigneeCode)}`;
+      const url = `http://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
       const response = await fetch(url);
       const data = await response.json();
       
