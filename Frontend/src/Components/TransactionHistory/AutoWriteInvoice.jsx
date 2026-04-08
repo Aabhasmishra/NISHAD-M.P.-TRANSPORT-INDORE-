@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { formatNumericValue } from '../HelpFulComponents/FormatNumericValue';
 
-const AutoWriteInvoice = ({ consignorCode, consigneeCode, onData, onError, onLoading }) => {
+const AutoWriteInvoice = ({ consignorGst, consigeeGst, onData, onError, onLoading }) => {
   useEffect(() => {
-    if (!consignorCode || !consigneeCode) {
+    if (!consignorGst || !consigeeGst) {
       onError?.('Consignor code and consignee code are required');
       onData?.(null);
       return;
@@ -12,7 +12,7 @@ const AutoWriteInvoice = ({ consignorCode, consigneeCode, onData, onError, onLoa
     const fetchLatestInvoice = async () => {
       onLoading?.(true);
       try {
-        const url = `http://43.230.202.198:3000/api/transport-records/history?consignorCode=${encodeURIComponent(consignorCode)}&consigneeCode=${encodeURIComponent(consigneeCode)}`;
+        const url = `http://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -53,7 +53,7 @@ const AutoWriteInvoice = ({ consignorCode, consigneeCode, onData, onError, onLoa
     };
 
     fetchLatestInvoice();
-  }, [consignorCode, consigneeCode, onData, onError, onLoading]);
+  }, [consignorGst, consigeeGst, onData, onError, onLoading]);
 
   return null;
 };
