@@ -209,12 +209,12 @@ async function getAllTransportRecords() {
 }
 
 // Get transport records history for a specific consignor and consignee using their unique customer codes
-async function getTransportHistory(consignorCode, consigneeCode) {
+async function getTransportHistory(consignorGst, consigeeGst) {
   const { rows } = await pool.query(
     `SELECT * FROM transport_records 
-     WHERE consignor_code = $1 AND consignee_code = $2
+     WHERE consignor_gst = $1 AND consignee_gst = $2
      ORDER BY date DESC, created_at DESC`,
-    [consignorCode, consigneeCode]
+    [consignorGst, consigeeGst]
   );
 
   return rows.map(record => {
