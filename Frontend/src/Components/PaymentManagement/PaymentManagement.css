@@ -199,6 +199,17 @@
   box-shadow: 0 4px 8px rgba(66, 153, 225, 0.3);
 }
 
+.pm-print-button {
+  background-color: #4299e1;
+  color: white;
+}
+
+.pm-print-button:hover:not(:disabled) {
+  background-color: #3182ce;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(66, 225, 95, 0.3);
+}
+
 .pm-secondary-button {
   background-color: #e2e8f0;
   color: #4a5568;
