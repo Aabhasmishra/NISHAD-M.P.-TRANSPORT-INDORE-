@@ -483,233 +483,308 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     };
 
     // Print functionality
-    const handlePrint = () => {
-        const rowsForPrint = ensureMinimumRows(rows, 30);
+const handlePrint = () => {
+    // Ensure at least 30 rows for printing
+    const rowsForPrint = ensureMinimumRows(rows, 30);
+    
+    const hasData = rows.some(row => row.builty_no);
+    const totals = calculateTotals();
+    
+    const actualDataRowCount = rowsForPrint.length;
+    const needsPagination = actualDataRowCount > 30;
+    
+    let rowsHtml = '';
+    
+    if (!needsPagination) {
+        // Original behavior: all rows + total row on one page
+        rowsHtml = rowsForPrint.map((row, idx) => `
+            <tr class="challan-table-row print-row">
+                <td class="text-center">${row.index}</td>
+                <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
+                <td class="text-center">${row.destination || ''}</td>
+                <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
+                <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
+                <td class="text-center">${row.units || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
+                <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
+            </tr>
+        `).join('');
         
-        const printWindow = window.open('', '_blank');
+        var totalRowHtml = hasData ? `
+            <tr class="challan-table-total-row">
+                <td class="text-center">Total</td>
+                <td colSpan="4"></td>
+                <td class="text-center">${totals.units}</td>
+                <td class="text-center">${totals.weight}</td>
+                <td></td>
+                <td class="text-center">${totals.to_pay}</td>
+                <td class="text-center">${totals.paid}</td>
+            </tr>
+        ` : '';
+    } else {
+        // Pagination: first 30 rows, then page break, then remaining rows + total
+        const firstPageRows = rowsForPrint.slice(0, 30);
+        const secondPageRows = rowsForPrint.slice(30);
         
-        const printContent = `
-            <div class="challan-print-content">
-                ${printRef.current.querySelector('.challan-box-container').outerHTML}
-                <div class="challan-table-container">
-                    <table class="challan-table">
-                        <thead>
-                            <tr class="challan-table-header">
-                                <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
-                                <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsForPrint.map((row, index) => `
-                                <tr class="challan-table-row print-row">
-                                    <td class="text-center">${row.index}</td>
-                                    <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
-                                    <td class="text-center">${row.destination || ''}</td>
-                                    <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
-                                    <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
-                                    <td class="text-center">${row.units || ''}</td>
-                                    <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
-                                    <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
-                                    <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
-                                    <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
-                                </tr>
-                            `).join('')}
-                            ${rows.some(row => row.builty_no) && `
-                                <tr class="challan-table-total-row">
-                                    <td class="text-center">Total</td><td colSpan="4"></td>
-                                    <td class="text-center">${calculateTotals().units}</td>
-                                    <td class="text-center">${calculateTotals().weight}</td><td></td>
-                                    <td class="text-center">${calculateTotals().to_pay}</td>
-                                    <td class="text-center">${calculateTotals().paid}</td>
-                                </tr>
-                            `}
-                        </tbody>
-                    </table>
-                </div>
+        rowsHtml = firstPageRows.map((row, idx) => `
+            <tr class="challan-table-row print-row">
+                <td class="text-center">${row.index}</td>
+                <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
+                <td class="text-center">${row.destination || ''}</td>
+                <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
+                <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
+                <td class="text-center">${row.units || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
+                <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
+            </tr>
+        `).join('');
+        
+        // Page break row
+        rowsHtml += `
+            <tr class="page-break-row" style="page-break-before: always; height: 0; visibility: hidden;">
+                <td colspan="10" style="padding: 0; border: none;"></td>
+            </tr>
+        `;
+        
+        rowsHtml += secondPageRows.map((row, idx) => `
+            <tr class="challan-table-row print-row">
+                <td class="text-center">${row.index}</td>
+                <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
+                <td class="text-center">${row.destination || ''}</td>
+                <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
+                <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
+                <td class="text-center">${row.units || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
+                <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
+            </tr>
+        `).join('');
+        
+        var totalRowHtml = hasData ? `
+            <tr class="challan-table-total-row">
+                <td class="text-center">Total</td>
+                <td colSpan="4"></td>
+                <td class="text-center">${totals.units}</td>
+                <td class="text-center">${totals.weight}</td>
+                <td></td>
+                <td class="text-center">${totals.to_pay}</td>
+                <td class="text-center">${totals.paid}</td>
+            </tr>
+        ` : '';
+    }
+    
+    const printWindow = window.open('', '_blank');
+    
+    const printContent = `
+        <div class="challan-print-content">
+            ${printRef.current.querySelector('.challan-box-container').outerHTML}
+            <div class="challan-table-container">
+                <table class="challan-table">
+                    <thead>
+                        <tr class="challan-table-header">
+                            <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
+                            <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
+                            <th>To Pay</th><th>Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                        ${totalRowHtml}
+                    </tbody>
+                </table>
             </div>
-        `;
-        
-        const printDocument = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Challan ${challanNo}</title>
-                <style>
-                    :root {
-                        --consignor-cell-width: 150px;
-                        --consignee-cell-width: 150px;
-                        --table-row-height: 14.5px;
-                        --table-font-size: 10px;
-                        --consignor-font-size: 9px;
-                        --consignee-font-size: 9px;
+        </div>
+    `;
+    
+    const printDocument = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Challan ${challanNo}</title>
+            <style>
+                :root {
+                    --consignor-cell-width: 150px;
+                    --consignee-cell-width: 150px;
+                    --table-row-height: 14.5px;
+                    --table-font-size: 10px;
+                    --consignor-font-size: 9px;
+                    --consignee-font-size: 9px;
+                }
+                
+                @media print {
+                    @page {
+                        margin: 15mm 10mm 10mm 10mm; /* Increased top margin to 15mm */
                     }
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0; /* Remove body padding since @page handles margins */
+                        background: white !important;
+                        color: black !important;
+                    }
+                    .challan-print-container {
+                        width: 100%;
+                        max-width: 210mm;
+                        margin: 0 auto;
+                        background: white;
+                        color: black;
+                    }
+                    .challan-box-container {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 15px;
+                        margin-right: 0.6px;
+                        border: 1px solid #000;
+                        padding: 15px;
+                        background: white !important;
+                        color: black !important;
+                    }
+                    .challan-company-box {
+                        flex: 1;
+                        text-align: center;
+                        border-left: 2px solid #000;
+                        padding-left: 20px;
+                    }
+                    .challan-form {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        height: 100%;
+                        gap: 0;
+                    }
+                    .challan-form-row {
+                        display: flex;
+                        flex-wrap: wrap;
+                    }
+                    .challan-form-group {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        flex: 1;
+                        min-width: 200px;
+                    }
+                    .challan-form-label {
+                        font-weight: bold;
+                        font-size: 14px;
+                        display: inline-block;
+                        min-width: 75px;
+                        margin: 0;
+                        color: black !important;
+                        text-align: left;
+                    }
+                    .challan-form-value, .challan-form-input {
+                        width: 93px;
+                        font-size: 13px;
+                        padding: 4px 0px 4px 8px;
+                        background: white !important;
+                        color: black !important;
+                        min-height: auto;
+                        margin: 0;
+                        border: none;
+                        border-bottom: 1px solid #000;  
+                    }
+
+                    .challan-company-name {
+                        font-size: 16px;
+                        font-weight: bold;
+                        margin: 0 0 5px 0;
+                        color: black !important;
+                    }
+                    .challan-company-tagline {
+                        font-size: 11px;
+                        margin: 0 0 8px 0;
+                        color: black !important;
+                    }
+                    .challan-company-address, .challan-company-contact {
+                        font-size: 11px;
+                        margin: 2px 0;
+                        color: black !important;
+                    }
+                    .challan-table {
+                        width: 99.8%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        background: white !important;
+                        color: black !important;
+                    }
+                    .challan-table th, .challan-table td {
+                        border: 1px solid #000;
+                        padding: 6px;
+                        text-align: center;
+                        font-size: var(--table-font-size);
+                        background: white !important;
+                        color: black !important;
+                        height: var(--table-row-height);
+                        max-height: var(--table-row-height);
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                    .challan-table th {
+                        background-color: #f0f0f0 !important;
+                        font-weight: bold;
+                    }
+                    .challan-table-total-row {
+                        font-weight: bold;
+                        background-color: #f8f8f8 !important;
+                    }
+                    .print-row {
+                        height: var(--table-row-height) !important;
+                        max-height: var(--table-row-height) !important;
+                    }
+                    .consignor-cell, .consignee-cell {
+                        max-width: var(--consignor-cell-width) !important;
+                        width: var(--consignee-cell-width) !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        white-space: nowrap !important;
+                        font-size: var(--consignor-font-size) !important;
+                    }
+                    .challan-goodType-Print {
+                        max-width: 75px !important;
+                        font-size: var(--consignor-font-size) !important;
+                    }
+                    .text-center { text-align: center; }
+                    .no-print { display: none !important; }
                     
-                    @media print {
-                        @page {
-                            margin: 10mm;
-                        }
-                        body {
-                            font-family: Arial, sans-serif;
-                            margin: 0;
-                            padding: 10mm;
-                            background: white !important;
-                            color: black !important;
-                        }
-                        .challan-print-container {
-                            width: 100%;
-                            max-width: 210mm;
-                            margin: 0 auto;
-                            background: white;
-                            color: black;
-                        }
-                        .challan-box-container {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 15px;
-                            margin-right: 0.6px;
-                            border: 1px solid #000;
-                            padding: 15px;
-                            background: white !important;
-                            color: black !important;
-                        }
-                        .challan-input-box {
-                        }
-                        .challan-company-box {
-                            flex: 1;
-                            text-align: center;
-                            border-left: 2px solid #000;
-                            padding-left: 20px;
-                        }
-                        .challan-form {
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: space-between;
-                            height: 100%;
-                            gap: 0;
-                        }
-                        .challan-form-row {
-                            display: flex;
-                            flex-wrap: wrap;
-                        }
-                        .challan-form-group {
-                            display: flex;
-                            align-items: center;
-                            gap: 10px;
-                            flex: 1;
-                            min-width: 200px;
-                        }
-                        .challan-form-label {
-                            font-weight: bold;
-                            font-size: 14px;
-                            display: inline-block;
-                            min-width: 75px;
-                            margin: 0;
-                            color: black !important;
-                            text-align: left;
-                        }
-                        .challan-form-value, .challan-form-input {
-                            width: 93px;
-                            font-size: 13px;
-                            padding: 4px 0px 4px 8px;
-                            background: white !important;
-                            color: black !important;
-                            min-height: auto;
-                            margin: 0;
-                            border: none;
-                            border-bottom: 1px solid #000;  
-                        }
-
-                        .challanDate {
-                            font-family: Arial, sans-serif;
-                        }
-
-                        .challan-location-select {
-                            border-color: #000000;
-                        }
-
-                        .challan-company-name {
-                            font-size: 16px;
-                            font-weight: bold;
-                            margin: 0 0 5px 0;
-                            color: black !important;
-                        }
-                        .challan-company-tagline {
-                            font-size: 11px;
-                            margin: 0 0 8px 0;
-                            color: black !important;
-                        }
-                        .challan-company-address, .challan-company-contact {
-                            font-size: 11px;
-                            margin: 2px 0;
-                            color: black !important;
-                        }
-                        .challan-table {
-                            width: 99.8%;
-                            border-collapse: collapse;
-                            margin-top: 10px;
-                            background: white !important;
-                            color: black !important;
-                        }
-                        .challan-table th, .challan-table td {
-                            border: 1px solid #000;
-                            padding: 6px;
-                            text-align: center;
-                            font-size: var(--table-font-size);
-                            background: white !important;
-                            color: black !important;
-                            height: var(--table-row-height);
-                            max-height: var(--table-row-height);
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                            white-space: nowrap;
-                        }
-                        .challan-table th {
-                            background-color: #f0f0f0 !important;
-                            font-weight: bold;
-                        }
-                        .challan-table-total-row {
-                            font-weight: bold;
-                            background-color: #f8f8f8 !important;
-                        }
-                        .print-row {
-                            height: var(--table-row-height) !important;
-                            max-height: var(--table-row-height) !important;
-                        }
-                        .consignor-cell, .consignee-cell {
-                            max-width: var(--consignor-cell-width) !important;
-                            width: var(--consignee-cell-width) !important;
-                            overflow: hidden !important;
-                            text-overflow: ellipsis !important;
-                            white-space: nowrap !important;
-                            font-size: var(--consignor-font-size) !important;
-                        }
-                        .challan-goodType-Print {
-                            max-width: 75px !important;
-                            font-size: var(--consignor-font-size) !important;
-                        }
-                        .text-center { text-align: center; }
-                        .no-print { display: none !important; }
+                    /* Page break row */
+                    .page-break-row {
+                        page-break-before: always !important;
+                        break-before: page !important;
+                        height: 0 !important;
+                        visibility: hidden;
+                        border: none !important;
                     }
-                </style>
-            </head>
-            <body>
-                <div class="challan-print-container">
-                    ${printContent}
-                </div>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        setTimeout(() => window.close(), 100);
+                    .page-break-row td {
+                        padding: 0 !important;
+                        border: none !important;
+                        height: 0 !important;
                     }
-                </script>
-            </body>
-            </html>
-        `;
-        
-        printWindow.document.write(printDocument);
-        printWindow.document.close();
-    };
+                }
+            </style>
+        </head>
+        <body>
+            <div class="challan-print-container">
+                ${printContent}
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => window.close(), 100);
+                }
+            </script>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printDocument);
+    printWindow.document.close();
+};
 
     const handleCreateNew = () => {
         resetForm();
