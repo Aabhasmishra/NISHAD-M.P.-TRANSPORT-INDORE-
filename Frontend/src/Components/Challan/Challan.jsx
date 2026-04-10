@@ -507,8 +507,6 @@ const handlePrint = () => {
                 <td class="text-center">${row.units || ''}</td>
                 <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
                 <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
             </tr>
         `).join('');
         
@@ -519,8 +517,6 @@ const handlePrint = () => {
                 <td class="text-center">${totals.units}</td>
                 <td class="text-center">${totals.weight}</td>
                 <td></td>
-                <td class="text-center">${totals.to_pay}</td>
-                <td class="text-center">${totals.paid}</td>
             </tr>
         ` : '';
         
@@ -533,7 +529,6 @@ const handlePrint = () => {
                             <tr class="challan-table-header">
                                 <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                 <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -559,8 +554,6 @@ const handlePrint = () => {
                 <td class="text-center">${row.units || ''}</td>
                 <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
                 <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
             </tr>
         `).join('');
         
@@ -574,8 +567,6 @@ const handlePrint = () => {
                 <td class="text-center">${row.units || ''}</td>
                 <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
                 <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
             </tr>
         `).join('');
         
@@ -586,8 +577,6 @@ const handlePrint = () => {
                 <td class="text-center">${totals.units}</td>
                 <td class="text-center">${totals.weight}</td>
                 <td></td>
-                <td class="text-center">${totals.to_pay}</td>
-                <td class="text-center">${totals.paid}</td>
             </tr>
         ` : '';
         
@@ -601,7 +590,6 @@ const handlePrint = () => {
                             <tr class="challan-table-header">
                                 <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                 <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -614,13 +602,12 @@ const handlePrint = () => {
                 <div style="page-break-before: always;"></div>
                 
                 <!-- Second page: second table (remaining rows + total) with top margin -->
-                <div class="challan-table-container second-page-table" style="margin-top: 7mm;">
+                <div class="challan-table-container second-page-table">
                     <table class="challan-table">
                         <thead>
                             <tr class="challan-table-header">
                                 <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
                                 <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                                <th>To Pay</th><th>Paid</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -642,8 +629,8 @@ const handlePrint = () => {
             <title>Challan ${challanNo}</title>
             <style>
                 :root {
-                    --consignor-cell-width: 150px;
-                    --consignee-cell-width: 150px;
+                    --consignor-cell-width: 162px;
+                    --consignee-cell-width: 162px;
                     --table-row-height: 14.5px;
                     --table-font-size: 10px;
                     --consignor-font-size: 9px;
@@ -652,18 +639,19 @@ const handlePrint = () => {
                 
                 @media print {
                     @page {
-                        margin: 10mm;
+                        size: A4;
+                        padding: 20px; 
                     }
                     body {
                         font-family: Arial, sans-serif;
-                        margin: 20px;
+                        margin: 0;
                         padding: 0;
                         background: white !important;
                         color: black !important;
                     }
                     .challan-print-container {
                         width: 100%;
-                        max-width: 210mm;
+                        max-width: 190mm;
                         margin: 0 auto;
                         background: white;
                         color: black;
