@@ -484,7 +484,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
 
     // Print functionality
 const handlePrint = () => {
-    // Ensure at least 30 rows for printing
+    // Ensure at least 30 rows for printing (original minimum)
     const rowsForPrint = ensureMinimumRows(rows, 30);
     
     const hasData = rows.some(row => row.builty_no);
@@ -493,11 +493,11 @@ const handlePrint = () => {
     const actualDataRowCount = rowsForPrint.length;
     const needsPagination = actualDataRowCount > 30;
     
-    let rowsHtml = '';
+    let printContent = '';
     
     if (!needsPagination) {
-        // Original behavior: all rows + total row on one page
-        rowsHtml = rowsForPrint.map((row, idx) => `
+        // ≤30 rows: single table with 30 rows + total row (original behavior)
+        const tableRowsHtml = rowsForPrint.slice(0, 30).map((row, idx) => `
             <tr class="challan-table-row print-row">
                 <td class="text-center">${row.index}</td>
                 <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
@@ -512,7 +512,7 @@ const handlePrint = () => {
             </tr>
         `).join('');
         
-        var totalRowHtml = hasData ? `
+        const totalRowHtml = hasData ? `
             <tr class="challan-table-total-row">
                 <td class="text-center">Total</td>
                 <td colSpan="4"></td>
@@ -523,34 +523,33 @@ const handlePrint = () => {
                 <td class="text-center">${totals.paid}</td>
             </tr>
         ` : '';
-    } else {
-        // Pagination: first 30 rows, then page break, then remaining rows + total
-        const firstPageRows = rowsForPrint.slice(0, 30);
-        const secondPageRows = rowsForPrint.slice(30);
         
-        rowsHtml = firstPageRows.map((row, idx) => `
-            <tr class="challan-table-row print-row">
-                <td class="text-center">${row.index}</td>
-                <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
-                <td class="text-center">${row.destination || ''}</td>
-                <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
-                <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
-                <td class="text-center">${row.units || ''}</td>
-                <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
-                <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
-                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
-            </tr>
-        `).join('');
-        
-        // Page break row
-        rowsHtml += `
-            <tr class="page-break-row" style="page-break-before: always; height: 0; visibility: hidden;">
-                <td colspan="10" style="padding: 0; border: none;"></td>
-            </tr>
+        printContent = `
+            <div class="challan-print-content">
+                ${printRef.current.querySelector('.challan-box-container').outerHTML}
+                <div class="challan-table-container">
+                    <table class="challan-table">
+                        <thead>
+                            <tr class="challan-table-header">
+                                <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
+                                <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
+                                <th>To Pay</th><th>Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRowsHtml}
+                            ${totalRowHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         `;
+    } else {
+        // >30 rows: split into two tables
+        const firstPageRows = rowsForPrint.slice(0, 31);
+        const secondPageRows = rowsForPrint.slice(31);
         
-        rowsHtml += secondPageRows.map((row, idx) => `
+        const firstTableRowsHtml = firstPageRows.map((row, idx) => `
             <tr class="challan-table-row print-row">
                 <td class="text-center">${row.index}</td>
                 <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
@@ -565,7 +564,22 @@ const handlePrint = () => {
             </tr>
         `).join('');
         
-        var totalRowHtml = hasData ? `
+        const secondTableRowsHtml = secondPageRows.map((row, idx) => `
+            <tr class="challan-table-row print-row">
+                <td class="text-center">${row.index}</td>
+                <td class="text-center">${formatBuiltyForDisplay(row.builty_no) || ''}</td>
+                <td class="text-center">${row.destination || ''}</td>
+                <td class="text-center consignor-cell">${row.consignor_name || ''}</td>
+                <td class="text-center consignee-cell">${row.consignee_name || ''}</td>
+                <td class="text-center">${row.units || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? row.weight : ''}</td>
+                <td class="text-center challan-goodType-Print">${row.good_type || ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.to_pay) : ''}</td>
+                <td class="text-center">${row.index <= rows.length ? Number(row.paid) : ''}</td>
+            </tr>
+        `).join('');
+        
+        const totalRowHtml = hasData ? `
             <tr class="challan-table-total-row">
                 <td class="text-center">Total</td>
                 <td colSpan="4"></td>
@@ -576,30 +590,50 @@ const handlePrint = () => {
                 <td class="text-center">${totals.paid}</td>
             </tr>
         ` : '';
+        
+        printContent = `
+            <div class="challan-print-content">
+                <!-- First page: header box + first table (31 rows, no total) -->
+                ${printRef.current.querySelector('.challan-box-container').outerHTML}
+                <div class="challan-table-container">
+                    <table class="challan-table">
+                        <thead>
+                            <tr class="challan-table-header">
+                                <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
+                                <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
+                                <th>To Pay</th><th>Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${firstTableRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Force page break before second table -->
+                <div style="page-break-before: always;"></div>
+                
+                <!-- Second page: second table (remaining rows + total) with top margin -->
+                <div class="challan-table-container second-page-table" style="margin-top: 7mm;">
+                    <table class="challan-table">
+                        <thead>
+                            <tr class="challan-table-header">
+                                <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
+                                <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
+                                <th>To Pay</th><th>Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${secondTableRowsHtml}
+                            ${totalRowHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
     }
     
     const printWindow = window.open('', '_blank');
-    
-    const printContent = `
-        <div class="challan-print-content">
-            ${printRef.current.querySelector('.challan-box-container').outerHTML}
-            <div class="challan-table-container">
-                <table class="challan-table">
-                    <thead>
-                        <tr class="challan-table-header">
-                            <th>Index</th><th>Builty No</th><th>Destination</th><th>Consignor</th>
-                            <th>Consignee</th><th>Units</th><th>Weight</th><th>Good Type</th>
-                            <th>To Pay</th><th>Paid</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHtml}
-                        ${totalRowHtml}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
     
     const printDocument = `
         <!DOCTYPE html>
@@ -618,12 +652,12 @@ const handlePrint = () => {
                 
                 @media print {
                     @page {
-                        margin: 15mm 10mm 10mm 10mm; /* Increased top margin to 15mm */
+                        margin: 10mm;
                     }
                     body {
                         font-family: Arial, sans-serif;
-                        margin: 0;
-                        padding: 0; /* Remove body padding since @page handles margins */
+                        margin: 20px;
+                        padding: 0;
                         background: white !important;
                         color: black !important;
                     }
@@ -752,19 +786,7 @@ const handlePrint = () => {
                     .text-center { text-align: center; }
                     .no-print { display: none !important; }
                     
-                    /* Page break row */
-                    .page-break-row {
-                        page-break-before: always !important;
-                        break-before: page !important;
-                        height: 0 !important;
-                        visibility: hidden;
-                        border: none !important;
-                    }
-                    .page-break-row td {
-                        padding: 0 !important;
-                        border: none !important;
-                        height: 0 !important;
-                    }
+                    /* Second page table top margin is applied via inline style on container */
                 }
             </style>
         </head>
