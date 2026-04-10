@@ -641,6 +641,7 @@ const handlePrint = () => {
                     @page {
                         size: A4;
                         padding: 20px; 
+                        padding-left: 2px; 
                     }
                     body {
                         font-family: Arial, sans-serif;
