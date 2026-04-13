@@ -1425,46 +1425,45 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       // ✅ MOBILE PRINT FIX (ADD THIS AT THE END BEFORE return css)
 
-      if (!usePrint2Styles) {
-        css += `
-        @media print and (max-width: 768px) {
+      css += `
+      @media print and (max-width: 768px) {
 
-          body {
-            margin: 0 !important;
-            padding: 6mm !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            overflow: hidden !important;
-          }
-
-          .print-container {
-            width: 100% !important;
-            height: 270mm !important;
-            gap: 2mm !important;
-          }
-
-          .invoice-copy {
-            height: calc((270mm - 4mm) / 3) !important;
-          }
-
-          .invoice-container {
-            transform: scale(0.80) !important;  /* slight adjust */
-            transform-origin: top left !important;
-            width: 125% !important;
-            height: 100% !important;
-          }
-
-          /* 🔥 Prevent page break */
-          .invoice-copy {
-            page-break-inside: avoid !important;
-          }
-
-          gstin {
-            display: none;
-          }
+        body {
+          margin: 0 !important;
+          padding: 6mm !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          overflow: hidden !important;
         }
-        `;
+
+        .print-container {
+          width: 100% !important;
+          height: 270mm !important;
+          gap: 2mm !important;
+        }
+
+        .invoice-copy {
+          height: calc((270mm - 4mm) / 3) !important;
+        }
+
+        .invoice-container {
+          transform: scale(0.80) !important;  /* slight adjust */
+          transform-origin: top left !important;
+          width: 125% !important;
+          height: 100% !important;
+        }
+
+        /* 🔥 Prevent page break */
+        .invoice-copy {
+          page-break-inside: avoid !important;
+        }
+
+        gstin {
+          display: none;
+        }
       }
+      `;
+
       return css;
     };
 
