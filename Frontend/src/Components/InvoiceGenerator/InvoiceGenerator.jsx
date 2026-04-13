@@ -1427,7 +1427,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       css += `
       @media print and (max-width: 768px) {
-
+        @page {
+          size: A4;
+          margin: 0;
+        }
         body {
           margin: 0 !important;
           padding: 6mm !important;
@@ -1460,6 +1463,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
         gstin {
           display: none;
+          width: 0px;
         }
       }
       `;
