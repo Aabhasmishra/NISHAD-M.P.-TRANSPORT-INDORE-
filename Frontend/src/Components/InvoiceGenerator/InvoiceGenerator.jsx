@@ -1423,6 +1423,68 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         `;
       }
 
+      // ✅ MOBILE PRINT FIX (ADD THIS AT THE END BEFORE return css)
+
+      css += `
+        @media print and (max-width: 768px) {
+
+          body {
+            width: auto !important;
+            height: auto !important;
+            padding: 5mm !important;
+            overflow: visible !important;
+          }
+
+          .print-container {
+            width: 100% !important;
+            height: auto !important;
+            gap: 2mm !important;
+          }
+
+          .invoice-copy {
+            height: auto !important;
+          }
+
+          .invoice-container {
+            transform: none !important;   /* 🔥 IMPORTANT */
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          /* Reduce heavy positioning issues */
+          .textShiftUp,
+          .textShiftUp2,
+          .textShiftUp3,
+          .textShiftLeft,
+          .textShiftDown {
+            position: static !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+          }
+
+          /* Table fixes */
+          .invoice-table table {
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+
+          .invoice-table td,
+          .invoice-table th {
+            font-size: 9px !important;
+            padding: 2px !important;
+          }
+
+          /* Prevent overflow crash */
+          * {
+            max-width: 100% !important;
+            overflow: visible !important;
+          }
+
+        }
+      `;
+
       return css;
     };
 
