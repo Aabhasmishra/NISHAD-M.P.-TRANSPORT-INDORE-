@@ -1425,7 +1425,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
       // ✅ MOBILE PRINT FIX (ADD THIS AT THE END BEFORE return css)
 
-      if (usePrint2Styles) {
+      if (!usePrint2Styles) {
         css += `
         @media print and (max-width: 768px) {
 
