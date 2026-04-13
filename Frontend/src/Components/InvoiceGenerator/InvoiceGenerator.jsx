@@ -1437,18 +1437,17 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
           .print-container {
             width: 100% !important;
-            height: auto !important;
-            gap: 2mm !important;
+            height: 260mm !important;   /* reduce from 290mm */
+            gap: 1mm !important;
           }
 
           .invoice-copy {
-            height: auto !important;
+            height: calc((260mm - 3mm) / 3) !important;
           }
 
           .invoice-container {
-            transform: none !important;   /* 🔥 IMPORTANT */
-            width: 100% !important;
-            height: auto !important;
+            transform: scale(0.78) !important; 
+            width: 128% !important;
           }
 
           /* Reduce heavy positioning issues */
