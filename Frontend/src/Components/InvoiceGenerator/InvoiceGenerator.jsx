@@ -1459,7 +1459,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         }
 
         .fixed-name-field {
-          width: 200px;
+          width: 100px;
         }
 
       }
