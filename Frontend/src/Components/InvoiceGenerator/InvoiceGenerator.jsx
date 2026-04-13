@@ -1514,12 +1514,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             }).join('')}
           </div>
           <script>
-            setTimeout(() => {
-              window.print();
-              setTimeout(() => {
-                window.close();
-              }, 100);
-            }, 500);
           </script>
         </body>
       </html>
