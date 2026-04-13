@@ -1458,6 +1458,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           page-break-inside: avoid !important;
         }
 
+        .fixed-name-field {
+          width: 200px;
+        }
+
       }
       `;
 
