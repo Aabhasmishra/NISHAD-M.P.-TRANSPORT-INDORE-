@@ -1431,7 +1431,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         body {
           margin: 0 !important;
           padding: 6mm !important;
-          width: 210mm !important;
+          width: 190mm !important;
           height: 297mm !important;
           overflow: hidden !important;
         }
