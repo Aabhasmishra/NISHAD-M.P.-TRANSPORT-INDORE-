@@ -1221,13 +1221,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         body {
           margin: 0 !important;
           padding: 7mm;
-          width: 230mm;
+          width: auto;
           height: 297mm;
           box-sizing: border-box;
         }
 
         .print-container {
-          width: 220mm;
+          width: auto;
           height: 290mm;          /* Exactly the printable height (297mm - 2*7mm) */
           display: flex;
           flex-direction: column;
@@ -1453,12 +1453,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             }).join('')}
           </div>
           <script>
-            setTimeout(() => {
-              window.print();
-              setTimeout(() => {
-                window.close();
-              }, 100);
-            }, 500);
           </script>
         </body>
       </html>
