@@ -1426,62 +1426,39 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       // ✅ MOBILE PRINT FIX (ADD THIS AT THE END BEFORE return css)
 
       css += `
-        @media print and (max-width: 768px) {
+      @media print and (max-width: 768px) {
 
-          body {
-            width: auto !important;
-            height: auto !important;
-            padding: 5mm !important;
-            overflow: visible !important;
-          }
-
-          .print-container {
-            width: 100% !important;
-            height: 260mm !important;   /* reduce from 290mm */
-            gap: 1mm !important;
-          }
-
-          .invoice-copy {
-            height: calc((260mm - 3mm) / 3) !important;
-          }
-
-          .invoice-container {
-            transform: scale(0.78) !important; 
-            width: 128% !important;
-          }
-
-          /* Reduce heavy positioning issues */
-          .textShiftUp,
-          .textShiftUp2,
-          .textShiftUp3,
-          .textShiftLeft,
-          .textShiftDown {
-            position: static !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            bottom: auto !important;
-          }
-
-          /* Table fixes */
-          .invoice-table table {
-            width: 100% !important;
-            table-layout: fixed !important;
-          }
-
-          .invoice-table td,
-          .invoice-table th {
-            font-size: 9px !important;
-            padding: 2px !important;
-          }
-
-          /* Prevent overflow crash */
-          * {
-            max-width: 100% !important;
-            overflow: visible !important;
-          }
-
+        body {
+          margin: 0 !important;
+          padding: 6mm !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          overflow: hidden !important;
         }
+
+        .print-container {
+          width: 100% !important;
+          height: 270mm !important;
+          gap: 2mm !important;
+        }
+
+        .invoice-copy {
+          height: calc((270mm - 4mm) / 3) !important;
+        }
+
+        .invoice-container {
+          transform: scale(0.80) !important;  /* slight adjust */
+          transform-origin: top left !important;
+          width: 125% !important;
+          height: 100% !important;
+        }
+
+        /* 🔥 Prevent page break */
+        .invoice-copy {
+          page-break-inside: avoid !important;
+        }
+
+      }
       `;
 
       return css;
@@ -1514,12 +1491,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             }).join('')}
           </div>
           <script>
-            setTimeout(() => {
-              window.print();
-              setTimeout(() => {
-                window.close();
-              }, 100);
-            }, 500);
+
           </script>
         </body>
       </html>
