@@ -1228,7 +1228,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
         .print-container {
           width: 220mm;
-          height: 290mm;          /* Exactly the printable height (297mm - 2*7mm) */
+          height: 300mm;          /* Exactly the printable height (297mm - 2*7mm) */
           display: flex;
           flex-direction: column;
           gap: 2mm;              /* Reduced gap to save vertical space */
@@ -1441,8 +1441,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
         .print-container {
           width: 100% !important;
-          height: 270mm !important;
-          gap: 10mm !important;
+          height: 300mm !important;
+          gap: 2mm !important;
         }
 
         .invoice-copy {
