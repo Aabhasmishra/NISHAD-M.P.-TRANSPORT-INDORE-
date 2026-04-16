@@ -1441,7 +1441,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
         .print-container {
           width: 100% !important;
-          height: 300mm !important;
+          height: 290mm !important;
           gap: 2mm !important;
         }
 
