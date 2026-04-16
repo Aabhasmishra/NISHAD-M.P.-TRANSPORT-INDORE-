@@ -1217,65 +1217,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         }
 
         /* Print-specific overrides to ensure consistency */
-        @media print {
-        body {
-          margin: 0 !important;
-          padding: 7mm;
-          width: 230mm;
-          height: 297mm;
-          box-sizing: border-box;
-        }
 
-        .print-container {
-          width: 220mm;
-          height: 290mm;          /* Exactly the printable height (297mm - 2*7mm) */
-          display: flex;
-          flex-direction: column;
-          gap: 2mm;              /* Reduced gap to save vertical space */
-        }
-
-          .invoice-copy {
-            flex: 1;
-            height: calc((283mm - 6mm) / 3);
-            min-height: 0;
-            position: relative;
-          }
-
-          .invoice-container {
-            border: 1px solid #000 !important;
-            margin: 0 auto !important;
-            padding: 8px !important;
-            height: 100%;
-            transform: scale(0.82);
-            transform-origin: top left;
-            width: 121.95%;
-            box-sizing: border-box;
-          }
-
-          .copy-label {
-            display: none !important;
-          }
-
-          .footer-right .copy-label {
-            display: block !important;
-            position: static !important;
-            font-weight: bold;
-            font-size: 11px;
-            color: #000;
-            margin: 0;
-            text-align: right;
-          }
-
-          ${isPaidType ? `
-            .driver-copy .invoice-table td:nth-child(8) div {
-              visibility: hidden !important;
-            }
-
-            .driver-copy .total-row td:nth-child(8) p{
-              visibility: hidden !important;
-            }
-          ` : ''}
-        }
       `;
 
       // Override copy label color if hideCopyLabels is true
