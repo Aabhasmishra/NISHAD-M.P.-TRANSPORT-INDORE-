@@ -1246,53 +1246,6 @@ input, select, textarea {
   line-height: normal !important;
 }
 
-@media (max-width: 768px) {
-  .company-address {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .from-to {
-    flex-direction: column;
-  }
-
-  .consignment-from2 {
-    flex-direction: column;
-  }
-
-  .goods-type-row {
-    flex-direction: column;
-  }
-
-  .footer-below {
-    flex-direction: column;
-  }
-
-  .invoice-footer {
-    flex-direction: column;
-  }
-
-  .invoice-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .invoice-actions button {
-    width: 100%;
-    margin: 5px 0;
-  }
-
-  .popup-overlay > div {
-    width: 95%;
-    margin: 20px;
-  }
-
-  .customer-suggestions {
-    min-width: 300px !important;
-    max-width: 350px !important;
-  }
-}
-
 /* Print styles */
 @media print {
   .no-print {
