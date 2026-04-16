@@ -1455,16 +1455,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           width: 125% !important;
           height: 100% !important;
         }
-
-        /* 🔥 Prevent page break */
-        .invoice-copy {
-          page-break-inside: avoid !important;
-        }
-
-        gstin {
-          display: none;
-          width: 0px;
-        }
       }
       `;
 
