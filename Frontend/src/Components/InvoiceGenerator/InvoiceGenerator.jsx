@@ -2117,6 +2117,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       )}
                     </div>
 
+                    <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field PaymentTypePr2`}>
+                      <span className="fixed-value printValueText textShiftUp PaymentTypePr">{formData.paymentType === 'toPay' ? "To Pay" : "Paid"}</span>
+                    </div>
+
                     {/* Consignee GST field */}
                     <div className="form-group inline customer-GST-Fields">
                       <strong style={{marginRight: "2px"}}>Consignee GST:</strong>
