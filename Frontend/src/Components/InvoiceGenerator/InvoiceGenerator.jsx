@@ -1228,7 +1228,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
         .print-container {
           width: 220mm;
-          height: 300mm;          /* Exactly the printable height (297mm - 2*7mm) */
+          height: 290mm;          /* Exactly the printable height (297mm - 2*7mm) */
           display: flex;
           flex-direction: column;
           gap: 2mm;              /* Reduced gap to save vertical space */
@@ -1292,16 +1292,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           .consignor-copy .textShiftUp {
             top: 10px;
             left: 15px;
-          }
-
-          .PaymentTypePr2 {
-            position: relative;
-            left: 100px;
-          }
-
-          .PaymentTypePr {
-            display: block;
-            border-bottom: 1px solid black;
           }
             
           .consignor-copy .textShiftUp2, .GRNOCss {
@@ -1432,41 +1422,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
           }
         `;
       }
-
-      // ✅ MOBILE PRINT FIX (ADD THIS AT THE END BEFORE return css)
-
-      css += `
-      @media print and (max-width: 768px) {
-        @page {
-          size: A4;
-          margin: 0;
-        }
-        body {
-          margin: 0 !important;
-          padding: 6mm !important;
-          width: 210mm !important;
-          height: 297mm !important;
-          overflow: hidden !important;
-        }
-
-        .print-container {
-          width: 100% !important;
-          height: 290mm !important;
-          gap: 2mm !important;
-        }
-
-        .invoice-copy {
-          height: calc((270mm - 4mm) / 3) !important;
-        }
-
-        .invoice-container {
-          transform: scale(0.80) !important;  /* slight adjust */
-          transform-origin: top left !important;
-          width: 125% !important;
-          height: 100% !important;
-        }
-      }
-      `;
 
       return css;
     };
@@ -2115,10 +2070,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       ) : (
                         <span className="fixed-value printValueText textShiftUp">{formData.consignee}</span>
                       )}
-                    </div>
-
-                    <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field PaymentTypePr2`}>
-                      <span className="fixed-value printValueText textShiftUp PaymentTypePr">{formData.paymentType === 'toPay' ? "To Pay" : "Paid"}</span>
                     </div>
 
                     {/* Consignee GST field */}
