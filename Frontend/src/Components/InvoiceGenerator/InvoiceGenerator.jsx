@@ -1293,6 +1293,16 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             top: 10px;
             left: 15px;
           }
+
+          .PaymentTypePr2 {
+            position: relative;
+            left: 100px;
+          }
+
+          .PaymentTypePr {
+            display: block;
+            border-bottom: 1px solid black;
+          }
             
           .consignor-copy .textShiftUp2, .GRNOCss {
             top: 20px;
