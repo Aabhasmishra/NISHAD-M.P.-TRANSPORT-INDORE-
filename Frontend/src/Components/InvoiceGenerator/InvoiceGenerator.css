@@ -1246,6 +1246,10 @@ input, select, textarea {
   line-height: normal !important;
 }
 
+.PaymentTypePr {
+  display: none;
+}
+
 /* Print styles */
 @media print {
   .no-print {
