@@ -1,9 +1,9 @@
 /* Floating Window */
 .th-floating-window {
   position: fixed;
-  width: 600px;
+  width: 800px;
   max-width: 90vw;
-  height: 400px;
+  height: 450px;
   max-height: 80vh;
   background-color: white;
   border-radius: 12px;
