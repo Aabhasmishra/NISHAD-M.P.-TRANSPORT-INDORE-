@@ -9,6 +9,10 @@
   z-index: 1;
 }
 
+.PaymentTypePr {
+  display: none;
+}
+
 @supports not (zoom: 90%) {
   .invoice-generator-container {
     transform: scale(0.9);
