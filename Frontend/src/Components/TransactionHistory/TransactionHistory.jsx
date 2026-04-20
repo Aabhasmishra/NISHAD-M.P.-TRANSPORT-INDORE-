@@ -21,7 +21,6 @@ const TransactionHistory = ({
     if (consignorGst && consigeeGst) {
       fetchTransportRecords();
     } else {
-      // Optionally show a message if GSTs missing
       setError('Customer GSTs not provided. Cannot fetch transaction history.');
     }
   }, [consignorGst, consigeeGst]);
@@ -60,7 +59,24 @@ const TransactionHistory = ({
     return createdAt.toLocaleString();
   };
 
-  // Open invoice in a new tab
+  // Compute Total Amount: (paid or to_pay) - motor_freight - hammali - other_charges
+  const computeTotalAmount = (record) => {
+    let amount = 0;
+    if (record.to_pay == 0) {
+      amount = parseFloat(record.paid) || 0;
+    } else if (record.paid == 0) {
+      amount = parseFloat(record.to_pay) || 0;
+    } else {
+      // fallback: if both non-zero? Use to_pay as per typical logic
+      amount = parseFloat(record.to_pay) || 0;
+    }
+    const motorFreight = parseFloat(record.motor_freight) || 0;
+    const hammali = parseFloat(record.hammali) || 0;
+    const otherCharges = parseFloat(record.other_charges) || 0;
+    return amount - motorFreight - hammali - otherCharges;
+  };
+
+  // Open invoice in a new tab (removed e-way bill line)
   const openInvoiceInNewTab = (record) => {
     const articles = [];
     const articleNos = record.article_no?.split('|') || [];
@@ -140,7 +156,7 @@ const TransactionHistory = ({
           <div class="invoice-meta">
             <div><strong>G.R. No.:</strong> ${record.gr_no}</div>
             <div><strong>Date:</strong> ${new Date(record.date).toLocaleDateString()}</div>
-            <div><strong>e-way Bill no.:</strong> ${record.eway_bill_no || ''}</div>
+            <!-- e-way Bill no. removed as per requirement -->
           </div>
           <div class="consignment-details">
             <div class="consignment-from">
@@ -213,7 +229,6 @@ const TransactionHistory = ({
 
   // Dragging logic
   const handleMouseDown = (e) => {
-    // Only allow dragging if clicking on the header (target is header or its child)
     if (e.target.closest('.th-window-header')) {
       setIsDragging(true);
       setDragOffset({
@@ -242,7 +257,6 @@ const TransactionHistory = ({
     });
   }, []);
 
-  // Safe close handler
   const handleClose = () => {
     if (onClose && typeof onClose === 'function') {
       onClose();
@@ -292,30 +306,35 @@ const TransactionHistory = ({
                 <tr>
                   <th>No</th>
                   <th>GR No.</th>
-                  <th>Date</th>
                   <th>Created/Updated At</th>
-                  <th>From</th>
-                  <th>To</th>
+                  <th>Total Amount</th>
+                  <th>Actual Wt. (KG)</th>
+                  <th>Rate</th>
                 </tr>
               </thead>
               <tbody>
-                {transportRecords.map((record, index) => (
-                  <tr key={record.gr_no}>
-                    <td>{index + 1}</td>
-                    <td>
-                      <button 
-                        onClick={() => openInvoiceInNewTab(record)}
-                        className="th-gr-link"
-                      >
-                        {record.gr_no}
-                      </button>
-                    </td>
-                    <td>{new Date(record.date).toLocaleDateString()}</td>
-                    <td>{getDisplayDate(record)}</td>
-                    <td>{record.from_location}</td>
-                    <td>{record.to_location}</td>
-                  </tr>
-                ))}
+                {transportRecords.map((record, index) => {
+                  const totalAmount = computeTotalAmount(record);
+                  const actualWeight = parseFloat(record.actual_weight) || 0;
+                  const rate = actualWeight !== 0 ? (totalAmount / actualWeight).toFixed(2) : '0.00';
+                  return (
+                    <tr key={record.gr_no}>
+                      <td>{index + 1}</td>
+                      <td>
+                        <button 
+                          onClick={() => openInvoiceInNewTab(record)}
+                          className="th-gr-link"
+                        >
+                          {record.gr_no}
+                        </button>
+                      </td>
+                      <td>{getDisplayDate(record)}</td>
+                      <td>{totalAmount.toFixed(2)}</td>
+                      <td>{actualWeight}</td>
+                      <td>{rate}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
