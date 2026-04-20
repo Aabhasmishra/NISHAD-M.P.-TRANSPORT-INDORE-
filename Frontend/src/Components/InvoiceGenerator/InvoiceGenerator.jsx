@@ -1294,6 +1294,15 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             left: 15px;
           }
             
+          .PaymentTypePr2 {
+            position: relative;
+          }
+
+          .PaymentTypePr {
+            display: block;
+            border-bottom: 1px solid black;
+          }
+
           .consignor-copy .textShiftUp2, .GRNOCss {
             top: 20px;
           }
@@ -2070,6 +2079,10 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                       ) : (
                         <span className="fixed-value printValueText textShiftUp">{formData.consignee}</span>
                       )}
+                    </div>
+
+                    <div className={`form-group inline ${isEditing ? "" : "enter-names"} fixed-name-field PaymentTypePr2`}>
+                      <span className="fixed-value printValueText textShiftUp PaymentTypePr">{formData.paymentType === 'toPay' ? "To Pay" : "Paid"}</span>
                     </div>
 
                     {/* Consignee GST field */}
