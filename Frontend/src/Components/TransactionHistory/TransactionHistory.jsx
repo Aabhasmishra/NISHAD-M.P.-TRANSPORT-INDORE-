@@ -252,8 +252,8 @@ const TransactionHistory = ({
 
   useEffect(() => {
     setPosition({
-      x: window.innerWidth / 2 - 300,
-      y: window.innerHeight / 2 - 200
+      x: window.innerWidth / 2 - 400,
+      y: window.innerHeight / 2 - 220
     });
   }, []);
 
@@ -307,7 +307,7 @@ const TransactionHistory = ({
                   <th>No</th>
                   <th>GR No.</th>
                   <th>Created/Updated At</th>
-                  <th>Total Amount</th>
+                  <th>Total Amount (&#8377;)</th>
                   <th>Actual Wt. (KG)</th>
                   <th>Rate</th>
                 </tr>
@@ -316,7 +316,7 @@ const TransactionHistory = ({
                 {transportRecords.map((record, index) => {
                   const totalAmount = computeTotalAmount(record);
                   const actualWeight = parseFloat(record.actual_weight) || 0;
-                  const rate = actualWeight !== 0 ? (totalAmount / actualWeight).toFixed(2) : '0.00';
+                  const rate = actualWeight !== 0 ? (totalAmount / actualWeight).toFixed(1) : '0';
                   return (
                     <tr key={record.gr_no}>
                       <td>{index + 1}</td>
@@ -329,7 +329,7 @@ const TransactionHistory = ({
                         </button>
                       </td>
                       <td>{getDisplayDate(record)}</td>
-                      <td>{totalAmount.toFixed(2)}</td>
+                      <td>{totalAmount}</td>
                       <td>{actualWeight}</td>
                       <td>{rate}</td>
                     </tr>
