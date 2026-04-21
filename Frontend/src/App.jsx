@@ -18,15 +18,25 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeComponent, setActiveComponent] = useState("InvoiceGenerator");
   const [modeOfView, setModeOfView] = useState("add");
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [invoiceGrNumber, setInvoiceGrNumber] = useState(null);
 
-  // Listen for path changes (browser back/forward)
+  // Function to read URL params and update state
+  const updateStateFromURL = () => {
+    const params = new URLSearchParams(window.location.search);
+    const component = params.get('component') || 'InvoiceGenerator';
+    const mode = params.get('mode') || 'add';
+    const gr = params.get('gr') || null;
+    setActiveComponent(component);
+    setModeOfView(mode);
+    setInvoiceGrNumber(gr);
+  };
+
+  // Listen for popstate (browser back/forward)
   useEffect(() => {
-    const handleLocationChange = () => {
-      setCurrentPath(window.location.pathname);
-    };
-    window.addEventListener('popstate', handleLocationChange);
-    return () => window.removeEventListener('popstate', handleLocationChange);
+    updateStateFromURL();
+    const handlePopState = () => updateStateFromURL();
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   // Check for existing session on app load
@@ -40,13 +50,13 @@ const App = () => {
   }, []);
 
   // --- PUBLIC ROUTE: Terms & Conditions (no login required) ---
+  const currentPath = window.location.pathname;
   if (currentPath === '/TermsAndConditions') {
     return <TermsAndConditions />;
   }
 
   const change_theme = () => {
     setIsLightMode(!isLightMode);
-    console.log(currentUser);
   };
 
   const handleLoginSuccess = (user) => {
@@ -62,9 +72,32 @@ const App = () => {
     setCurrentUser(null);
   };
 
+  // Update URL when component, mode or GR changes
+  const updateURL = (component, mode, gr) => {
+    const params = new URLSearchParams();
+    if (component) params.set('component', component);
+    if (mode) params.set('mode', mode);
+    if (gr) params.set('gr', gr);
+    const newURL = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newURL);
+  };
+
   const handleSidebarItemClick = (component, mode) => {
     setActiveComponent(component);
     setModeOfView(mode);
+    setInvoiceGrNumber(null);
+    updateURL(component, mode, null);
+  };
+
+  // Callbacks for InvoiceGenerator to update URL
+  const handleModeChange = (newMode) => {
+    setModeOfView(newMode);
+    updateURL(activeComponent, newMode, invoiceGrNumber);
+  };
+
+  const handleGrChange = (newGr) => {
+    setInvoiceGrNumber(newGr);
+    updateURL(activeComponent, modeOfView, newGr);
   };
 
   if (!isAuthenticated) {
@@ -78,19 +111,51 @@ const App = () => {
   const renderComponent = () => {
     switch (activeComponent) {
       case 'InvoiceGenerator':
-        return <InvoiceGenerator key={`InvoiceGenerator-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <InvoiceGenerator 
+          key={`InvoiceGenerator-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+          initialGrNumber={invoiceGrNumber}
+          onModeChange={handleModeChange}
+          onGrChange={handleGrChange}
+        />;
       case 'Challan':
-        return <Challan key={`Challan-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} currentUser={currentUser.type} />;
+        return <Challan 
+          key={`Challan-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+          currentUser={currentUser.type}
+        />;
       case 'CrossingStatement':
-        return <CrossingStatement key={`CrossingStatement-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <CrossingStatement 
+          key={`CrossingStatement-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       case 'UserManagement':
-        return <UserManagement key={`UserManagement-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <UserManagement 
+          key={`UserManagement-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       case 'CustomerManagement':
-        return <CustomerManagement key={`CustomerManagement-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <CustomerManagement 
+          key={`CustomerManagement-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       case 'Transporter':
-        return <Transporter key={`Transporter-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <Transporter 
+          key={`Transporter-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       case 'PaymentManagement':
-        return <PaymentManagement key={`PaymentManagement-${modeOfView}`} isLightMode={isLightMode} modeOfView={modeOfView} />;
+        return <PaymentManagement 
+          key={`PaymentManagement-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       default:
         return <div className="default-content">Select an option from the sidebar</div>;
     }
