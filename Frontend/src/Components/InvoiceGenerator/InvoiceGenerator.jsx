@@ -26,7 +26,7 @@ const PRINT_COLUMN_WIDTHS = {
   action: '8%'
 };
 
-const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
+const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChange, onGrChange }) => {
   const [formData, setFormData] = useState({
     invoiceNumber: "",
     date: new Date().toISOString().split("T")[0],
@@ -73,7 +73,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [activeTab, setActiveTab] = useState(modeOfView);
   const [searchInvoiceNumber, setSearchInvoiceNumber] = useState("");
   
   const [openPopUp, setOpenPopUp] = useState(false);
@@ -155,6 +154,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       checkPaymentTypeConsistency();
     }
   }, [formData.paymentType]);
+
+  // Auto-search when initialGrNumber is provided and mode is not "add"
+  useEffect(() => {
+    if (modeOfView !== 'add' && initialGrNumber) {
+      setSearchInvoiceNumber(initialGrNumber);
+      fetchInvoice(initialGrNumber);
+    }
+  }, [modeOfView, initialGrNumber]);
 
   const checkPaymentTypeConsistency = async () => {
     if (!formData.consignorCode || !formData.consigneeCode) return;
@@ -615,7 +622,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         crossing_status: data.crossing_status || 'NO',
       });
 
-      setIsEditing(activeTab === "update");
+      setIsEditing(modeOfView === "update");
       setIsSubmitted(true);
       setShowInvoice(true);
     } catch (err) {
@@ -625,14 +632,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
 
   const handleSearchInvoice = (e) => {
     e.preventDefault();
-
     if (!searchInvoiceNumber) {
       setErrorMessage("Please enter an invoice number");
       return;
     }
 
     let input = searchInvoiceNumber.trim().toUpperCase();
-
     if (input.startsWith("GR")) {
       let numPart = input.slice(2).replace(/^0+/, '');
       if (numPart === '') numPart = '0';
@@ -643,6 +648,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
       input = "GR" + numPart.padStart(6, "0");
     }
 
+    onGrChange(input);      // 👈 update URL with the searched GR
     fetchInvoice(input);
   };
 
@@ -1786,9 +1792,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
         />
       )}
 
-      {(activeTab === "view" ||
-        activeTab === "update" ||
-        activeTab === "delete") && (
+      {(modeOfView === "view" ||
+        modeOfView === "update" ||
+        modeOfView === "delete") && (
         <>
           {!showInvoice ? (
             <div className={`invoice-search ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
@@ -1817,22 +1823,23 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
             </div>
           ) : (
             <div className="back-to-search-wrapper">
-              <button
-                onClick={() => {
-                  setShowInvoice(false);
-                  setSearchInvoiceNumber('');
-                }}
-                className={`back-to-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-              >
-                🡰 Back to Search
-              </button>
+            <button
+              onClick={() => {
+                setShowInvoice(false);
+                setSearchInvoiceNumber('');
+                onGrChange(null);
+              }}
+              className={`back-to-search-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+            >
+              🡰 Back to Search
+            </button>
             </div>
           )}
         </>
       )}
 
       {/* Only show invoice if in add mode OR if invoice has been found in view/update/delete mode */}
-      {(activeTab === "add" || (activeTab !== "add" && showInvoice)) && (
+      {(modeOfView === "add" || (modeOfView !== "add" && showInvoice)) && (
         <>
           {formData.created_at && (
             <div className="invoice-timestamps">
@@ -1915,7 +1922,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                   </div>
                   <div className="form-group inline">
                     <strong>G.R. No.:&nbsp;</strong>
-                    {activeTab === "add" && isEditing ? (
+                    {modeOfView === "add" && isEditing ? (
                       // In Add mode while editing, show input for GR number
                       <input
                         type="text"
@@ -2461,7 +2468,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
               </button>
             )}
             {isEditing ? (
-              activeTab === "add" ? (
+              modeOfView === "add" ? (
                 <div>
                   <button
                     type="button"
@@ -2480,34 +2487,45 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     Auto Fill Invoice
                   </button>
                 </div>
-              ) : activeTab === "update" ? (
+              ) : modeOfView === "update" ? (
                 <>
                   <button onClick={handleUpdateInvoice} className="generate-btn update-btn">
                     Update Invoice
                   </button>
-                  <button onClick={resetForm2} className="cancel-btn">
+                  <button onClick={() => {
+                    resetForm2();
+                    onModeChange("add");      // switch back to add mode
+                    onGrChange(null);         // clear GR from URL
+                  }}
+                  className="cancel-btn">
                     Cancel
                   </button>
                 </>
               ) : null
             ) : (
               <div className="invoice-actions no-print">
-                {activeTab === "add" && !isSubmitted && (
+                {modeOfView === "add" && !isSubmitted && (
                   <button onClick={resetForm} className="edit-btn">
                     Edit
                   </button>
                 )}
-                {activeTab === "add" && isSubmitted && (
-                  <button onClick={resetForm2} className="edit-btn" style={{marginTop: '-9px', marginRight: '3px'}}>
+                {modeOfView === "add" && isSubmitted && (
+                  <button onClick={() => {
+                    resetForm2();
+                    onModeChange("add");      // switch back to add mode
+                    onGrChange(null);         // clear GR from URL
+                  }}
+                  className="edit-btn" 
+                  style={{marginTop: '-9px', marginRight: '3px'}}>
                     Create New
                   </button>
                 )}
-                {activeTab === "add" && !isSubmitted && (
+                {modeOfView === "add" && !isSubmitted && (
                   <button onClick={handleSubmitToServer} className="submit-btn">
                     Submit
                   </button>
                 )}
-                {(activeTab === "add" || activeTab === "view") && isSubmitted && (
+                {(modeOfView === "add" || modeOfView === "view") && isSubmitted && (
                   <div style={{marginTop: '-12px'}}>
                     <button onClick={handlePrint2} className="print-btn">
                       Print
@@ -2517,14 +2535,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView }) => {
                     </button>
                   </div>
                 )}
-                {activeTab === "delete" && (
+                {modeOfView === "delete" && (
                   <>
                     <button onClick={handleDeleteInvoice} className="delete-btn">
                       Delete Invoice
                     </button>
                     <button
                       onClick={() => {
-                        setActiveTab("add");
+                        onModeChange("add");
                         setShowInvoice(false);
                       }}
                       className="cancel-btn"
