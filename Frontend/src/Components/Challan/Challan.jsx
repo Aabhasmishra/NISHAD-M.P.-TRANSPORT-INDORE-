@@ -1086,6 +1086,7 @@ const handlePrint = () => {
                                                                     : {}
                                                             }
                                                             className={`challan-table-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`} 
+                                                            readOnly={row.destination}
                                                         />
                                                     ) : <div className="text-center">{formatBuiltyForDisplay(row.builty_no) || '-'}</div>}
                                                 </td>
