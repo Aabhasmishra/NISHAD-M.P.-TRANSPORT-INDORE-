@@ -11,6 +11,7 @@ import CrossingStatement from "./Components/CrossingStatement/CrossingStatement"
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
+import OSR from "./Components/OSR/OutstandingShipmentReport"
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -156,6 +157,8 @@ const App = () => {
           isLightMode={isLightMode}
           modeOfView={modeOfView}
         />;
+      case 'OSR':
+        return <OSR isLightMode={isLightMode} />;
       default:
         return <div className="default-content">Select an option from the sidebar</div>;
     }
