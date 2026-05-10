@@ -436,7 +436,12 @@ export default function SidebarComponent({
       subItems: [
         { label: "Monthly Shipment Report", href: "#", icon: <FaFileAlt /> },
         { label: "Monthly Booking Report", href: "#", icon: <FaFileAlt /> },
-        { label: "Outstanding Shipment Report", href: "#", icon: <FaFileAlt /> }
+        { 
+          label: "OSR", 
+          href: "#", 
+          icon: <FaFileAlt />,
+          onClick: () => handleComponentClick('OSR', 'view')
+        }
       ]
     },
     {
