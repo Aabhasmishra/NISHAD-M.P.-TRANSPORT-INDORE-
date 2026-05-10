@@ -40,6 +40,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const [removedBuiltyNos, setRemovedBuiltyNos] = useState([]);
     const [showAddViewUpdateButtons, setShowAddViewUpdateButtons] = useState(false);
     const [problematicBuiltyNo, setProblematicBuiltyNo] = useState('');
+    const [originalTruckNo, setOriginalTruckNo] = useState('');
     
     // Popup Alert State
     const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
@@ -224,7 +225,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     };
 
     // Check builty statuses using transport_records.challan_status
-    const checkBuiltyStatuses = async (expectedCombinedStatus = null) => {
+    const checkBuiltyStatuses = async (allowedStatus = null) => {
     const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => normalizeGRNumber(r.builty_no));
     for (const builtyNo of builtyNos) {
         try {
@@ -233,10 +234,10 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
         const data = await response.json();
         const currentStatus = data.challan_status;
         if (currentStatus && currentStatus !== 'NOT SHIPPED') {
-            // If in update mode and the status matches the expected one, it's fine (same challan)
-            if (expectedCombinedStatus && currentStatus === expectedCombinedStatus) {
+            if (allowedStatus && currentStatus === allowedStatus) {
             continue;
             }
+            // Otherwise, the builty is assigned to a different challan/truck
             return { isAssigned: true, builtyNo, assignedTo: currentStatus };
         }
         } catch (err) {
@@ -285,71 +286,79 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-        if (!formData.date || !formData.truck_no || !formData.driver_no || !formData.from || !formData.destination) {
-            throw new Error('Please fill all header fields.');
-        }
-        const filledRows = rows.filter(row => row.builty_no);
-        if (filledRows.length === 0) {
-            throw new Error('Please add at least one builty number.');
-        }
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            // Basic header validation
+            if (!formData.date || !formData.truck_no || !formData.driver_no || !formData.from || !formData.destination) {
+                throw new Error('Please fill all header fields.');
+            }
 
-        const builtyNos = filledRows.map(r => r.builty_no.trim().toUpperCase());
-        if (new Set(builtyNos).size !== builtyNos.length) {
-            throw new Error('Duplicate builty numbers found. Please remove duplicates.');
-        }
+            // --- Clean empty rows first ---
+            // Remove rows that have no builty_no (working backwards to avoid index issues)
+            for (let i = rows.length - 1; i >= 0; i--) {
+                if (!rows[i].builty_no || rows[i].builty_no.trim() === '') {
+                    deleteRow(i);
+                }
+            }
+            // Recalculate filledRows and builtyNos after cleanup
+            const filledRows = rows.filter(row => row.builty_no);
+            if (filledRows.length === 0) {
+                throw new Error('Please add at least one builty number.');
+            }
 
-        const expectedCombinedStatus = mode === 'update' ? `${challanNo} - ${formData.truck_no}` : null;
-            const statusCheck = await checkBuiltyStatuses(expectedCombinedStatus);
-                if (statusCheck.isAssigned) {
+            const builtyNos = filledRows.map(r => r.builty_no.trim().toUpperCase());
+
+            // Check for duplicates
+            if (new Set(builtyNos).size !== builtyNos.length) {
+                throw new Error('Duplicate builty numbers found. Please remove duplicates.');
+            }
+
+            // --- Builty status check with the OLD combined status ---
+            // For update mode, the existing builty status is "challanNo - originalTruckNo"
+            const oldCombinedStatus = mode === 'update' ? `${challanNo} - ${originalTruckNo}` : null;
+            const statusCheck = await checkBuiltyStatuses(oldCombinedStatus);
+            if (statusCheck.isAssigned) {
                 throw new Error(`Builty ${statusCheck.builtyNo} is already assigned to Challan ${statusCheck.assignedTo}.`);
+            }
+
+            // Build payload
+            const payload = { ...formData, builty_no: builtyNos.join(' | ') };
+            const url = mode === 'update'
+                ? `http://43.230.202.198:3000/api/challan/${challanNo}`
+                : 'http://43.230.202.198:3000/api/challan';
+
+            const response = await fetch(url, {
+                method: mode === 'update' ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`Failed to ${mode} challan.`);
+
+            const data = await response.json();
+            const newChallanNo = data.challan_no || challanNo;
+            setChallanNo(newChallanNo);
+
+            // For update mode, update removed builty statuses back to NOT SHIPPED
+            if (mode === 'update' && removedBuiltyNos.length > 0) {
+                await updateRemovedBuiltyStatuses();
+                setRemovedBuiltyNos([]);
+            }
+
+            // Update all current builty statuses to the new combined "newChallanNo - truckNo"
+            await updateBuiltyStatuses(newChallanNo, formData.truck_no);
+
+            showAlert(`Challan ${mode === 'add' ? 'create' : 'update'}d successfully! Challan No: ${newChallanNo}`, 'success');
+
+            setChallanEditMode(false);
+            setShowAddViewUpdateButtons(true);
+
+        } catch (err) {
+            showAlert(`Error: ${err.message}`, 'error');
+        } finally {
+            setIsLoading(false);
         }
-
-        // In handleSubmit, after e.preventDefault()
-        for (let i = rows.length - 1; i >= 0; i--) {
-        const row = rows[i];
-        if (!row.builty_no || row.builty_no.trim() === '') {
-            deleteRow(i);
-        }
-        }
-        // Then continue with validation, using the updated rows...
-
-        const payload = { ...formData, builty_no: builtyNos.join(' | ') };
-        const url = mode === 'update' ? `http://43.230.202.198:3000/api/challan/${challanNo}` : 'http://43.230.202.198:3000/api/challan';
-
-        const response = await fetch(url, {
-        method: mode === 'update' ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error(`Failed to ${mode} challan.`);
-
-        const data = await response.json();
-        const newChallanNo = data.challan_no || challanNo;
-        setChallanNo(newChallanNo);
-
-        // For update mode, update removed builties first
-        if (mode === 'update' && removedBuiltyNos.length > 0) {
-        await updateRemovedBuiltyStatuses();
-        setRemovedBuiltyNos([]);
-        }
-
-        // Update all current builty statuses to combined "newChallanNo - truckNo"
-        await updateBuiltyStatuses(newChallanNo, formData.truck_no);
-
-        showAlert(`Challan ${mode}d successfully! Challan No: ${newChallanNo}`, 'success');
-
-        setChallanEditMode(false);
-        setShowAddViewUpdateButtons(true);
-
-    } catch (err) {
-        showAlert(`Error: ${err.message}`, 'error');
-    } finally {
-        setIsLoading(false);
-    }
     };
     
     const resetForm = () => {
@@ -413,6 +422,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
                 date: data.date, truck_no: data.truck_no, driver_no: data.driver_no || '',
                 from: data.from_location, destination: data.destination
             });
+            setOriginalTruckNo(data.truck_no);
             
             const builtyNos = data.builty_no.split('|').map(b => b.trim());
             
