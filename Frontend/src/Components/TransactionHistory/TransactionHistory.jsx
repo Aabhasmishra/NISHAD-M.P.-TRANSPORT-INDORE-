@@ -161,17 +161,21 @@ const TransactionHistory = ({
                 <tr>
                   <th>No</th>
                   <th>GR No.</th>
+                  <th>Amount (&#8377;)</th>
+                  <th>Wt. (KG)</th>
+                  <th>Articles</th>
+                  <th>Rate / Kg</th>
+                  <th>Rate / Pcs</th>
                   <th>Created/Updated At</th>
-                  <th>Total Amount (&#8377;)</th>
-                  <th>Actual Wt. (KG)</th>
-                  <th>Rate</th>
                 </tr>
               </thead>
               <tbody>
                 {transportRecords.map((record, index) => {
                   const totalAmount = computeTotalAmount(record);
                   const actualWeight = parseFloat(record.actual_weight) || 0;
-                  const rate = actualWeight !== 0 ? (totalAmount / actualWeight).toFixed(1) : '0';
+                  const noOfArticles = parseFloat(record.article_no) || 0;
+                  const rateKG = actualWeight !== 0 ? (totalAmount / actualWeight).toFixed(1) : '0';
+                  const ratePcs = noOfArticles !== 0 ? (totalAmount / noOfArticles).toFixed(0) : '0';
                   return (
                     <tr key={record.gr_no}>
                       <td>{index + 1}</td>
@@ -183,10 +187,12 @@ const TransactionHistory = ({
                           {record.gr_no}
                         </button>
                       </td>
-                      <td>{getDisplayDate(record)}</td>
                       <td>{totalAmount}</td>
                       <td>{actualWeight}</td>
-                      <td>{rate}</td>
+                      <td>{noOfArticles}</td>
+                      <td>{rateKG}</td>
+                      <td>{ratePcs}</td>
+                      <td>{getDisplayDate(record)}</td>
                     </tr>
                   );
                 })}
