@@ -141,7 +141,8 @@ async function saveTransportRecord(recordData) {
       amount_collected, mode_of_collection, comments,
       payment_created_at, payment_updated_at,
       -- Status fields
-      challan_status, payment_status, crossing_status
+      challan_status, payment_status, crossing_status,
+      auto_fill
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
       $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
@@ -184,7 +185,8 @@ async function saveTransportRecord(recordData) {
       // Status fields
       recordData.challanStatus || 'NOT SHIPPED',
       recordData.paymentStatus || 'Pending',
-      recordData.crossingStatus || 'NO'
+      recordData.crossingStatus || 'NO',
+      recordData.autoFill || 'No'
     ]
   );
 
@@ -285,8 +287,9 @@ async function updateTransportRecord(grNo, recordData) {
       motor_freight = $24,
       hammali = $25,
       other_charges = $26,
-      updated_at = NOW()
-    WHERE gr_no = $27`,
+      updated_at = NOW(),
+      auto_fill = $27
+    WHERE gr_no = $28`,
     [
       formattedDate,
       recordData.fromLocation,
@@ -314,6 +317,7 @@ async function updateTransportRecord(grNo, recordData) {
       recordData.motorFreight || 0,
       recordData.hammali || 0,
       recordData.otherCharges || 0,
+      recordData.autoFill || 'No',
       grNo
     ]
   );
