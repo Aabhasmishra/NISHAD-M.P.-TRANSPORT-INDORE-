@@ -30,7 +30,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const [formData, setFormData] = useState({
     invoiceNumber: "",
     date: new Date().toISOString().split("T")[0],
-    ewayBillNo: "",
     fromLocation: "Indore",
     consignor: "",
     consignorCode: "",
@@ -80,6 +79,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const [popupCustomerType, setPopupCustomerType] = useState('');
   const [showAutoWrite, setShowAutoWrite] = useState(false);
   const [autoWriteLoading, setAutoWriteLoading] = useState(false);
+  const [isAutofilled, setIsAutofilled] = useState(false);
+  const pendingAutoFillData = useRef(null);
   const [paymentTypeDifferent, setPaymentTypeDifferent] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
@@ -421,11 +422,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       const hammaliValue = formData.hammali === "" ? "0" : formData.hammali;
       const otherChargesValue = formData.otherCharges === "" ? "0" : formData.otherCharges;
 
-      // NEW: Include grNo in request body
       const requestBody = {
-        grNo: formData.invoiceNumber, // formatted GR number
+        grNo: formData.invoiceNumber,
         date: formattedDate,
-        ewayBillNo: formData.ewayBillNo,
         fromLocation: formData.fromLocation,
         consignorCode: formData.consignorCode,
         consignor: formData.consignor,
@@ -454,11 +453,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
         motorFreight: motorFreightValue,
         hammali: hammaliValue,
         otherCharges: otherChargesValue,
-        payment_status: formData.payment_status
+        payment_status: formData.payment_status,
+        autoFill: isAutofilled ? "Yes" : "No"
       };
 
       const response = await fetch(
-        "http://43.230.202.198:3000/api/transport-records",
+        "http://localhost:3000/api/transport-records",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -501,6 +501,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
     setIsEditing(true);
     setIsSubmitted(false);
     setErrorMessage("");
+    setIsAutofilled(false);
     setFormData((prev) => ({
       ...prev,
       invoiceNumber: "",
@@ -516,7 +517,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
     setFormData({
       invoiceNumber: "",
       date: new Date().toISOString().split("T")[0],
-      ewayBillNo: "",
       fromLocation: "Indore",
       consignor: "",
       consignorCode: "",
@@ -557,6 +557,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
     setErrorMessage("");
     setShowInvoice(false);
     setGrNumberInput('');
+    setIsAutofilled(false);
   };
 
   const fetchInvoice = async (invoiceNumber) => {
@@ -597,7 +598,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       setFormData({
         invoiceNumber: data.gr_no,
         date: formattedDate,
-        ewayBillNo: data.eway_bill_no,
         fromLocation: data.from_location,
         consignor: data.consignor_name || "",
         consignorCode: data.consignor_code,
@@ -659,6 +659,9 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
       // Helper to fetch full customer details after validation
       const fetchCustomerDetails = async (name, idNumber) => {
+        idNumber = idNumber.startsWith("URD - ")
+          ? idNumber.replace("URD - ", "").trim()
+          : idNumber.trim();
         const validateRes = await fetch(
           `http://43.230.202.198:3000/api/customers?name=${encodeURIComponent(name)}&id_number=${encodeURIComponent(idNumber)}`
         );
@@ -711,7 +714,6 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
       const updatedData = {
         date: formattedDate,
-        ewayBillNo: formData.ewayBillNo,
         fromLocation: formData.fromLocation,
         consignor: formData.consignor,
         consignorCode: consignorDetails.code,
@@ -1614,8 +1616,15 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const handleAutoWriteData = (invoice) => {
     setShowAutoWrite(false);
     if (invoice) {
-      showAlert(`Auto-filled invoice from GR No: ${invoice.gr_no}`, 'info');
-      populateFormWithInvoice(invoice);
+      // Show confirmation with the actual GR number
+      showConfirm(
+        `Are you sure you want to auto-fill the invoice from GR No: ${invoice.gr_no}?`,
+        () => {
+          setIsAutofilled(true);            // now it’s really auto-filled
+          populateFormWithInvoice(invoice);
+          showAlert(`Auto-filled invoice from GR No: ${invoice.gr_no}`, 'info');
+        }
+      );
     } else {
       showAlert('No previous invoice found for this consignor/consignee pair', 'info');
     }
@@ -1653,9 +1662,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
     ].join("-");
 
     setFormData({
-      invoiceNumber: "",               // new invoice, so clear previous number
+      invoiceNumber: "",
       date: formattedDate,
-      ewayBillNo: invoice.eway_bill_no || "",
       fromLocation: invoice.from_location || "Indore",
       consignor: invoice.consignor_name || "",
       consignorCode: invoice.consignor_code || "",
