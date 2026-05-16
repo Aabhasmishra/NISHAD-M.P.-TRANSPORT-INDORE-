@@ -104,9 +104,13 @@ async function generateGRNo() {
 // Save transport record
 async function saveTransportRecord(recordData) {
   const grNo = await generateGRNo();
+
   const [day, month, year] = recordData.date.split('-');
   const formattedDate = `${year}-${month}-${day}`;
-  const hsn = recordData.hsn || Array(recordData.articleLength).fill('9999').join('|');
+
+  const hsn =
+    recordData.hsn ||
+    Array(recordData.articleLength).fill('9999').join('|');
 
   const totalAmount = calculateTotalAmount(
     recordData.amount,
@@ -118,46 +122,45 @@ async function saveTransportRecord(recordData) {
   const toPay = recordData.paymentType === 'TO PAY' ? totalAmount : 0;
   const paid = recordData.paymentType === 'PAID' ? totalAmount : 0;
 
-  // Determine if any payment fields are provided
-  const hasPaymentData = 
-    recordData.amountCollected !== undefined || 
-    recordData.modeOfCollection !== undefined || 
+  const hasPaymentData =
+    recordData.amountCollected !== undefined ||
+    recordData.modeOfCollection !== undefined ||
     recordData.paymentComments !== undefined;
-  
+
   const now = new Date();
   const paymentCreatedAt = hasPaymentData ? now : null;
   const paymentUpdatedAt = hasPaymentData ? now : null;
 
   await pool.query(
     `INSERT INTO transport_records (
-      gr_no, date, from_location, 
+      gr_no, date, from_location,
       consignor_code, consignor_gst, consignor_name,
       to_location, consignee_code, consignee_gst, consignee_name,
-      article_no, article_length, said_to_contain, tax_free, 
-      weight_chargeable, actual_weight, hsn, amount, remarks, 
+      article_no, article_length, said_to_contain, tax_free,
+      weight_chargeable, actual_weight, hsn, amount, remarks,
       goods_type, value_declared, gst_will_be_paid_by,
       to_pay, paid, motor_freight, hammali, other_charges,
-      -- Payment fields
       amount_collected, mode_of_collection, comments,
       payment_created_at, payment_updated_at,
-      -- Status fields
       challan_status, payment_status, crossing_status,
       auto_fill
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-      $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-      $28, $29, $30, $31, $32, $33, $34, $35
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+      $11, $12, $13, $14, $15, $16, $17, $18,
+      $19, $20, $21, $22, $23, $24, $25, $26,
+      $27, $28, $29, $30, $31, $32, $33, $34,
+      $35, $36
     )`,
     [
       grNo,
       formattedDate,
       recordData.fromLocation,
       recordData.consignorCode,
-      recordData.consignorGst || "10987",
+      recordData.consignorGst || '10987',
       recordData.consignor,
       recordData.toLocation,
       recordData.consigneeCode,
-      recordData.consigneeGst || "10987",
+      recordData.consigneeGst || '10987',
       recordData.consignee,
       recordData.articleNo,
       recordData.articleLength,
@@ -176,13 +179,11 @@ async function saveTransportRecord(recordData) {
       recordData.motorFreight || 0,
       recordData.hammali || 0,
       recordData.otherCharges || 0,
-      // Payment fields
       recordData.amountCollected || 0,
       recordData.modeOfCollection || null,
       recordData.paymentComments || null,
       paymentCreatedAt,
       paymentUpdatedAt,
-      // Status fields
       recordData.challanStatus || 'NOT SHIPPED',
       recordData.paymentStatus || 'Pending',
       recordData.crossingStatus || 'NO',
@@ -190,7 +191,11 @@ async function saveTransportRecord(recordData) {
     ]
   );
 
-  return { grNo, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  return {
+    grNo,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
 }
 
 // Get transport record by GR number
