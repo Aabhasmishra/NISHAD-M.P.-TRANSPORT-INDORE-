@@ -458,7 +458,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       };
 
       const response = await fetch(
-        "http://localhost:3000/api/transport-records",
+        "http://43.230.202.198:3000/api/transport-records",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
