@@ -1,7 +1,7 @@
 /* Floating Window */
 .th-floating-window {
   position: fixed;
-  width: 800px;
+  width: 950px;
   max-width: 90vw;
   height: 450px;
   max-height: 80vh;
