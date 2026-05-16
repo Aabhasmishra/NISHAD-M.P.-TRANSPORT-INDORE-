@@ -70,6 +70,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
   const [isEditing, setIsEditing] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [searchInvoiceNumber, setSearchInvoiceNumber] = useState("");
@@ -399,6 +400,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   };
 
   const handleSubmitToServer = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     // Validate required fields
     if (!formData.valueDeclared || formData.valueDeclared.trim() === '') {
       showAlert("Value Declared is required", 'warning');
@@ -494,6 +497,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       setGrNumberInput('');
     } catch (err) {
       setErrorMessage(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -2529,8 +2534,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
                   </button>
                 )}
                 {modeOfView === "add" && !isSubmitted && (
-                  <button onClick={handleSubmitToServer} className="submit-btn">
-                    Submit
+                  <button 
+                    onClick={handleSubmitToServer} 
+                    className="submit-btn"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Saving..." : "Submit"}
                   </button>
                 )}
                 {(modeOfView === "add" || modeOfView === "view") && isSubmitted && (
