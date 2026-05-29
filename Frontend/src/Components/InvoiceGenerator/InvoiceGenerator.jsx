@@ -717,6 +717,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       const hammaliValue = formData.hammali === "" ? "0" : formData.hammali;
       const otherChargesValue = formData.otherCharges === "" ? "0" : formData.otherCharges;
 
+      setIsSubmitting(true);
+
       const updatedData = {
         date: formattedDate,
         fromLocation: formData.fromLocation,
@@ -783,11 +785,13 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       showAlert(err.message, 'error');
     } finally {
       setIsVerifying(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteInvoice = async () => {
     showConfirm("Are you sure you want to delete this invoice?", async () => {
+      setIsSubmitting(true);
       try {
         const response = await fetch(
           `http://43.230.202.198:3000/api/transport-records/${formData.invoiceNumber}`,
@@ -806,6 +810,8 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
         }
       } catch (err) {
         setErrorMessage(err.message);
+      } finally {
+        setIsSubmitting(false);
       }
     });
   };
@@ -2502,8 +2508,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
                 </div>
               ) : modeOfView === "update" ? (
                 <>
-                  <button onClick={handleUpdateInvoice} className="generate-btn update-btn">
-                    Update Invoice
+                  <button 
+                    onClick={handleUpdateInvoice} 
+                    className="generate-btn update-btn" 
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Updating..." : "Update Invoice"}
                   </button>
                   <button onClick={() => {
                     resetForm2();
@@ -2554,8 +2564,12 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
                 )}
                 {modeOfView === "delete" && (
                   <>
-                    <button onClick={handleDeleteInvoice} className="delete-btn">
-                      Delete Invoice
+                    <button 
+                      onClick={handleDeleteInvoice} 
+                      className="delete-btn" 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Deleting..." : "Delete Invoice"}
                     </button>
                     <button
                       onClick={() => {
