@@ -11,7 +11,7 @@ import CrossingStatement from "./Components/CrossingStatement/CrossingStatement"
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
-import OSR from "./Components/OSR/OutstandingShipmentReport"
+import ShipmentReportModule from "./Components/ShipmentReportModule/ShipmentReportModule"
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -158,7 +158,9 @@ const App = () => {
           modeOfView={modeOfView}
         />;
       case 'OSR':
-        return <OSR isLightMode={isLightMode} />;
+        return <ShipmentReportModule isLightMode={isLightMode} />;
+      case 'PBR':
+        return <ShipmentReportModule isLightMode={isLightMode} modeOfView="PBR" />;
       default:
         return <div className="default-content">Select an option from the sidebar</div>;
     }
