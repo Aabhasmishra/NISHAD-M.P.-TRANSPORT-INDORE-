@@ -441,6 +441,12 @@ export default function SidebarComponent({
           href: "#", 
           icon: <FaFileAlt />,
           onClick: () => handleComponentClick('OSR', 'view')
+        },
+        { 
+          label: "Paid Builty Report", 
+          href: "#", 
+          icon: <FaFileAlt />,
+          onClick: () => handleComponentClick('PBR', 'view')
         }
       ]
     },
