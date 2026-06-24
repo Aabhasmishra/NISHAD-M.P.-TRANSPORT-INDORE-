@@ -12,7 +12,7 @@ const AutoWriteInvoice = ({ consignorGst, consigeeGst, onData, onError, onLoadin
     const fetchLatestInvoice = async () => {
       onLoading?.(true);
       try {
-        const url = `http://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
+        const url = `https://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
         const response = await fetch(url);
         const data = await response.json();
 
