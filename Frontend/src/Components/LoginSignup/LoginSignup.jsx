@@ -33,7 +33,7 @@ const LoginSignup = ({ onLoginSuccess }) => {
   const handleAutoLogin = async (identifier, password) => {
     setIsLoading(true);
     try {
-      const response = await axios.post("http://43.230.202.198:3000/api/users/authenticate", {
+      const response = await axios.post("https://43.230.202.198:3000/api/users/authenticate", {
         identifier,
         password,
       });
@@ -75,7 +75,7 @@ const LoginSignup = ({ onLoginSuccess }) => {
     setAlert(prev => ({ ...prev, show: false }));
 
     try {
-      const response = await axios.post("http://43.230.202.198:3000/api/users/authenticate", {
+      const response = await axios.post("https://43.230.202.198:3000/api/users/authenticate", {
         identifier: credentials.identifier,
         password: credentials.password,
       });
