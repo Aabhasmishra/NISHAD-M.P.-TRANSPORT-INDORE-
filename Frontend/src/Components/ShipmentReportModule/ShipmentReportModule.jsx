@@ -27,7 +27,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       setIsLoading(true);
       setError('');
       try {
-        const response = await fetch('http://43.230.202.198:3000/api/transport-records');
+        const response = await fetch('https://43.230.202.198:3000/api/transport-records');
         if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
         let filtered = Array.isArray(data) ? data : [];
