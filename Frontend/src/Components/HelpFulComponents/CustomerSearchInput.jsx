@@ -38,7 +38,7 @@ const CustomerSearchInput = ({
     }
     try {
       const response = await fetch(
-        `http://43.230.202.198:3000/api/customers/search?q=${encodeURIComponent(query)}`
+        `https://43.230.202.198:3000/api/customers/search?q=${encodeURIComponent(query)}`
       );
       const data = await response.json();
       setSuggestions(data);
