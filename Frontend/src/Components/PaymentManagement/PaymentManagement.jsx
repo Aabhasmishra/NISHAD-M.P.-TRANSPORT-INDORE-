@@ -119,7 +119,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
     try {
       const normalizedGR = normalizeGRNumber(invoiceNumber);
-      const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${normalizedGR}`);
+      const response = await fetch(`https://43.230.202.198:3000/api/transport-records?grNo=${normalizedGR}`);
       if (!response.ok) throw new Error('Invoice not found');
       const data = await response.json();
 
@@ -197,7 +197,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/payment`, {
+      const response = await fetch(`https://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/payment`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,7 +214,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
       const updated = await response.json();
       const paymentStatus = amount === invoiceDetails.invoiceAmount ? 'Paid' : amount > invoiceDetails.invoiceAmount ? 'Paid-D+' : 'Paid-D-';
-      await fetch(`http://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/status`, {
+      await fetch(`https://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentStatus })
@@ -245,7 +245,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
     }
     setLoading(true);
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/payment`, {
+      const response = await fetch(`https://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/payment`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,7 +256,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
       });
       if (!response.ok) throw new Error('Failed to delete payment');
 
-      await fetch(`http://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/status`, {
+      await fetch(`https://43.230.202.198:3000/api/transport-records/${invoiceDetails.invoiceNumber}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentStatus: 'Pending' })
@@ -290,7 +290,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
       if (!formatted) throw new Error('Invalid challan number format.');
       setFormattedChallanNo(formatted);
 
-      const response = await fetch(`http://43.230.202.198:3000/api/challan?challan_no=${formatted}`);
+      const response = await fetch(`https://43.230.202.198:3000/api/challan?challan_no=${formatted}`);
       if (!response.ok) throw new Error('Challan not found.');
 
       const data = await response.json();
@@ -353,7 +353,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
       if (!row.builty_no.trim() || row.isFetched) return;
       try {
         const normalized = normalizeGRNumber(row.builty_no);
-        const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${normalized}`);
+        const response = await fetch(`https://43.230.202.198:3000/api/transport-records?grNo=${normalized}`);
         if (!response.ok) throw new Error('Builty not found');
         const data = await response.json();
 
@@ -425,7 +425,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
       try {
         const normalized = normalizeGRNumber(row.builty_no);
 
-        const paymentResponse = await fetch(`http://43.230.202.198:3000/api/transport-records/${normalized}/payment`, {
+        const paymentResponse = await fetch(`https://43.230.202.198:3000/api/transport-records/${normalized}/payment`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -440,7 +440,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
           const amountCollected = parseFloat(row.amount_collected);
           const paymentStatus = amountCollected === invoiceAmount ? 'Paid' : amountCollected > invoiceAmount ? 'Paid-D+' : 'Paid-D-';
 
-          await fetch(`http://43.230.202.198:3000/api/transport-records/${normalized}/status`, {
+          await fetch(`https://43.230.202.198:3000/api/transport-records/${normalized}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ paymentStatus })
