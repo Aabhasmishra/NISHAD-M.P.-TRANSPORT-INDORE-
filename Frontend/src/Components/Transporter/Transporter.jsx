@@ -34,7 +34,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
   useEffect(() => {
     const fetchVehicleNumbers = async () => {
       try {
-        const response = await fetch('http://43.230.202.198:3000/api/transporters/all');
+        const response = await fetch('https://43.230.202.198:3000/api/transporters/all');
         if (response.ok) {
           const data = await response.json();
           const vehicleNumbers = data.map(item => item.vehicle_number);
@@ -87,7 +87,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
     e.preventDefault();
     
     try {
-      const response = await fetch('http://43.230.202.198:3000/api/transporters', {
+      const response = await fetch('https://43.230.202.198:3000/api/transporters', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
   const handleSearch = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/transporters?search=${searchTerm}`);
+      const response = await fetch(`https://43.230.202.198:3000/api/transporters?search=${searchTerm}`);
       if (!response.ok) {
         throw new Error('Transporter not found');
       }
@@ -150,7 +150,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/transporters/${formData.vehicleNumber}`, {
+      const response = await fetch(`https://43.230.202.198:3000/api/transporters/${formData.vehicleNumber}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
 const handleDelete = async () => {
   showConfirm('Are you sure you want to delete this transporter?', async () => {
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/transporters/${formData.vehicleNumber}`, {
+      const response = await fetch(`https://43.230.202.198:3000/api/transporters/${formData.vehicleNumber}`, {
         method: 'DELETE'
       });
 
