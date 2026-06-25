@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { IoSearch, IoEye, IoEyeOff } from "react-icons/io5";
 import "./UserManagement.css";
+import BASE_URL from "../../config";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 const UserManagement = ({ isLightMode, modeOfView }) => {
@@ -54,7 +55,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('http://43.230.202.198:3000/api/users/all');
+        const response = await fetch(`${BASE_URL}/users/all`);
         if (response.ok) {
           const data = await response.json();
           setAllUsers(data);
@@ -73,7 +74,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   const handleSearch = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/users/search?name=${searchTerm}`);
+      const response = await fetch(`${BASE_URL}/users/search?name=${searchTerm}`);
       if (!response.ok) throw new Error('User not found');
       
       const data = await response.json();
@@ -101,7 +102,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://43.230.202.198:3000/api/users', {
+      const response = await fetch(`${BASE_URL}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -123,7 +124,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://43.230.202.198:3000/api/users/${foundUser.id}`, {
+      const response = await fetch(`${BASE_URL}/users/${foundUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -140,7 +141,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   const handleDelete = async () => {
     showConfirm('Are you sure you want to delete this user?', async () => {
       try {
-        const response = await fetch(`http://43.230.202.198:3000/api/users/${foundUser.id}`, {
+        const response = await fetch(`${BASE_URL}/users/${foundUser.id}`, {
           method: 'DELETE'
         });
 
