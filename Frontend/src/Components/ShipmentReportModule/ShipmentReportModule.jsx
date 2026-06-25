@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import ExcelJS from 'exceljs';
+import BASE_URL from "../../config";
 import { saveAs } from 'file-saver';
 
 const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
@@ -27,7 +28,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       setIsLoading(true);
       setError('');
       try {
-        const response = await fetch('https://43.230.202.198:3000/api/transport-records');
+        const response = await fetch(`${BASE_URL}/transport-records`);
         if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
         let filtered = Array.isArray(data) ? data : [];
