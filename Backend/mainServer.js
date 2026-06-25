@@ -1,6 +1,6 @@
 const express = require("express");
 const fs = require("fs");
-const http = require("http"); 
+const http = require("http");
 const https = require("https");
 const transportDB = require("./transportDB");
 const customersDB = require("./customersDB");
@@ -23,7 +23,7 @@ async function initialize() {
     await transporterDB.initialize();
     await userDB.initialize();
     await challanDB.initialize();
-    await crossingDB.initialize(); 
+    await crossingDB.initialize();
     console.log("All databases initialized successfully");
   } catch (err) {
     console.error("Failed to initialize databases:", err);
@@ -45,16 +45,16 @@ const customerRoutes = require("./customerRoutes")(customersDB);
 const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
 const challanRoutes = require("./challanRoutes")(challanDB);
-const crossingRoutes = require("./crossingRoutes")(crossingDB); 
+const crossingRoutes = require("./crossingRoutes")(crossingDB);
 
 // Create database viewer routes
 const databaseViewerRoutes = createDatabaseViewer(
-  transportDB, 
-  customersDB, 
-  transporterDB, 
-  userDB, 
-  challanDB, 
-  crossingDB 
+  transportDB,
+  customersDB,
+  transporterDB,
+  userDB,
+  challanDB,
+  crossingDB
 );
 
 // Use routes
@@ -76,31 +76,41 @@ app.get("/api/AabhasServer", async (req, res) => {
   }
 });
 
-// ---------- SERVER STARTUP (conditionally HTTP / HTTPS) ----------
+// ---------- START BOTH HTTP (port 3000) & HTTPS (port 3001) ----------
 initialize()
   .then(() => {
-    const PORT = process.env.PORT || 3000;
-    const NODE_ENV = process.env.NODE_ENV || "development";
+    // ----- HTTP Server (port 3000) -----
+    const httpPort = 3000;
+    const httpServer = http.createServer(app);
+    httpServer.listen(httpPort, () => {
+      console.log(`✅ HTTP server running on http://localhost:${httpPort}`);
+      console.log(`   (for existing web application)`);
+    });
 
-    if (NODE_ENV === "production") {
-      // ---------- PRODUCTION: HTTPS ----------
-      const options = {
+    // ----- HTTPS Server (port 3001) -----
+    const httpsPort = 3001;
+    let options;
+    try {
+      options = {
         key: fs.readFileSync('/etc/ssl/fintr/fintr.in.key'),
         cert: fs.readFileSync('/etc/ssl/fintr/www_fintr_in.crt')
       };
-      const server = https.createServer(options, app);
-      server.listen(PORT, () => {
-        console.log(`✅ Production server (HTTPS) running on https://localhost:${PORT}`);
-        printEndpoints();
-      });
-    } else {
-      // ---------- DEVELOPMENT: HTTP ----------
-      const server = http.createServer(app);
-      server.listen(PORT, () => {
-        console.log(`✅ Development server (HTTP) running on http://localhost:${PORT}`);
-        printEndpoints();
-      });
+    } catch (err) {
+      console.error("❌ Failed to read SSL certificate files:");
+      console.error(`   Key: /etc/ssl/fintr/fintr.in.key`);
+      console.error(`   Cert: /etc/ssl/fintr/www_fintr_in.crt`);
+      console.error(`   Error: ${err.message}`);
+      process.exit(1); // Exit because HTTPS is required for Android app
     }
+
+    const httpsServer = https.createServer(options, app);
+    httpsServer.listen(httpsPort, () => {
+      console.log(`✅ HTTPS server running on https://localhost:${httpsPort}`);
+      console.log(`   (for Android mobile application)`);
+    });
+
+    // Print endpoints once (shared for both servers)
+    printEndpoints();
   })
   .catch((err) => {
     console.error("Failed to initialize server:", err);
@@ -115,7 +125,7 @@ function printEndpoints() {
   console.log("  GET    /api/transport-records?grNo=...");
   console.log("  PUT    /api/transport-records/:grNo");
   console.log("  DELETE /api/transport-records/:grNo");
-  
+
   console.log("\nCustomers:");
   console.log("  GET    /api/customers?name=...");
   console.log("  GET    /api/customers/all-names");
@@ -123,14 +133,14 @@ function printEndpoints() {
   console.log("  POST   /api/customers");
   console.log("  PUT    /api/customers/:name");
   console.log("  DELETE /api/customers/:name");
-  
+
   console.log("\nTransporters:");
   console.log("  POST   /api/transporters");
   console.log("  GET    /api/transporters?search=...");
   console.log("  GET    /api/transporters/all");
   console.log("  PUT    /api/transporters/:vehicleNumber");
   console.log("  DELETE /api/transporters/:vehicleNumber");
-  
+
   console.log("\nUsers:");
   console.log("  POST   /api/users");
   console.log("  GET    /api/users/search?name=...");
@@ -145,18 +155,18 @@ function printEndpoints() {
   console.log("  GET    /api/challan?challan_no=...");
   console.log("  PUT    /api/challan/:challan_no");
   console.log("  DELETE /api/challan/:challan_no");
-  
+
   console.log("\nCrossing Statements:");
   console.log("  POST   /api/crossing");
   console.log("  GET    /api/crossing");
   console.log("  GET    /api/crossing?cx_number=...");
   console.log("  PUT    /api/crossing/:cx_number");
   console.log("  DELETE /api/crossing/:cx_number");
-  
+
   console.log("\nDatabase Inspection:");
   console.log("  GET    /api/AabhasServer (JSON API)");
   console.log("  GET    /AabhasServer (HTML Viewer)");
   console.log("  GET    /export/:dbName (Excel Export)");
-  
+
   console.log("\nDatabase Viewer available at: http://43.230.202.198:3000/AabhasServer");
 }
