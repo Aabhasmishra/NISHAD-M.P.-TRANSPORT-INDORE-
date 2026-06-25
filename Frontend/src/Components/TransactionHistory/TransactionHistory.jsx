@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './TransactionHistory.css';
+import BASE_URL from "../../config";
 
 const TransactionHistory = ({ 
   isLightMode, 
@@ -31,7 +32,7 @@ const TransactionHistory = ({
     setLoading(true);
     setError('');
     try {
-      const url = `https://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
+      const url = `${BASE_URL}/transport-records/history?consignorGst=${encodeURIComponent(consignorGst)}&consigeeGst=${encodeURIComponent(consigeeGst)}`;
       const response = await fetch(url);
       const data = await response.json();
       
