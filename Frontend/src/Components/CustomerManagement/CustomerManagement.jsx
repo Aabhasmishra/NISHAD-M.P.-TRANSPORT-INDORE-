@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./CustomerManagement.css";
+import BASE_URL from "../../config";
 import PopupAlert from "../PopupAlert/PopupAlert";
 import CustomerSearchInput from "../HelpFulComponents/CustomerSearchInput";
 
@@ -77,7 +78,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('https://43.230.202.198:3000/api/customers', {
+      const response = await fetch(`${BASE_URL}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,7 +133,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
 
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedUpdateCustomerId)}`
+        `${BASE_URL}/customers/searchByID?id_number=${encodeURIComponent(selectedUpdateCustomerId)}`
       );
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || 'Customer not found');
@@ -161,7 +162,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
     e.preventDefault();
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/${encodeURIComponent(updateFormData.oldNameForSearch)}`,
+        `${BASE_URL}/customers/${encodeURIComponent(updateFormData.oldNameForSearch)}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -204,7 +205,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
 
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedViewCustomerId)}`
+        `${BASE_URL}/customers/searchByID?id_number=${encodeURIComponent(selectedViewCustomerId)}`
       );
       const data = await response.json();
 
@@ -238,7 +239,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
 
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/searchByID?id_number=${encodeURIComponent(selectedDeleteCustomerId)}`
+        `${BASE_URL}/customers/searchByID?id_number=${encodeURIComponent(selectedDeleteCustomerId)}`
       );
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || 'Customer not found');
@@ -259,7 +260,7 @@ const CustomerManagement = ({ isLightMode, modeOfView, isPopup = false, onClose,
   const handleDeleteCustomer = async () => {
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/${encodeURIComponent(customerToDelete.name)}`,
+        `${BASE_URL}/customers/${encodeURIComponent(customerToDelete.name)}`,
         {
           method: 'DELETE',
         }
