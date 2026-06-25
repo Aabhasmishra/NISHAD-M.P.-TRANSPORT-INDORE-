@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import "./Challan.css";
+import BASE_URL from "../../config";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 // Inlined SVG components
@@ -155,7 +156,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
                     formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(6, "0");
                 }
                 
-                const response = await fetch(`https://43.230.202.198:3000/api/transport-records?grNo=${formattedBuilty}`);
+                const response = await fetch(`${BASE_URL}/transport-records?grNo=${formattedBuilty}`);
                 if (!response.ok) throw new Error('Builty not found');
                 
                 // Determine expected combined status for update mode
@@ -229,7 +230,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => normalizeGRNumber(r.builty_no));
     for (const builtyNo of builtyNos) {
         try {
-        const response = await fetch(`https://43.230.202.198:3000/api/transport-records?grNo=${builtyNo}`);
+        const response = await fetch(`${BASE_URL}/transport-records?grNo=${builtyNo}`);
         if (!response.ok) continue;
         const data = await response.json();
         const currentStatus = data.challan_status;
@@ -253,7 +254,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
     for (const builtyNo of builtyNos) {
         try {
-        await fetch(`https://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
+        await fetch(`${BASE_URL}/transport-records/${builtyNo}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ challanStatus: combinedStatus })
@@ -269,7 +270,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const updateRemovedBuiltyStatuses = async () => {
         for (const builtyNo of removedBuiltyNos) {
             try {
-                const response = await fetch(`https://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
+                const response = await fetch(`${BASE_URL}/transport-records/${builtyNo}/status`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ challanStatus: 'NOT SHIPPED' })
@@ -325,8 +326,8 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
             // Build payload
             const payload = { ...formData, builty_no: builtyNos.join(' | ') };
             const url = mode === 'update'
-                ? `https://43.230.202.198:3000/api/challan/${challanNo}`
-                : 'https://43.230.202.198:3000/api/challan';
+                ? `${BASE_URL}/challan/${challanNo}`
+                : `${BASE_URL}/challan`;
 
             const response = await fetch(url, {
                 method: mode === 'update' ? 'PUT' : 'POST',
@@ -374,7 +375,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const builtyNos = rows.filter(r => r.builty_no.trim()).map(r => r.builty_no.trim().toUpperCase());
     for (const builtyNo of builtyNos) {
         try {
-        await fetch(`https://43.230.202.198:3000/api/transport-records/${builtyNo}/status`, {
+        await fetch(`${BASE_URL}/transport-records/${builtyNo}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ challanStatus: 'NOT SHIPPED' })
@@ -392,7 +393,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
         try {
         await resetAllBuiltyStatuses();
 
-        const response = await fetch(`https://43.230.202.198:3000/api/challan/${challanNo}`, { method: 'DELETE' });
+        const response = await fetch(`${BASE_URL}/challan/${challanNo}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete challan');
 
         showAlert('Challan deleted successfully.', 'success');
@@ -414,7 +415,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
             const formattedChallanNo = formatChallanNo(searchTerm, searchYear);
             if (!formattedChallanNo) throw new Error('Invalid challan number format.');
 
-            const response = await fetch(`https://43.230.202.198:3000/api/challan?challan_no=${formattedChallanNo}`);
+            const response = await fetch(`${BASE_URL}/challan?challan_no=${formattedChallanNo}`);
             if (!response.ok) throw new Error('Challan not found.');
             
             const data = await response.json();
