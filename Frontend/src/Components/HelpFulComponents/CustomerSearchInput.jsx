@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-
+import BASE_URL from "../../config";
 const SCROLLBAR_CLASS = "custom-scrollbar";
 
 const CustomerSearchInput = ({
@@ -38,7 +38,7 @@ const CustomerSearchInput = ({
     }
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/customers/search?q=${encodeURIComponent(query)}`
+        `${BASE_URL}/customers/search?q=${encodeURIComponent(query)}`
       );
       const data = await response.json();
       setSuggestions(data);
