@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import BASE_URL from "../../config";
 import axios from "axios";
 import Cookies from 'js-cookie';
 import PopupAlert from '../PopupAlert/PopupAlert';
@@ -33,7 +34,7 @@ const LoginSignup = ({ onLoginSuccess }) => {
   const handleAutoLogin = async (identifier, password) => {
     setIsLoading(true);
     try {
-      const response = await axios.post("https://43.230.202.198:3000/api/users/authenticate", {
+      const response = await axios.post(`${BASE_URL}/users/authenticate`, {
         identifier,
         password,
       });
@@ -75,7 +76,7 @@ const LoginSignup = ({ onLoginSuccess }) => {
     setAlert(prev => ({ ...prev, show: false }));
 
     try {
-      const response = await axios.post("https://43.230.202.198:3000/api/users/authenticate", {
+      const response = await axios.post(`${BASE_URL}/users/authenticate`, {
         identifier: credentials.identifier,
         password: credentials.password,
       });
