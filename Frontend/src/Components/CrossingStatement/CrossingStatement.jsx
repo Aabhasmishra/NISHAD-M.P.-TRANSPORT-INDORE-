@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import "./CrossingStatement.css";
+import BASE_URL from "../../config";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 // Inlined SVG components
@@ -108,7 +109,7 @@ const CrossingStatement = ({ isLightMode, modeOfView }) => {
                     formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(5, "0");
                 }
                 
-                const response = await fetch(`http://43.230.202.198:3000/api/transport-records?grNo=${formattedBuilty}`);
+                const response = await fetch(`${BASE_URL}/transport-records?grNo=${formattedBuilty}`);
                 if (!response.ok) throw new Error('Builty not found');
                 
                 const data = await response.json();
@@ -168,7 +169,7 @@ const CrossingStatement = ({ isLightMode, modeOfView }) => {
             }
 
             const payload = { ...formData, builty_no: builtyNos.join(' | ') };
-            const url = mode === 'update' ? `http://43.230.202.198:3000/api/crossing/${cxNumber}` : 'http://43.230.202.198:3000/api/crossing';
+            const url = mode === 'update' ? `${BASE_URL}/crossing/${cxNumber}` : `${BASE_URL}/crossing`;
             
             const response = await fetch(url, {
                 method: mode === 'update' ? 'PUT' : 'POST',
@@ -205,7 +206,7 @@ const CrossingStatement = ({ isLightMode, modeOfView }) => {
         showConfirm('Delete this crossing statement?', async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(`http://43.230.202.198:3000/api/crossing/${cxNumber}`, { method: 'DELETE' });
+                const response = await fetch(`${BASE_URL}/crossing/${cxNumber}`, { method: 'DELETE' });
                 if (!response.ok) throw new Error('Failed to delete crossing statement');
                 
                 showAlert('Crossing statement deleted successfully.', 'success');
@@ -227,7 +228,7 @@ const CrossingStatement = ({ isLightMode, modeOfView }) => {
             const formattedCXNumber = formatCXNumber(searchTerm, searchYear);
             if (!formattedCXNumber) throw new Error('Invalid CX number format.');
 
-            const response = await fetch(`http://43.230.202.198:3000/api/crossing?cx_number=${formattedCXNumber}`);
+            const response = await fetch(`${BASE_URL}/crossing?cx_number=${formattedCXNumber}`);
             if (!response.ok) throw new Error('Crossing statement not found.');
             
             const data = await response.json();
