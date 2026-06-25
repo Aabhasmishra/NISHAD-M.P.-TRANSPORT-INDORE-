@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import BASE_URL from "../../config";
 import { FaTrashCan } from "react-icons/fa6";
 import { IoSearch } from "react-icons/io5";
 import { TfiWrite } from "react-icons/tfi";
@@ -171,7 +172,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
     setIsCheckingPayment(true);
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/transport-records/history?consignorGst=${encodeURIComponent(formData.consignorGst)}&consigeeGst=${encodeURIComponent(formData.consigneeGst)}`
+        `${BASE_URL}/transport-records/history?consignorGst=${encodeURIComponent(formData.consignorGst)}&consigeeGst=${encodeURIComponent(formData.consigneeGst)}`
       );
       
       if (!response.ok) {
@@ -264,7 +265,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
       // 1. Validate consignor
       const consignorRes = await fetch(
-        `https://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
+        `${BASE_URL}/customers?name=${encodeURIComponent(
           formData.consignor
         )}&id_number=${encodeURIComponent(consignorId)}`
       );
@@ -277,7 +278,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
       // 2. Validate consignee
       const consigneeRes = await fetch(
-        `https://43.230.202.198:3000/api/customers?name=${encodeURIComponent(
+        `${BASE_URL}/customers?name=${encodeURIComponent(
           formData.consignee
         )}&id_number=${encodeURIComponent(consigneeId)}`
       );
@@ -461,7 +462,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       };
 
       const response = await fetch(
-        "https://43.230.202.198:3000/api/transport-records",
+        `${BASE_URL}/transport-records`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -568,7 +569,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const fetchInvoice = async (invoiceNumber) => {
     try {
       const response = await fetch(
-        `https://43.230.202.198:3000/api/transport-records?grNo=${invoiceNumber}`
+        `${BASE_URL}/transport-records?grNo=${invoiceNumber}`
       );
       const data = await response.json();
       
@@ -668,7 +669,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
           ? idNumber.replace("URD - ", "").trim()
           : idNumber.trim();
         const validateRes = await fetch(
-          `https://43.230.202.198:3000/api/customers?name=${encodeURIComponent(name)}&id_number=${encodeURIComponent(idNumber)}`
+          `${BASE_URL}/customers?name=${encodeURIComponent(name)}&id_number=${encodeURIComponent(idNumber)}`
         );
         const validateData = await validateRes.json();
         if (!validateData.valid) {
@@ -677,7 +678,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
 
         // 2. Get full details using search endpoint
         const searchRes = await fetch(
-          `https://43.230.202.198:3000/api/customers/search?q=${encodeURIComponent(name)}`
+          `${BASE_URL}/customers/search?q=${encodeURIComponent(name)}`
         );
         const searchResults = await searchRes.json();
         const customer = searchResults.find(c => c.id_number === idNumber);
@@ -753,7 +754,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       };
 
       const response = await fetch(
-        `https://43.230.202.198:3000/api/transport-records/${formData.invoiceNumber}`,
+        `${BASE_URL}/transport-records/${formData.invoiceNumber}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -794,7 +795,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       setIsSubmitting(true);
       try {
         const response = await fetch(
-          `https://43.230.202.198:3000/api/transport-records/${formData.invoiceNumber}`,
+          `${BASE_URL}/transport-records/${formData.invoiceNumber}`,
           {
             method: "DELETE",
           }
