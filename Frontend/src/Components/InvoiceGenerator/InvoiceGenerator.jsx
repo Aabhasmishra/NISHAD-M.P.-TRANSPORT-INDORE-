@@ -93,7 +93,7 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const [grNumberInput, setGrNumberInput] = useState('');
 
   const locationOptions = [
-    "Ambikapur", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
+    "Ambikapur", "Bhatapara", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
     "Dhamtari", "Durg", "Indore", "Jagdalpur", "Janjgir", "Kanker", "Kawardha", 
     "Korba", "Koriya", "Mahasamud", "Manendragarh", "Naila", "Narayanpur", 
     "Pathalgaon", "Raigarh", "Raipur", "Rajnandgaon", "Rewa", "Satna", 
