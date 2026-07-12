@@ -8,6 +8,7 @@ const transporterDB = require("./transporterDB");
 const userDB = require("./userDB");
 const challanDB = require("./challanDB");
 const crossingDB = require("./crossingDB");
+const otherDB = require("./otherDB");
 const createDatabaseViewer = require("./databaseViewer");
 require("dotenv").config();
 
@@ -24,6 +25,7 @@ async function initialize() {
     await userDB.initialize();
     await challanDB.initialize();
     await crossingDB.initialize();
+    await otherDB.initialize();
     console.log("All databases initialized successfully");
   } catch (err) {
     console.error("Failed to initialize databases:", err);
@@ -46,6 +48,7 @@ const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
 const challanRoutes = require("./challanRoutes")(challanDB);
 const crossingRoutes = require("./crossingRoutes")(crossingDB);
+const otherRoutes = require("./otherRoutes")(otherDB); 
 
 // Create database viewer routes
 const databaseViewerRoutes = createDatabaseViewer(
@@ -64,6 +67,7 @@ app.use("/api", transporterRoutes);
 app.use("/api", userRoutes);
 app.use("/api", challanRoutes);
 app.use("/api", crossingRoutes);
+app.use("/api", otherRoutes);    
 app.use("/", databaseViewerRoutes);
 
 // Database inspection endpoint
@@ -162,6 +166,10 @@ function printEndpoints() {
   console.log("  GET    /api/crossing?cx_number=...");
   console.log("  PUT    /api/crossing/:cx_number");
   console.log("  DELETE /api/crossing/:cx_number");
+
+  console.log("\nOther / Stations:");
+  console.log("  GET    /api/other/stations");
+  console.log("  POST   /api/other/stations");
 
   console.log("\nDatabase Inspection:");
   console.log("  GET    /api/AabhasServer (JSON API)");
