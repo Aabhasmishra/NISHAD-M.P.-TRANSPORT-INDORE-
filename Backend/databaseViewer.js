@@ -1,7 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 
-// Signature: (transportDB, customersDB, transporterDB, userDB, challanDB, paymentDB, crossingDB, otherDB)
 function createDatabaseViewer(
   transportDB,
   customersDB,
@@ -255,7 +254,6 @@ function createDatabaseViewer(
   return router;
 }
 
-// ---------- HTML generation (using template literal) ----------
 function generateHTML() {
   return `
 <!DOCTYPE html>
@@ -598,7 +596,7 @@ function generateHTML() {
 
 <script>
   (function() {
-    const state = {
+    var state = {
       dbName: 'transport_records',
       columns: [],
       rows: [],
@@ -610,17 +608,17 @@ function generateHTML() {
       isStations: false,
     };
 
-    const dbNameLabel = document.getElementById('dbNameLabel');
-    const recordCount = document.getElementById('recordCount');
-    const exportBtn = document.getElementById('exportBtn');
-    const tableWrapper = document.getElementById('tableWrapper');
-    const prevBtn = document.getElementById('prevPage');
-    const nextBtn = document.getElementById('nextPage');
-    const pageInfo = document.getElementById('pageInfo');
+    var dbNameLabel = document.getElementById('dbNameLabel');
+    var recordCount = document.getElementById('recordCount');
+    var exportBtn = document.getElementById('exportBtn');
+    var tableWrapper = document.getElementById('tableWrapper');
+    var prevBtn = document.getElementById('prevPage');
+    var nextBtn = document.getElementById('nextPage');
+    var pageInfo = document.getElementById('pageInfo');
 
     // Theme toggle
-    const themeToggle = document.getElementById('themeToggle');
-    const body = document.body;
+    var themeToggle = document.getElementById('themeToggle');
+    var body = document.body;
     if (localStorage.getItem('theme') === 'dark') {
       body.classList.add('dark-mode');
       themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
@@ -637,26 +635,26 @@ function generateHTML() {
     });
 
     // Database buttons
-    const dbButtons = document.querySelectorAll('.db-btn');
-    dbButtons.forEach(btn => {
+    var dbButtons = document.querySelectorAll('.db-btn');
+    dbButtons.forEach(function(btn) {
       btn.addEventListener('click', function() {
-        const db = this.getAttribute('data-db');
+        var db = this.getAttribute('data-db');
         if (db === state.dbName && !state.isLoading) return;
-        dbButtons.forEach(b => b.classList.remove('active'));
+        dbButtons.forEach(function(b) { b.classList.remove('active'); });
         this.classList.add('active');
         loadDatabase(db);
       });
     });
 
     // Pagination
-    prevBtn.addEventListener('click', () => {
+    prevBtn.addEventListener('click', function() {
       if (state.currentPage > 1) {
         state.currentPage--;
         renderTable();
       }
     });
-    nextBtn.addEventListener('click', () => {
-      const totalPages = Math.ceil(state.rows.length / state.pageSize);
+    nextBtn.addEventListener('click', function() {
+      var totalPages = Math.ceil(state.rows.length / state.pageSize);
       if (state.currentPage < totalPages) {
         state.currentPage++;
         renderTable();
@@ -665,7 +663,7 @@ function generateHTML() {
 
     // Export
     exportBtn.addEventListener('click', function() {
-      const db = state.isStations ? 'stations' : state.dbName;
+      var db = state.isStations ? 'stations' : state.dbName;
       if (db === 'stations') {
         alert('Export for Stations is not implemented yet.');
         return;
@@ -673,7 +671,7 @@ function generateHTML() {
       window.location.href = '/export/' + db;
     });
 
-    async function loadDatabase(dbName) {
+    function loadDatabase(dbName) {
       if (state.isLoading) return;
       state.isLoading = true;
       state.currentPage = 1;
@@ -686,92 +684,106 @@ function generateHTML() {
 
       try {
         if (dbName === 'stations') {
-          const resp = await fetch('/api/stations');
-          if (!resp.ok) throw new Error('Failed to fetch stations');
-          const data = await resp.json();
-          const stations = data.stations || [];
-          state.rows = stations.map(s => ({ station: s }));
-          state.columns = ['station'];
-          state.isStations = true;
-          state.dbName = dbName;
-          dbNameLabel.textContent = 'Stations';
-          recordCount.textContent = stations.length + ' records';
-          exportBtn.disabled = false;
-          renderTable();
+          fetch('/api/stations')
+            .then(function(resp) {
+              if (!resp.ok) throw new Error('Failed to fetch stations');
+              return resp.json();
+            })
+            .then(function(data) {
+              var stations = data.stations || [];
+              state.rows = stations.map(function(s) { return { station: s }; });
+              state.columns = ['station'];
+              state.isStations = true;
+              state.dbName = dbName;
+              dbNameLabel.textContent = 'Stations';
+              recordCount.textContent = stations.length + ' records';
+              exportBtn.disabled = false;
+              renderTable();
+              state.isLoading = false;
+            })
+            .catch(function(err) {
+              console.error(err);
+              tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
+              recordCount.textContent = 'Error';
+              state.isLoading = false;
+            });
         } else {
           state.isStations = false;
-          const resp = await fetch('/api/table/' + dbName);
-          if (!resp.ok) throw new Error('Failed to fetch data');
-          const data = await resp.json();
-          state.rows = data.rows || [];
-          state.columns = data.columns || [];
-          state.dbName = dbName;
-          const labelMap = {
-            'transport_records': 'Builty',
-            'customers': 'Customers',
-            'payment': 'Payment',
-            'transporter_details': 'Transporters',
-            'users': 'Users',
-            'challan': 'Challan',
-            'crossing': 'Crossing'
-          };
-          dbNameLabel.textContent = labelMap[dbName] || dbName;
-          recordCount.textContent = state.rows.length + ' records';
-          exportBtn.disabled = false;
-          renderTable();
+          fetch('/api/table/' + dbName)
+            .then(function(resp) {
+              if (!resp.ok) throw new Error('Failed to fetch data');
+              return resp.json();
+            })
+            .then(function(data) {
+              state.rows = data.rows || [];
+              state.columns = data.columns || [];
+              state.dbName = dbName;
+              var labelMap = {
+                'transport_records': 'Builty',
+                'customers': 'Customers',
+                'payment': 'Payment',
+                'transporter_details': 'Transporters',
+                'users': 'Users',
+                'challan': 'Challan',
+                'crossing': 'Crossing'
+              };
+              dbNameLabel.textContent = labelMap[dbName] || dbName;
+              recordCount.textContent = state.rows.length + ' records';
+              exportBtn.disabled = false;
+              renderTable();
+              state.isLoading = false;
+            })
+            .catch(function(err) {
+              console.error(err);
+              tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
+              recordCount.textContent = 'Error';
+              state.isLoading = false;
+            });
         }
       } catch (err) {
         console.error(err);
         tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
         recordCount.textContent = 'Error';
-      } finally {
         state.isLoading = false;
       }
     }
 
     function renderTable() {
-      const rows = state.rows;
-      const columns = state.columns;
-      const pageSize = state.pageSize;
-      const currentPage = state.currentPage;
-      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      var rows = state.rows;
+      var columns = state.columns;
+      var pageSize = state.pageSize;
+      var currentPage = state.currentPage;
+      var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
 
       if (currentPage > totalPages) state.currentPage = totalPages;
 
-      const start = (state.currentPage - 1) * pageSize;
-      const end = Math.min(start + pageSize, rows.length);
-      const pageRows = rows.slice(start, end);
+      var start = (state.currentPage - 1) * pageSize;
+      var end = Math.min(start + pageSize, rows.length);
+      var pageRows = rows.slice(start, end);
 
-      let html = '<table><thead><tr>';
-      columns.forEach(col => {
-        const ascActive = (state.sortColumn === col && state.sortDirection === 'asc') ? 'active' : '';
-        const descActive = (state.sortColumn === col && state.sortDirection === 'desc') ? 'active' : '';
-        html += ``
-          <th>
-            <div class="sortable-header">
-              <span>${col}</span>
-              <div class="sort-buttons">
-                <button class="sort-btn sort-asc ${ascActive}" data-col="${col}" data-dir="asc">▲</button>
-                <button class="sort-btn sort-desc ${descActive}" data-col="${col}" data-dir="desc">▼</button>
-              </div>
-            </div>
-          </th>
-        ``;
+      var html = '<table><thead><tr>';
+      columns.forEach(function(col) {
+        var ascActive = (state.sortColumn === col && state.sortDirection === 'asc') ? 'active' : '';
+        var descActive = (state.sortColumn === col && state.sortDirection === 'desc') ? 'active' : '';
+        html += '<th><div class="sortable-header"><span>' + col + '</span><div class="sort-buttons">' +
+                '<button class="sort-btn sort-asc ' + ascActive + '" data-col="' + col + '" data-dir="asc">▲</button>' +
+                '<button class="sort-btn sort-desc ' + descActive + '" data-col="' + col + '" data-dir="desc">▼</button>' +
+                '</div></div></th>';
       });
       html += '</tr></thead><tbody>';
 
       if (pageRows.length === 0) {
         html += '<tr><td colspan="' + columns.length + '" class="no-data">No records</td></tr>';
       } else {
-        pageRows.forEach(row => {
+        pageRows.forEach(function(row) {
           html += '<tr>';
-          columns.forEach(col => {
-            let val = row[col] !== undefined && row[col] !== null ? row[col] : '';
-            if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-              const d = new Date(val);
+          columns.forEach(function(col) {
+            var val = row[col] !== undefined && row[col] !== null ? row[col] : '';
+            if (typeof val === 'string' && /^\\d{4}-\\d{2}-\\d{2}/.test(val)) {
+              var d = new Date(val);
               if (!isNaN(d.getTime())) val = d.toLocaleString();
             }
-            html += <td>${val}</td>;
+            html += '<td>' + val + '</td>';
           });
           html += '</tr>';
         });
@@ -780,15 +792,15 @@ function generateHTML() {
 
       tableWrapper.innerHTML = html;
 
-      pageInfo.textContent = Page ${state.currentPage} of ${totalPages};
-      prevBtn.disabled = state.currentPage <= 1;
-      nextBtn.disabled = state.currentPage >= totalPages;
+      pageInfo.textContent = 'Page ' + state.currentPage + ' of ' + totalPages;
+      prevBtn.disabled = (state.currentPage <= 1);
+      nextBtn.disabled = (state.currentPage >= totalPages);
 
-      document.querySelectorAll('.sort-btn').forEach(btn => {
+      document.querySelectorAll('.sort-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
-          const col = this.getAttribute('data-col');
-          const dir = this.getAttribute('data-dir');
+          var col = this.getAttribute('data-col');
+          var dir = this.getAttribute('data-dir');
           handleSort(col, dir);
         });
       });
@@ -802,20 +814,20 @@ function generateHTML() {
         state.sortColumn = column;
         state.sortDirection = direction;
       }
-      const col = state.sortColumn;
-      const dir = state.sortDirection;
+      var col = state.sortColumn;
+      var dir = state.sortDirection;
       if (col && dir) {
-        const multiplier = dir === 'asc' ? 1 : -1;
-        state.rows.sort((a, b) => {
-          let aVal = a[col] !== undefined ? a[col] : '';
-          let bVal = b[col] !== undefined ? b[col] : '';
-          const aNum = parseFloat(aVal);
-          const bNum = parseFloat(bVal);
+        var multiplier = dir === 'asc' ? 1 : -1;
+        state.rows.sort(function(a, b) {
+          var aVal = a[col] !== undefined ? a[col] : '';
+          var bVal = b[col] !== undefined ? b[col] : '';
+          var aNum = parseFloat(aVal);
+          var bNum = parseFloat(bVal);
           if (!isNaN(aNum) && !isNaN(bNum)) {
             return (aNum - bNum) * multiplier;
           }
-          const aDate = new Date(aVal);
-          const bDate = new Date(bVal);
+          var aDate = new Date(aVal);
+          var bDate = new Date(bVal);
           if (!isNaN(aDate) && !isNaN(bDate)) {
             return (aDate - bDate) * multiplier;
           }
