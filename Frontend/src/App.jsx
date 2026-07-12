@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import UserManagement from "./Components/UserManagement/UserManagement";
 import MySidebar from "./Components/Sidebar/Sidebar";
-import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
+import InvoiceGenerator from "./Components/InvoiceGenerator/3";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
@@ -11,7 +11,7 @@ import CrossingStatement from "./Components/CrossingStatement/CrossingStatement"
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
-import ShipmentReportModule from "./Components/ShipmentReportModule/ShipmentReportModule"
+import ShipmentReportModule from "./Components/ShipmentReportModule/ShipmentReportModule";
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -161,6 +161,8 @@ const App = () => {
         return <ShipmentReportModule isLightMode={isLightMode} />;
       case 'PBR':
         return <ShipmentReportModule isLightMode={isLightMode} modeOfView="PBR" />;
+      case 'BR':
+        return <ShipmentReportModule isLightMode={isLightMode} modeOfView="BR" />;
       default:
         return <div className="default-content">Select an option from the sidebar</div>;
     }
