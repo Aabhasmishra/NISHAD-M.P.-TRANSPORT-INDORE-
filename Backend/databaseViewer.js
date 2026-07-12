@@ -13,8 +13,10 @@ function createDatabaseViewer(
 ) {
   const router = express.Router();
 
+  // --- Enhanced inspectDatabase: works even if db.inspectDatabase is missing ---
   async function inspectDatabase(db, tableName) {
     try {
+      // 1. If the db has its own inspectDatabase method, use it
       if (db && typeof db.inspectDatabase === 'function') {
         const result = await db.inspectDatabase();
         if (result && result.table && !result.tables) {
@@ -28,16 +30,33 @@ function createDatabaseViewer(
           };
         }
         return result;
-      } else {
+      }
+
+      // 2. Fallback: if the db exposes a pool, run a SELECT * query
+      if (db && db.pool && typeof db.pool.query === 'function') {
+        // Sanitize table name (alphanumeric + underscore only)
+        const safeTable = tableName.replace(/[^a-zA-Z0-9_-]/g, '');
+        const query = `SELECT * FROM ${safeTable}`;
+        const result = await db.pool.query(query);
         return {
           database: 'mp_transport',
           tables: [{
             table: tableName,
-            columns: [],
-            Table_Content: []
+            columns: result.fields ? result.fields.map(f => f.name) : Object.keys(result.rows[0] || {}),
+            Table_Content: result.rows || []
           }]
         };
       }
+
+      // 3. No method and no pool – return empty
+      return {
+        database: 'mp_transport',
+        tables: [{
+          table: tableName,
+          columns: [],
+          Table_Content: []
+        }]
+      };
     } catch (err) {
       console.error(`Error inspecting ${tableName}:`, err);
       return {
@@ -52,6 +71,7 @@ function createDatabaseViewer(
     }
   }
 
+  // --- Routes ---
   router.get('/AabhasServer', async (req, res) => {
     try {
       const html = generateHTML();
@@ -126,6 +146,7 @@ function createDatabaseViewer(
       const stations = stationString ? stationString.split(' | ').filter(s => s.trim() !== '') : [];
       res.json({ stations });
     } catch (err) {
+      console.error('Error fetching stations:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -682,69 +703,67 @@ function generateHTML() {
       recordCount.textContent = 'Loading…';
       exportBtn.disabled = true;
 
-      try {
-        if (dbName === 'stations') {
-          fetch('/api/stations')
-            .then(function(resp) {
-              if (!resp.ok) throw new Error('Failed to fetch stations');
-              return resp.json();
-            })
-            .then(function(data) {
-              var stations = data.stations || [];
+      if (dbName === 'stations') {
+        fetch('/api/stations')
+          .then(function(resp) {
+            if (!resp.ok) throw new Error('Failed to fetch stations');
+            return resp.json();
+          })
+          .then(function(data) {
+            var stations = data.stations || [];
+            if (stations.length === 0) {
+              state.rows = [];
+              state.columns = ['station'];
+            } else {
               state.rows = stations.map(function(s) { return { station: s }; });
               state.columns = ['station'];
-              state.isStations = true;
-              state.dbName = dbName;
-              dbNameLabel.textContent = 'Stations';
-              recordCount.textContent = stations.length + ' records';
-              exportBtn.disabled = false;
-              renderTable();
-              state.isLoading = false;
-            })
-            .catch(function(err) {
-              console.error(err);
-              tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
-              recordCount.textContent = 'Error';
-              state.isLoading = false;
-            });
-        } else {
-          state.isStations = false;
-          fetch('/api/table/' + dbName)
-            .then(function(resp) {
-              if (!resp.ok) throw new Error('Failed to fetch data');
-              return resp.json();
-            })
-            .then(function(data) {
-              state.rows = data.rows || [];
-              state.columns = data.columns || [];
-              state.dbName = dbName;
-              var labelMap = {
-                'transport_records': 'Builty',
-                'customers': 'Customers',
-                'payment': 'Payment',
-                'transporter_details': 'Transporters',
-                'users': 'Users',
-                'challan': 'Challan',
-                'crossing': 'Crossing'
-              };
-              dbNameLabel.textContent = labelMap[dbName] || dbName;
-              recordCount.textContent = state.rows.length + ' records';
-              exportBtn.disabled = false;
-              renderTable();
-              state.isLoading = false;
-            })
-            .catch(function(err) {
-              console.error(err);
-              tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
-              recordCount.textContent = 'Error';
-              state.isLoading = false;
-            });
-        }
-      } catch (err) {
-        console.error(err);
-        tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
-        recordCount.textContent = 'Error';
-        state.isLoading = false;
+            }
+            state.isStations = true;
+            state.dbName = dbName;
+            dbNameLabel.textContent = 'Stations';
+            recordCount.textContent = stations.length + ' records';
+            exportBtn.disabled = false;
+            renderTable();
+            state.isLoading = false;
+          })
+          .catch(function(err) {
+            console.error(err);
+            tableWrapper.innerHTML = '<div class="no-data">Error loading stations: ' + err.message + '</div>';
+            recordCount.textContent = 'Error';
+            state.isLoading = false;
+          });
+      } else {
+        state.isStations = false;
+        fetch('/api/table/' + dbName)
+          .then(function(resp) {
+            if (!resp.ok) throw new Error('Failed to fetch data');
+            return resp.json();
+          })
+          .then(function(data) {
+            state.rows = data.rows || [];
+            state.columns = data.columns || [];
+            state.dbName = dbName;
+            var labelMap = {
+              'transport_records': 'Builty',
+              'customers': 'Customers',
+              'payment': 'Payment',
+              'transporter_details': 'Transporters',
+              'users': 'Users',
+              'challan': 'Challan',
+              'crossing': 'Crossing'
+            };
+            dbNameLabel.textContent = labelMap[dbName] || dbName;
+            recordCount.textContent = state.rows.length + ' records';
+            exportBtn.disabled = false;
+            renderTable();
+            state.isLoading = false;
+          })
+          .catch(function(err) {
+            console.error(err);
+            tableWrapper.innerHTML = '<div class="no-data">Error loading data: ' + err.message + '</div>';
+            recordCount.textContent = 'Error';
+            state.isLoading = false;
+          });
       }
     }
 
@@ -773,7 +792,8 @@ function generateHTML() {
       html += '</tr></thead><tbody>';
 
       if (pageRows.length === 0) {
-        html += '<tr><td colspan="' + columns.length + '" class="no-data">No records</td></tr>';
+        html += '<tr><td colspan="' + columns.length + '" class="no-data">' + 
+                (state.isStations ? 'No stations found' : 'No records') + '</td></tr>';
       } else {
         pageRows.forEach(function(row) {
           html += '<tr>';
