@@ -57,7 +57,8 @@ const databaseViewerRoutes = createDatabaseViewer(
   transporterDB,
   userDB,
   challanDB,
-  crossingDB
+  crossingDB,
+  otherDB
 );
 
 // Use routes
