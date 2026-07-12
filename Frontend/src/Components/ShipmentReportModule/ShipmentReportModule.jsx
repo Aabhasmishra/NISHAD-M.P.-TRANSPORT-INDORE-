@@ -799,7 +799,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
           )}
           {isBR && processedRecords.length > 0 && (
             <div className={`challan-table-total-row ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ fontWeight: 'inherit', marginTop: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'start', padding: '10px' }}>
-              <b style={{ marginRight: '4px', marginLeft: '4px' }}>Note:</b> Booking Register — showing all bookings for the selected period.
+              <b style={{ marginRight: '4px', marginLeft: '4px' }}>Note:</b> Booking Register: Showing all bookings for the selected period.
             </div>
           )}
         </div>
