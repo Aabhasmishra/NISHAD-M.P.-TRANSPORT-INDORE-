@@ -435,7 +435,12 @@ export default function SidebarComponent({
       icon: <FaChartBar className="sidebar-link-icon" />,
       subItems: [
         { label: "Monthly Shipment Report", href: "#", icon: <FaFileAlt /> },
-        { label: "Monthly Booking Report", href: "#", icon: <FaFileAlt /> },
+        { 
+          label: "Booking Register", 
+          href: "#", 
+          icon: <FaFileAlt />,
+          onClick: () => handleComponentClick('BR', 'view')
+        },
         { 
           label: "OSR", 
           href: "#", 
@@ -499,7 +504,7 @@ export default function SidebarComponent({
 
       {/* Main content area (adjust margin based on which sidebar is visible) */}
       <div className={`sidebar-main-content ${isExtendedOpen ? "sidebar-main-content-extended" : "sidebar-main-content-thin"}`}>
-        {children}   {/* 👈 render the passed content here */}
+        {children}
       </div>
     </>
   );
