@@ -91,14 +91,27 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const consignorDebounceRef = useRef(null);
   const consigneeDebounceRef = useRef(null);
   const [grNumberInput, setGrNumberInput] = useState('');
+  const [stationList, setStationList] = useState([]);
+  const [loadingStations, setLoadingStations] = useState(true);
 
-  const locationOptions = [
-    "Ambikapur", "Bhatapara", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
-    "Dhamtari", "Durg", "Indore", "Jagdalpur", "Janjgir", "Kanker", "Kawardha", 
-    "Korba", "Koriya", "Mahasamud", "Manendragarh", "Naila", "Narayanpur", 
-    "Pathalgaon", "Raigarh", "Raipur", "Rajnandgaon", "Rewa", "Satna", 
-    "Surguja"
-  ];
+  // NEW: Fetch stations on mount
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        setLoadingStations(true);
+        const res = await fetch(`${BASE_URL}/other/stations`);
+        if (!res.ok) throw new Error('Failed to fetch stations');
+        const data = await res.json();
+        setStationList(data);
+      } catch (err) {
+        console.error('Error fetching stations:', err);
+        showAlert('Failed to load station list', 'error');
+      } finally {
+        setLoadingStations(false);
+      }
+    };
+    fetchStations();
+  }, []);
 
   useEffect(() => {
     if (formData.consignor && formData.consignee) {
@@ -200,6 +213,29 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
       setPaymentTypeDifferent(false);
     } finally {
       setIsCheckingPayment(false);
+    }
+  };
+
+  const handleAddStation = async () => {
+    const newStation = window.prompt('Enter new station name:');
+    if (!newStation || newStation.trim() === '') return;
+    const stationName = newStation.trim();
+    try {
+      const res = await fetch(`${BASE_URL}/other/stations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station: stationName })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add station');
+      }
+      // Update local station list
+      setStationList(data.stations);
+      // Optionally select the newly added station in dropdown? Not necessary.
+      showAlert(`Station "${stationName}" added successfully`, 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
     }
   };
 
@@ -314,6 +350,11 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
   const handleChange = (e) => {
     const { name, value } = e.target;
     
+    if (value === '__ADD_STATION__') {
+      handleAddStation();
+      return;
+    }
+
     const numericFields = ['motorFreight', 'hammali', 'otherCharges', 'valueDeclared'];
     
     if (numericFields.includes(name)) {
@@ -1973,12 +2014,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
                           required
                           className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
                           style={{ maxHeight: '200px' }}
+                          disabled={loadingStations}
                         >
-                          {locationOptions.map((location) => (
+                          {stationList.map((location) => (
                             <option key={location} value={location}>
                               {location}
                             </option>
                           ))}
+                          <option value="__ADD_STATION__" onClick={handleAddStation}>➕ Add Station</option>
                         </select>
                       ) : (
                         <span className="printValueText textShiftUp">{formData.fromLocation}</span>
@@ -1994,12 +2037,14 @@ const InvoiceGenerator = ({ isLightMode, modeOfView, initialGrNumber, onModeChan
                           required
                           className={`invoice-input location-select ${SCROLLBAR_CLASS}`}
                           style={{ maxHeight: '200px' }}
+                          disabled={loadingStations}
                         >
-                          {locationOptions.map((location) => (
+                          {stationList.map((location) => (
                             <option key={location} value={location}>
                               {location}
                             </option>
                           ))}
+                          <option value="__ADD_STATION__" onClick={handleAddStation}>➕ Add Station</option>
                         </select>
                       ) : (
                         <span className="toLocationCss printValueText textShiftUp2">{formData.toLocation}</span>
