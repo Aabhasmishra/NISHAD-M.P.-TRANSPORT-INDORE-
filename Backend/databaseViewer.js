@@ -496,7 +496,7 @@ function generateHTML() {
       align-items: center;
       gap: 12px;
       padding: 10px 0;
-      padding-up: 0;
+      padding-top: 0;
       flex-shrink: 0;
     }
     .pagination-bar button {
