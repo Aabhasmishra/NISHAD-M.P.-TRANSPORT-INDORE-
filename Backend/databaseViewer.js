@@ -384,6 +384,7 @@ function generateHTML() {
 
     .database-content {
       padding: 16px;
+      padding-bottom: 0;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -495,6 +496,7 @@ function generateHTML() {
       align-items: center;
       gap: 12px;
       padding: 10px 0;
+      padding-up: 0;
       flex-shrink: 0;
     }
     .pagination-bar button {
