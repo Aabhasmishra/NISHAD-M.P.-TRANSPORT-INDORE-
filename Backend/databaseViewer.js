@@ -1,77 +1,60 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 
+// ── Signature matches your mainServer.js call ──
 function createDatabaseViewer(
   transportDB,
   customersDB,
   transporterDB,
   userDB,
   challanDB,
-  paymentDB,
   crossingDB,
   otherDB
 ) {
   const router = express.Router();
 
-  // --- Enhanced inspectDatabase: works even if db.inspectDatabase is missing ---
-  async function inspectDatabase(db, tableName) {
+  // ── Helper to fetch table data ──
+  async function getTableData(db, tableName) {
     try {
-      // 1. If the db has its own inspectDatabase method, use it
+      // If the DB has an inspectDatabase method, use it
       if (db && typeof db.inspectDatabase === 'function') {
         const result = await db.inspectDatabase();
         if (result && result.table && !result.tables) {
           return {
-            database: 'mp_transport',
-            tables: [{
-              table: tableName,
-              columns: [],
-              Table_Content: result.Table_Content || []
-            }]
+            columns: Object.keys(result.Table_Content[0] || {}),
+            rows: result.Table_Content || []
           };
         }
-        return result;
+        if (result && result.tables && result.tables[0]) {
+          const table = result.tables[0];
+          return {
+            columns: Object.keys(table.Table_Content[0] || {}),
+            rows: table.Table_Content || []
+          };
+        }
+        // fallback
+        return { columns: [], rows: [] };
       }
 
-      // 2. Fallback: if the db exposes a pool, run a SELECT * query
+      // If DB has a pool, run a raw SELECT
       if (db && db.pool && typeof db.pool.query === 'function') {
-        // Sanitize table name (alphanumeric + underscore only)
         const safeTable = tableName.replace(/[^a-zA-Z0-9_-]/g, '');
         const query = `SELECT * FROM ${safeTable}`;
         const result = await db.pool.query(query);
-        return {
-          database: 'mp_transport',
-          tables: [{
-            table: tableName,
-            columns: result.fields ? result.fields.map(f => f.name) : Object.keys(result.rows[0] || {}),
-            Table_Content: result.rows || []
-          }]
-        };
+        const rows = result.rows || [];
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        return { columns, rows };
       }
 
-      // 3. No method and no pool – return empty
-      return {
-        database: 'mp_transport',
-        tables: [{
-          table: tableName,
-          columns: [],
-          Table_Content: []
-        }]
-      };
+      console.warn(`No data access method for table "${tableName}"`);
+      return { columns: [], rows: [] };
     } catch (err) {
-      console.error(`Error inspecting ${tableName}:`, err);
-      return {
-        error: err.message,
-        database: 'mp_transport',
-        tables: [{
-          table: tableName,
-          columns: [],
-          Table_Content: []
-        }]
-      };
+      console.error(`Error fetching table "${tableName}":`, err.message);
+      throw new Error(`Failed to fetch ${tableName}: ${err.message}`);
     }
   }
 
-  // --- Routes ---
+  // ── Main HTML page ──
   router.get('/AabhasServer', async (req, res) => {
     try {
       const html = generateHTML();
@@ -81,67 +64,61 @@ function createDatabaseViewer(
     }
   });
 
+  // ── API: get table data ──
   router.get('/api/table/:dbName', async (req, res) => {
     try {
       const { dbName } = req.params;
-      let dbData;
-      let actualTableName;
+      let db, tableName;
 
       switch (dbName) {
         case 'transport_records':
-          dbData = await inspectDatabase(transportDB, 'transport_records');
-          actualTableName = 'transport_records';
+          db = transportDB;
+          tableName = 'transport_records';
           break;
         case 'customers':
-          dbData = await inspectDatabase(customersDB, 'customers');
-          actualTableName = 'customers';
-          break;
-        case 'payment':
-          dbData = await inspectDatabase(paymentDB, 'payment');
-          actualTableName = 'payment';
+          db = customersDB;
+          tableName = 'customers';
           break;
         case 'transporter_details':
-          dbData = await inspectDatabase(transporterDB, 'Transporter-details');
-          actualTableName = 'Transporter-details';
+          db = transporterDB;
+          tableName = 'Transporter-details';
           break;
         case 'users':
-          dbData = await inspectDatabase(userDB, 'users');
-          actualTableName = 'users';
+          db = userDB;
+          tableName = 'users';
           break;
         case 'challan':
-          dbData = await inspectDatabase(challanDB, 'challan');
-          actualTableName = 'challan';
+          db = challanDB;
+          tableName = 'challan';
           break;
         case 'crossing':
-          dbData = await inspectDatabase(crossingDB, 'crossing');
-          actualTableName = 'crossing';
+          db = crossingDB;
+          tableName = 'crossing_statement';   // actual table name from crossingDB
           break;
         default:
           return res.status(404).json({ error: 'Database not found' });
       }
 
-      if (!dbData.tables || !dbData.tables[0]) {
-        return res.json({ columns: [], rows: [], count: 0 });
+      if (!db) {
+        console.error(`Database object for "${dbName}" is undefined or null.`);
+        return res.status(500).json({ error: `Database "${dbName}" not properly initialized.` });
       }
 
-      const tableData = dbData.tables[0];
-      const rows = tableData.Table_Content || [];
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-
-      res.json({
-        columns,
-        rows,
-        count: rows.length,
-        tableName: actualTableName
-      });
+      const { columns, rows } = await getTableData(db, tableName);
+      res.json({ columns, rows, count: rows.length, tableName });
     } catch (err) {
-      console.error('Error fetching table data:', err);
+      console.error(`Error in /api/table/${req.params.dbName}:`, err);
       res.status(500).json({ error: err.message });
     }
   });
 
+  // ── API: stations (from otherDB) ──
   router.get('/api/stations', async (req, res) => {
     try {
+      if (!otherDB) {
+        console.error('otherDB is undefined or null.');
+        return res.status(500).json({ error: 'Stations database not initialized.' });
+      }
       const stationString = await otherDB.getStationList();
       const stations = stationString ? stationString.split(' | ').filter(s => s.trim() !== '') : [];
       res.json({ stations });
@@ -151,53 +128,52 @@ function createDatabaseViewer(
     }
   });
 
+  // ── Excel Export ──
   router.get('/export/:dbName', async (req, res) => {
     try {
       const { dbName } = req.params;
-      let dbData;
-      let actualTableName;
+      let db, tableName;
 
       switch (dbName) {
         case 'transport_records':
-          dbData = await inspectDatabase(transportDB, 'transport_records');
-          actualTableName = 'transport_records';
+          db = transportDB;
+          tableName = 'transport_records';
           break;
         case 'customers':
-          dbData = await inspectDatabase(customersDB, 'customers');
-          actualTableName = 'customers';
-          break;
-        case 'payment':
-          dbData = await inspectDatabase(paymentDB, 'payment');
-          actualTableName = 'payment';
+          db = customersDB;
+          tableName = 'customers';
           break;
         case 'transporter_details':
-          dbData = await inspectDatabase(transporterDB, 'Transporter-details');
-          actualTableName = 'Transporter-details';
+          db = transporterDB;
+          tableName = 'Transporter-details';
           break;
         case 'users':
-          dbData = await inspectDatabase(userDB, 'users');
-          actualTableName = 'users';
+          db = userDB;
+          tableName = 'users';
           break;
         case 'challan':
-          dbData = await inspectDatabase(challanDB, 'challan');
-          actualTableName = 'challan';
+          db = challanDB;
+          tableName = 'challan';
           break;
         case 'crossing':
-          dbData = await inspectDatabase(crossingDB, 'crossing');
-          actualTableName = 'crossing';
+          db = crossingDB;
+          tableName = 'crossing_statement';
           break;
         default:
           return res.status(404).json({ error: 'Database not found' });
       }
 
-      if (!dbData.tables || !dbData.tables[0] || !dbData.tables[0].Table_Content || dbData.tables[0].Table_Content.length === 0) {
+      if (!db) {
+        return res.status(500).json({ error: `Database "${dbName}" not initialized.` });
+      }
+
+      const { columns, rows } = await getTableData(db, tableName);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'No data available to export' });
       }
 
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet(actualTableName);
-      const tableData = dbData.tables[0];
-      const columns = Object.keys(tableData.Table_Content[0]);
+      const worksheet = workbook.addWorksheet(tableName);
 
       const headerRow = worksheet.addRow(columns);
       headerRow.eachCell((cell) => {
@@ -207,7 +183,7 @@ function createDatabaseViewer(
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       });
 
-      tableData.Table_Content.forEach((row, rowIndex) => {
+      rows.forEach((row, rowIndex) => {
         const rowValues = columns.map(col => {
           const value = row[col];
           if (typeof value === 'string' && isDateString(value)) {
@@ -237,7 +213,7 @@ function createDatabaseViewer(
       });
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${actualTableName}_export.xlsx`);
+      res.setHeader('Content-Disposition', `attachment; filename=${tableName}_export.xlsx`);
       await workbook.xlsx.write(res);
       res.end();
     } catch (err) {
@@ -246,6 +222,7 @@ function createDatabaseViewer(
     }
   });
 
+  // ── Date helpers (unchanged) ──
   function isDateString(value) {
     if (typeof value !== 'string') return false;
     if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return true;
@@ -275,6 +252,7 @@ function createDatabaseViewer(
   return router;
 }
 
+// ── HTML generation (unchanged, but included for completeness) ──
 function generateHTML() {
   return `
 <!DOCTYPE html>
@@ -285,6 +263,7 @@ function generateHTML() {
   <title>Database Viewer</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* same CSS as before – keep it */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
     :root {
       --primary-bg: #f9fafb;
@@ -582,7 +561,6 @@ function generateHTML() {
   <div class="database-buttons">
     <button class="db-btn active" data-db="transport_records">Builty</button>
     <button class="db-btn" data-db="customers">Customers</button>
-    <button class="db-btn" data-db="payment">Payment</button>
     <button class="db-btn" data-db="transporter_details">Transporters</button>
     <button class="db-btn" data-db="users">Users</button>
     <button class="db-btn" data-db="challan">Challan</button>
@@ -711,13 +689,8 @@ function generateHTML() {
           })
           .then(function(data) {
             var stations = data.stations || [];
-            if (stations.length === 0) {
-              state.rows = [];
-              state.columns = ['station'];
-            } else {
-              state.rows = stations.map(function(s) { return { station: s }; });
-              state.columns = ['station'];
-            }
+            state.rows = stations.map(function(s) { return { station: s }; });
+            state.columns = ['station'];
             state.isStations = true;
             state.dbName = dbName;
             dbNameLabel.textContent = 'Stations';
@@ -746,7 +719,6 @@ function generateHTML() {
             var labelMap = {
               'transport_records': 'Builty',
               'customers': 'Customers',
-              'payment': 'Payment',
               'transporter_details': 'Transporters',
               'users': 'Users',
               'challan': 'Challan',
