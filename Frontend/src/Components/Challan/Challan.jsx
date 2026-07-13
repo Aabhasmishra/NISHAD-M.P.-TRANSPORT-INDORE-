@@ -42,6 +42,8 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
     const [showAddViewUpdateButtons, setShowAddViewUpdateButtons] = useState(false);
     const [problematicBuiltyNo, setProblematicBuiltyNo] = useState('');
     const [originalTruckNo, setOriginalTruckNo] = useState('');
+    const [stationList, setStationList] = useState([]);
+    const [loadingStations, setLoadingStations] = useState(true);
     
     // Popup Alert State
     const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
@@ -49,14 +51,6 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
 
     // Print functionality
     const printRef = useRef();
-
-    const locationOptions = [
-        "Ambikapur", "Bhatapara", "Bhilai", "Bilaspur", "Champa", "Cuttack", "Dantewada", 
-        "Dhamtari", "Durg", "Indore", "Jagdalpur", "Janjgir", "Kanker", "Kawardha", 
-        "Korba", "Koriya", "Mahasamud", "Manendragarh", "Naila", "Narayanpur", 
-        "Pathalgaon", "Raigarh", "Raipur", "Rajnandgaon", "Rewa", "Satna", 
-        "Surguja"
-    ];
 
     // Show alert function
     const showAlert = (message, type = 'info') => {
@@ -96,6 +90,25 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
         setYears(yearOptions);
     }, []);
 
+    // Fetch stations from backend
+    useEffect(() => {
+        const fetchStations = async () => {
+            try {
+                setLoadingStations(true);
+                const res = await fetch(`${BASE_URL}/other/stations`);
+                if (!res.ok) throw new Error('Failed to fetch stations');
+                const data = await res.json();
+                setStationList(data);
+            } catch (err) {
+                console.error('Error fetching stations:', err);
+                showAlert('Failed to load station list', 'error');
+            } finally {
+                setLoadingStations(false);
+            }
+        };
+        fetchStations();
+    }, []);
+
     const challanBackButton = (text) => (
         <button
             onClick={() => {
@@ -131,6 +144,10 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        if (value === '__ADD_STATION__') {
+            handleAddStation();
+            return;
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -144,6 +161,28 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
             };
             return newRows;
         });
+    };
+
+    // NEW: Handle adding a new station
+    const handleAddStation = async () => {
+        const newStation = window.prompt('Enter new station name:');
+        if (!newStation || newStation.trim() === '') return;
+        const stationName = newStation.trim();
+        try {
+            const res = await fetch(`${BASE_URL}/other/stations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ station: stationName })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to add station');
+            }
+            setStationList(data.stations);
+            showAlert(`Station "${stationName}" added successfully`, 'success');
+        } catch (err) {
+            showAlert(err.message, 'error');
+        }
     };
     
     // Fetch builty details
@@ -972,12 +1011,13 @@ const handlePrint = () => {
                                                     onChange={handleChange}
                                                     required
                                                     className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                                                    disabled={!challanEditMode} // use disabled instead of readOnly for select
+                                                    disabled={!challanEditMode || loadingStations}
                                                 >
                                                     <option value="" disabled>Select source location</option>
-                                                    {locationOptions.map(location => (
+                                                    {stationList.map(location => (
                                                         <option key={location} value={location}>{location}</option>
                                                     ))}
+                                                    <option value="__ADD_STATION__">➕ Add Station</option>
                                                 </select>
                                             ) : (
                                                 <input
@@ -996,24 +1036,20 @@ const handlePrint = () => {
                                         <div className={`challan-form-group`}>
                                             <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Destination</label>
                                             {mode !== 'view' && mode !== 'delete' && challanEditMode ? (
-                                            <select
-                                                name="destination"
-                                                value={formData.destination}
-                                                onChange={handleChange}
-                                                required
-                                                className={`challan-form-input improved-input challan-location-select ${
-                                                isLightMode ? "light-mode" : "dark-mode"
-                                                }`}
-                                            >
-                                                <option value="" disabled>
-                                                Select destination location
-                                                </option>
-                                                {locationOptions.map((location) => (
-                                                <option key={location} value={location}>
-                                                    {location}
-                                                </option>
-                                                ))}
-                                            </select>
+                                                <select
+                                                    name="destination"
+                                                    value={formData.destination}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className={`challan-form-input improved-input challan-location-select ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                                                    disabled={!challanEditMode || loadingStations}
+                                                >
+                                                    <option value="" disabled>Select destination location</option>
+                                                    {stationList.map(location => (
+                                                        <option key={location} value={location}>{location}</option>
+                                                    ))}
+                                                    <option value="__ADD_STATION__">➕ Add Station</option>
+                                                </select>
                                             ) : (
                                             <input
                                                 type="text"
