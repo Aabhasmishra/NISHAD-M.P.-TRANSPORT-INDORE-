@@ -494,6 +494,53 @@ async function inspectDatabase() {
   }
 }
 
+// Get today's summary
+async function getTodaySummary() {
+  // Build today's date in YYYY-MM-DD format (server local time)
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+
+  // Fetch all records for today
+  const { rows } = await pool.query(
+    `SELECT * FROM transport_records WHERE date = $1`,
+    [dateStr]
+  );
+
+  let totalBuilty = rows.length;
+  let totalArticles = 0;
+  let totalActualWeight = 0;
+  let totalToPay = 0;
+  let totalPaid = 0;
+
+  rows.forEach(row => {
+    // Sum simple numeric fields
+    totalArticles += row.article_length || 0;
+    totalToPay += parseFloat(row.to_pay) || 0;
+    totalPaid += parseFloat(row.paid) || 0;
+
+    // Sum actual_weight (pipe‑separated values)
+    if (row.actual_weight) {
+      const weights = row.actual_weight
+        .split('|')
+        .map(w => parseFloat(w.trim()))
+        .filter(v => !isNaN(v));
+      weights.forEach(w => totalActualWeight += w);
+    }
+  });
+
+  return {
+    date: dateStr,
+    totalBuilty,
+    totalArticles,
+    totalActualWeight,   // in KG
+    totalToPay,
+    totalPaid
+  };
+}
+
 process.on('SIGINT', async () => {
   await pool.end();
   process.exit(0);
