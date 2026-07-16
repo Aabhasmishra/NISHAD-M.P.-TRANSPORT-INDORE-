@@ -556,5 +556,6 @@ module.exports = {
   updatePaymentInfo,
   updateStatusInfo,
   deleteTransportRecord,
-  inspectDatabase
+  inspectDatabase,
+  getTodaySummary
 };
