@@ -158,5 +158,21 @@ module.exports = (transportDB) => {
     }
   });
 
+  // Get today's summary
+  router.get('/transport-records/summary/today', async (req, res) => {
+    try {
+      const summary = await transportDB.getTodaySummary();
+      res.json({
+        success: true,
+        summary
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: err.message
+      });
+    }
+  });
+
   return router;
 };
