@@ -178,6 +178,21 @@ async function inspectDatabase() {
   }
 }
 
+// Get all challans created today
+async function getTodayChallans() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+
+  const { rows } = await pool.query(
+    `SELECT challan_no, truck_no, builty_no FROM challan WHERE date = $1`,
+    [dateStr]
+  );
+  return rows;
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   await pool.end();
@@ -192,4 +207,5 @@ module.exports = {
   updateChallan,
   deleteChallan,
   inspectDatabase,
+  getTodayChallans
 };
