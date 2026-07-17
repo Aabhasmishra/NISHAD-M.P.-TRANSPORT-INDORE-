@@ -541,6 +541,63 @@ async function getTodaySummary() {
   };
 }
 
+// Get outstanding shipment summary (all NOT SHIPPED)
+async function getOutstandingSummary() {
+  const { rows } = await pool.query(
+    `SELECT * FROM transport_records WHERE challan_status = 'NOT SHIPPED'`
+  );
+
+  let totalUnits = rows.length;
+  let totalWeight = 0;
+  let totalToPay = 0;
+  let totalPaid = 0;
+
+  rows.forEach(row => {
+    totalToPay += parseFloat(row.to_pay) || 0;
+    totalPaid += parseFloat(row.paid) || 0;
+
+    if (row.actual_weight) {
+      const weights = row.actual_weight
+        .split('|')
+        .map(w => parseFloat(w.trim()))
+        .filter(v => !isNaN(v));
+      weights.forEach(w => totalWeight += w);
+    }
+  });
+
+  return { totalUnits, totalWeight, totalToPay, totalPaid };
+}
+
+// Get summary for specific GR numbers (used by Challan Report)
+async function getSummaryForGRs(grNumbers) {
+  if (!grNumbers || grNumbers.length === 0) {
+    return { totalWeight: 0, totalToPay: 0, totalPaid: 0 };
+  }
+
+  const placeholders = grNumbers.map((_, i) => `$${i+1}`).join(',');
+  const query = `SELECT * FROM transport_records WHERE gr_no IN (${placeholders})`;
+  const { rows } = await pool.query(query, grNumbers);
+
+  let totalWeight = 0;
+  let totalToPay = 0;
+  let totalPaid = 0;
+
+  rows.forEach(row => {
+    totalToPay += parseFloat(row.to_pay) || 0;
+    totalPaid += parseFloat(row.paid) || 0;
+
+    if (row.actual_weight) {
+      const weights = row.actual_weight
+        .split('|')
+        .map(w => parseFloat(w.trim()))
+        .filter(v => !isNaN(v));
+      weights.forEach(w => totalWeight += w);
+    }
+  });
+
+  return { totalWeight, totalToPay, totalPaid };
+}
+
 process.on('SIGINT', async () => {
   await pool.end();
   process.exit(0);
@@ -557,5 +614,7 @@ module.exports = {
   updateStatusInfo,
   deleteTransportRecord,
   inspectDatabase,
-  getTodaySummary
+  getTodaySummary,         
+  getOutstandingSummary,
+  getSummaryForGRs
 };
