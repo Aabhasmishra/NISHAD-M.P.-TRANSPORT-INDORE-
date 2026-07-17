@@ -1,3 +1,5 @@
+const challanDB = require('./challanDB');
+
 module.exports = (transportDB) => {
   const router = require('express').Router();
   const puppeteer = require("puppeteer");
@@ -171,6 +173,67 @@ module.exports = (transportDB) => {
         success: false,
         error: err.message
       });
+    }
+  });
+
+  // Combined daily report with timestamp
+  router.get('/report/today', async (req, res) => {
+    try {
+      const now = new Date();
+      // Record date (today) for the data
+      const todayDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      // Generation timestamp (date + time)
+      const generatedAt = now.toISOString().replace('T', ' ').slice(0, 19); // YYYY-MM-DD HH:mm:ss
+
+      // 1. Transport Report (today)
+      const transportSummary = await transportDB.getTodaySummary();
+
+      // 2. Challan Report (today)
+      const todayChallans = await challanDB.getTodayChallans();
+      const totalChallan = todayChallans.length;
+      let allGRs = [];
+      todayChallans.forEach(ch => {
+        if (ch.builty_no) {
+          const grs = ch.builty_no.split('|').map(s => s.trim()).filter(s => s);
+          allGRs = allGRs.concat(grs);
+        }
+      });
+      const uniqueGRs = [...new Set(allGRs)];
+      const challanSummary = await transportDB.getSummaryForGRs(uniqueGRs);
+      const truckNos = todayChallans.map(ch => ch.truck_no).filter(t => t).join(', ');
+
+      // 3. Outstanding Shipment Report (all NOT SHIPPED)
+      const osrSummary = await transportDB.getOutstandingSummary();
+
+      // Build final response
+      res.json({
+        success: true,
+        generatedAt,     // date and time of report generation
+        date: todayDate, // the date the records belong to (today)
+        transportReport: {
+          totalBuilty: transportSummary.totalBuilty,
+          totalArticles: transportSummary.totalArticles,
+          totalWeight: transportSummary.totalActualWeight,
+          totalToPay: transportSummary.totalToPay,
+          totalPaid: transportSummary.totalPaid
+        },
+        challanReport: {
+          totalChallan,
+          truckNos: truckNos || 'N/A',
+          totalWeight: challanSummary.totalWeight,
+          totalToPay: challanSummary.totalToPay,
+          totalPaid: challanSummary.totalPaid
+        },
+        outstandingReport: {
+          totalUnits: osrSummary.totalUnits,
+          totalWeight: osrSummary.totalWeight,
+          totalToPay: osrSummary.totalToPay,
+          totalPaid: osrSummary.totalPaid
+        }
+      });
+    } catch (err) {
+      console.error('Error generating daily report:', err);
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
