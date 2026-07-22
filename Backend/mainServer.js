@@ -10,6 +10,7 @@ const challanDB = require("./challanDB");
 const crossingDB = require("./crossingDB");
 const otherDB = require("./otherDB");
 const createDatabaseViewer = require("./databaseViewer");
+const { startDailyReportScheduler } = require("./dailyReportScheduler");
 require("dotenv").config();
 
 const app = express();
@@ -27,6 +28,9 @@ async function initialize() {
     await crossingDB.initialize();
     await otherDB.initialize();
     console.log("All databases initialized successfully");
+
+    // Start the daily WhatsApp report job (runs every day at 10 PM)
+    startDailyReportScheduler();
   } catch (err) {
     console.error("Failed to initialize databases:", err);
     process.exit(1);
@@ -70,6 +74,18 @@ app.use("/api", challanRoutes);
 app.use("/api", crossingRoutes);
 app.use("/api", otherRoutes);    
 app.use("/", databaseViewerRoutes);
+
+// TEMPORARY: manual trigger to test the WhatsApp report without waiting for 10 PM
+// Remove this route once you've confirmed everything works end-to-end.
+app.get("/api/test-whatsapp-report", async (req, res) => {
+  try {
+    const { runDailyReportJob } = require("./dailyReportScheduler");
+    await runDailyReportJob();
+    res.json({ success: true, message: "Test report triggered. Check WhatsApp and server logs." });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Database inspection endpoint
 app.get("/api/AabhasServer", async (req, res) => {
