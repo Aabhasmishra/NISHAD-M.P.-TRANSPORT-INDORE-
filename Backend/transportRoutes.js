@@ -180,10 +180,20 @@ module.exports = (transportDB) => {
   router.get('/report/today', async (req, res) => {
     try {
       const now = new Date();
-      // Record date (today) for the data
-      const todayDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
-      // Generation timestamp (date + time)
-      const generatedAt = now.toISOString().replace('T', ' ').slice(0, 19); // YYYY-MM-DD HH:mm:ss
+
+      // Format date as DD-MM-YYYY
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const dateFormatted = `${day}-${month}-${year}`;
+
+      // Format generatedAt as HH:MM AM/PM (12-hour clock)
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12; // convert 0 to 12
+      const timeFormatted = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+      const generatedAtFormatted = timeFormatted;
 
       // 1. Transport Report (today)
       const transportSummary = await transportDB.getTodaySummary();
@@ -208,8 +218,8 @@ module.exports = (transportDB) => {
       // Build final response
       res.json({
         success: true,
-        generatedAt,     // date and time of report generation
-        date: todayDate, // the date the records belong to (today)
+        generatedAt: generatedAtFormatted,   // only time with AM/PM
+        date: dateFormatted,                 // DD-MM-YYYY
         transportReport: {
           totalBuilty: transportSummary.totalBuilty,
           totalArticles: transportSummary.totalArticles,
