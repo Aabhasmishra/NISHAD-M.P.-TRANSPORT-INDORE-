@@ -69,7 +69,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
     let normalized = input.trim().toUpperCase();
     const numbers = normalized.match(/\d+/g);
     if (!numbers) return normalized;
-    const numberPart = numbers[0].padStart(5, '0');
+    const numberPart = numbers[0].padStart(6, '0');
     return `GR${numberPart}`;
   };
 
