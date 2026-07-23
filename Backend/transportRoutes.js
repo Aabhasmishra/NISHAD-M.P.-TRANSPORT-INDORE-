@@ -160,7 +160,7 @@ module.exports = (transportDB) => {
     }
   });
 
-  // Get today's summary
+  // Get today's summary (kept for backward compatibility)
   router.get('/transport-records/summary/today', async (req, res) => {
     try {
       const summary = await transportDB.getTodaySummary();
@@ -176,30 +176,34 @@ module.exports = (transportDB) => {
     }
   });
 
-  // Combined daily report with timestamp
+  // Combined daily report with timestamp – NOW USING LAST 24 HOURS
   router.get('/report/today', async (req, res) => {
     try {
+      // Use IST timezone for all date/time calculations
       const now = new Date();
+      const istOptions = { timeZone: 'Asia/Kolkata' };
+      const istDate = new Date(now.toLocaleString('en-US', istOptions));
+      const endDate = istDate;
+      const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
 
-      // Format date as DD-MM-YYYY
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
+      // Format date (start date) as DD-MM-YYYY
+      const day = String(startDate.getDate()).padStart(2, '0');
+      const month = String(startDate.getMonth() + 1).padStart(2, '0');
+      const year = startDate.getFullYear();
       const dateFormatted = `${day}-${month}-${year}`;
 
-      // Format generatedAt as HH:MM AM/PM (12-hour clock)
-      let hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, '0');
+      // Format generatedAt as HH:MM AM/PM (IST)
+      let hours = istDate.getHours();
+      const minutes = String(istDate.getMinutes()).padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12 || 12; // convert 0 to 12
+      hours = hours % 12 || 12;
       const timeFormatted = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-      const generatedAtFormatted = timeFormatted;
 
-      // 1. Transport Report (today)
-      const transportSummary = await transportDB.getTodaySummary();
+      // 1. Transport Report for last 24h
+      const transportSummary = await transportDB.getSummaryForPeriod(startDate, endDate);
 
-      // 2. Challan Report (today)
-      const todayChallans = await challanDB.getTodayChallans();
+      // 2. Challan Report for last 24h
+      const todayChallans = await challanDB.getChallansForPeriod(startDate, endDate);
       const totalChallan = todayChallans.length;
       let allGRs = [];
       todayChallans.forEach(ch => {
@@ -212,14 +216,14 @@ module.exports = (transportDB) => {
       const challanSummary = await transportDB.getSummaryForGRs(uniqueGRs);
       const truckNos = todayChallans.map(ch => ch.truck_no).filter(t => t).join(', ');
 
-      // 3. Outstanding Shipment Report (all NOT SHIPPED)
+      // 3. Outstanding Shipment Report (all NOT SHIPPED) – unchanged
       const osrSummary = await transportDB.getOutstandingSummary();
 
       // Build final response
       res.json({
         success: true,
-        generatedAt: generatedAtFormatted,   // only time with AM/PM
-        date: dateFormatted,                 // DD-MM-YYYY
+        generatedAt: timeFormatted,
+        date: dateFormatted,
         transportReport: {
           totalBuilty: transportSummary.totalBuilty,
           totalArticles: transportSummary.totalArticles,
