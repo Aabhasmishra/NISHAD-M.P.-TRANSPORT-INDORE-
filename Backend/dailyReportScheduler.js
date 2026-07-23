@@ -91,7 +91,7 @@ function startDailyReportScheduler() {
   startClock();
 
   // Create cron job – FOR TESTING, CHANGE TO '0 14 * * *' for 2 PM
-  const cronExpression = '0 14 * * *';  // <-- CHANGE TO '0 7 * * *' for 7 AM after testing
+  const cronExpression = '0 15 * * *';  // <-- CHANGE TO '0 7 * * *' for 7 AM after testing
   const job = new CronJob(
     cronExpression,
     runDailyReportJob,
