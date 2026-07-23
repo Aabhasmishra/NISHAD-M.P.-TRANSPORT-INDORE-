@@ -178,7 +178,7 @@ async function inspectDatabase() {
   }
 }
 
-// Get all challans created today
+// Get all challans created today (kept for backward compatibility)
 async function getTodayChallans() {
   const today = new Date();
   const year = today.getFullYear();
@@ -189,6 +189,17 @@ async function getTodayChallans() {
   const { rows } = await pool.query(
     `SELECT challan_no, truck_no, builty_no FROM challan WHERE date = $1`,
     [dateStr]
+  );
+  return rows;
+}
+
+// ----- NEW: Get challans for a time period (by created_at) -----
+async function getChallansForPeriod(startDate, endDate) {
+  const { rows } = await pool.query(
+    `SELECT challan_no, truck_no, builty_no 
+     FROM challan 
+     WHERE created_at >= $1 AND created_at <= $2`,
+    [startDate, endDate]
   );
   return rows;
 }
@@ -207,5 +218,6 @@ module.exports = {
   updateChallan,
   deleteChallan,
   inspectDatabase,
-  getTodayChallans
+  getTodayChallans,
+  getChallansForPeriod
 };
