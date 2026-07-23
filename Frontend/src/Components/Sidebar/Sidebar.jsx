@@ -452,6 +452,12 @@ export default function SidebarComponent({
           href: "#", 
           icon: <FaFileAlt />,
           onClick: () => handleComponentClick('PBR', 'view')
+        },
+        {
+          label: "Payment Status Report",
+          href: "#",
+          icon: <FaFileAlt />,
+          onClick: () => handleComponentClick('PPR', 'view')
         }
       ]
     },
@@ -504,7 +510,7 @@ export default function SidebarComponent({
 
       {/* Main content area (adjust margin based on which sidebar is visible) */}
       <div className={`sidebar-main-content ${isExtendedOpen ? "sidebar-main-content-extended" : "sidebar-main-content-thin"}`}>
-        {children}
+        {children}   {/* 👈 render the passed content here */}
       </div>
     </>
   );
