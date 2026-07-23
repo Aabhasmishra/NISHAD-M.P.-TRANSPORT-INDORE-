@@ -13,6 +13,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
   // ── Determine mode ──────────────────────────────────────────────────────────
   const isPBR = modeOfView === 'PBR';
   const isBR  = modeOfView === 'BR';
+  const isPPR = modeOfView === 'PPR';   // new: Payment Status Report
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const currentMonthValue = () => {
@@ -43,6 +44,12 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         } else if (isPBR) {
           // PBR: paid !== 0
           filtered = filtered.filter(rec => (parseFloat(rec.paid) || 0) !== 0);
+        } else if (isPPR) {
+          // PPR: payment_status is not 'Paid' (i.e. incomplete)
+          filtered = filtered.filter(rec => {
+            const status = rec.payment_status || '';
+            return status !== 'Paid' && status !== '';
+          });
         } else {
           // OSR: NOT SHIPPED
           filtered = filtered.filter(rec => String(rec.challan_status).toUpperCase().trim() === 'NOT SHIPPED');
@@ -55,7 +62,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       }
     };
     fetchRecords();
-  }, [isPBR, isBR]);
+  }, [isPBR, isBR, isPPR]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const display = (val) => (val !== undefined && val !== null ? val : '-');
@@ -66,7 +73,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // ── Period options (for BR and PBR) ────────────────────────────────────────
+  // ── Period options (for BR, PBR and PPR) ──────────────────────────────────
   const availablePeriods = useMemo(() => {
     const periods = [];
     const now = new Date();
@@ -96,12 +103,12 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       periods.push({ value, label });
     }
 
-    // Custom option for PBR only
-    if (isPBR) {
+    // Custom option for PBR and PPR
+    if (isPBR || isPPR) {
       periods.push({ value: 'custom', label: 'Custom' });
     }
     return periods;
-  }, [isPBR, isBR]);
+  }, [isPBR, isBR, isPPR]);
 
   // ── Handle filter change ───────────────────────────────────────────────────
   const handlePeriodChange = (e) => {
@@ -120,10 +127,10 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
   // ── Filter logic ───────────────────────────────────────────────────────────
   const filteredRecords = useMemo(() => {
     // OSR: no filter
-    if (!isPBR && !isBR) return records;
+    if (!isPBR && !isBR && !isPPR) return records;
 
-    // PBR custom range
-    if (isPBR && isCustomRange && customStartDate && customEndDate) {
+    // PBR / PPR custom range
+    if ((isPBR || isPPR) && isCustomRange && customStartDate && customEndDate) {
       const start = new Date(customStartDate);
       const end = new Date(customEndDate);
       end.setHours(23, 59, 59, 999);
@@ -133,8 +140,8 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       });
     }
 
-    // For PBR: if custom is active but dates missing, fallback to previous month
-    if (isPBR && isCustomRange && !(customStartDate && customEndDate)) {
+    // For PBR/PPR: if custom is active but dates missing, fallback to previous month
+    if ((isPBR || isPPR) && isCustomRange && !(customStartDate && customEndDate)) {
       return records.filter(rec => getMonthYear(rec.date) === previousMonth);
     }
 
@@ -155,9 +162,9 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       }
     }
 
-    // Month filter (for both PBR and BR)
+    // Month filter (for PBR, PPR and BR)
     return records.filter(rec => getMonthYear(rec.date) === active);
-  }, [isPBR, isBR, records, isCustomRange, customStartDate, customEndDate, selectedMonth, previousMonth, availablePeriods]);
+  }, [isPBR, isBR, isPPR, records, isCustomRange, customStartDate, customEndDate, selectedMonth, previousMonth, availablePeriods]);
 
   // ── Process records for display ───────────────────────────────────────────
   const processedRecords = useMemo(() => {
@@ -185,6 +192,8 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         toPay,
         paid,
         challanStatus: rec.challan_status || '',
+        paymentStatus: rec.payment_status || '',      // new
+        amountCollected: parseFloat(rec.amount_collected) || 0, // new
         rawDate: isNaN(rawDate.getTime()) ? null : rawDate,
         originalIndex: idx + 1,
       };
@@ -206,6 +215,8 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         case 'to_pay': valA = a.toPay; valB = b.toPay; break;
         case 'paid': valA = a.paid; valB = b.paid; break;
         case 'challan_status': valA = a.challanStatus.toLowerCase(); valB = b.challanStatus.toLowerCase(); break;
+        case 'payment_status': valA = a.paymentStatus.toLowerCase(); valB = b.paymentStatus.toLowerCase(); break;
+        case 'amount_collected': valA = a.amountCollected; valB = b.amountCollected; break;
         default: return 0;
       }
       if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
@@ -222,9 +233,10 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         acc.units += rec.units || 0;
         acc.toPay += rec.toPay || 0;
         acc.paid += rec.paid || 0;
+        acc.amountCollected += rec.amountCollected || 0;
         return acc;
       },
-      { weight: 0, units: 0, toPay: 0, paid: 0 }
+      { weight: 0, units: 0, toPay: 0, paid: 0, amountCollected: 0 }
     );
   }, [processedRecords]);
 
@@ -270,7 +282,11 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
   // ── Excel download ─────────────────────────────────────────────────────────
   const downloadExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-    const sheetName = isBR ? 'Booking Register' : isPBR ? 'Paid Builty Report' : 'Outstanding Report';
+    let sheetName;
+    if (isBR) sheetName = 'Booking Register';
+    else if (isPBR) sheetName = 'Paid Builty Report';
+    else if (isPPR) sheetName = 'Payment Status Report';
+    else sheetName = 'Outstanding Report';
     const worksheet = workbook.addWorksheet(sheetName, { views: [{ showGridLines: false }] });
 
     const parseSafeNumber = (val) => {
@@ -278,9 +294,14 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       return val !== '' && val !== '-' && val !== null && !isNaN(num) ? num : val;
     };
 
-    const titleText = isBR ? 'Booking Register' : isPBR ? 'Paid Builty Report' : 'Outstanding Shipment Report';
-    const colCount = 11;
-    const mergeEnd = 'K1';
+    let titleText;
+    if (isBR) titleText = 'Booking Register';
+    else if (isPBR) titleText = 'Paid Builty Report';
+    else if (isPPR) titleText = 'Payment Status Report';
+    else titleText = 'Outstanding Shipment Report';
+
+    const colCount = isPPR ? 12 : 11; // PPR has 12 columns
+    const mergeEnd = String.fromCharCode(64 + colCount) + '1';
     worksheet.mergeCells(`A1:${mergeEnd}`);
     const titleCell = worksheet.getCell('A1');
     titleCell.value = titleText;
@@ -289,7 +310,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
     titleCell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: isBR ? 'FF0F766E' : 'FF4F46E5' },
+      fgColor: { argb: isBR ? 'FF0F766E' : isPPR ? 'FF8B5CF6' : 'FF4F46E5' },
     };
     worksheet.getRow(1).height = 40;
 
@@ -303,6 +324,11 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       headers = [
         'Index', 'Builty No', 'Date', 'Destination', 'Consignor',
         'Consignee', 'Units', 'Weight', 'Good Type', 'Paid', 'Shipment',
+      ];
+    } else if (isPPR) {
+      headers = [
+        'Index', 'Builty No', 'Date', 'Destination', 'Consignor',
+        'Consignee', 'To Pay', 'Paid', 'Shipment', 'Collected', 'Payment Status',
       ];
     } else {
       headers = [
@@ -326,26 +352,49 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
           parseSafeNumber(rec.paid) || '-',
           display(rec.challanStatus),
         ];
-      }
-      const row = [
-        idx + 1,
-        parseSafeNumber(rec.builtyDisplay),
-        rec.date,
-        display(rec.destination),
-        display(rec.consignor),
-        display(rec.consignee),
-        parseSafeNumber(rec.units) || '-',
-        parseSafeNumber(rec.weight) || '-',
-        display(rec.goodType),
-      ];
-      if (isPBR) {
-        row.push(parseSafeNumber(rec.paid) || '-');
-        row.push(display(rec.challanStatus));
+      } else if (isPBR) {
+        return [
+          idx + 1,
+          parseSafeNumber(rec.builtyDisplay),
+          rec.date,
+          display(rec.destination),
+          display(rec.consignor),
+          display(rec.consignee),
+          parseSafeNumber(rec.units) || '-',
+          parseSafeNumber(rec.weight) || '-',
+          display(rec.goodType),
+          parseSafeNumber(rec.paid) || '-',
+          display(rec.challanStatus),
+        ];
+      } else if (isPPR) {
+        return [
+          idx + 1,
+          parseSafeNumber(rec.builtyDisplay),
+          rec.date,
+          display(rec.destination),
+          display(rec.consignor),
+          display(rec.consignee),
+          parseSafeNumber(rec.toPay) || '-',
+          parseSafeNumber(rec.paid) || '-',
+          display(rec.challanStatus),
+          parseSafeNumber(rec.amountCollected) || '-',
+          display(rec.paymentStatus),
+        ];
       } else {
-        row.push(parseSafeNumber(rec.toPay) || '-');
-        row.push(parseSafeNumber(rec.paid) || '-');
+        return [
+          idx + 1,
+          parseSafeNumber(rec.builtyDisplay),
+          rec.date,
+          display(rec.destination),
+          display(rec.consignor),
+          display(rec.consignee),
+          parseSafeNumber(rec.units) || '-',
+          parseSafeNumber(rec.weight) || '-',
+          display(rec.goodType),
+          parseSafeNumber(rec.toPay) || '-',
+          parseSafeNumber(rec.paid) || '-',
+        ];
       }
-      return row;
     });
 
     worksheet.addTable({
@@ -392,11 +441,27 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
           right: colNumber === colCount ? borderMedium : borderThin,
         };
 
-        // Alignment
+        // Alignment logic – we keep it simple: most numeric right, others center/left
         if (isBR) {
           if ([4, 5, 6].includes(colNumber)) {
             cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 1 };
           } else if ([7, 8, 9, 10].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
+        } else if (isPBR) {
+          if ([4, 5, 6, 9].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 1 };
+          } else if ([2, 7, 8, 10, 11].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
+        } else if (isPPR) {
+          if ([4, 5, 6, 11].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 1 };
+          } else if ([2, 7, 8, 10].includes(colNumber)) {
             cell.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
           } else {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -434,6 +499,15 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         parseSafeNumber(totals.paid),
         '',
       ];
+    } else if (isPPR) {
+      totalsValues = [
+        'Total', '', '', '', '', '',
+        parseSafeNumber(totals.toPay),
+        parseSafeNumber(totals.paid),
+        '',
+        parseSafeNumber(totals.amountCollected),
+        '',
+      ];
     } else {
       totalsValues = [
         'Total', '', '', '', '', '',
@@ -468,6 +542,8 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
       widths = [8, 14, 14, 22, 30, 30, 10, 12, 14, 14, 24];
     } else if (isPBR) {
       widths = [8, 14, 14, 20, 30, 30, 10, 12, 18, 14, 18];
+    } else if (isPPR) {
+      widths = [8, 14, 14, 20, 30, 30, 14, 14, 18, 16, 18];
     } else {
       widths = [8, 14, 14, 20, 30, 30, 10, 12, 18, 14, 14];
     }
@@ -476,11 +552,11 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
     const buffer = await workbook.xlsx.writeBuffer();
     const now = new Date();
     const formattedDate = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
-    const fileName = isBR
-      ? `Booking_Register_${formattedDate}.xlsx`
-      : isPBR
-        ? `Paid_Builty_Report_${formattedDate}.xlsx`
-        : `Outstanding_Shipment_Report_${formattedDate}.xlsx`;
+    let fileName;
+    if (isBR) fileName = `Booking_Register_${formattedDate}.xlsx`;
+    else if (isPBR) fileName = `Paid_Builty_Report_${formattedDate}.xlsx`;
+    else if (isPPR) fileName = `Payment_Status_Report_${formattedDate}.xlsx`;
+    else fileName = `Outstanding_Shipment_Report_${formattedDate}.xlsx`;
     saveAs(new Blob([buffer]), fileName);
   };
 
@@ -516,6 +592,21 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
         ['Shipment', 'challan_status'],
       ];
     }
+    if (isPPR) {
+      return [
+        ['Index', 'index'],
+        ['Builty No', 'builty_no'],
+        ['Date', 'date'],
+        ['Destination', 'destination'],
+        ['Consignor', 'consignor'],
+        ['Consignee', 'consignee'],
+        ['To Pay', 'to_pay'],
+        ['Paid', 'paid'],
+        ['Shipment', 'challan_status'],
+        ['Collected', 'amount_collected'],
+        ['Payment Status', 'payment_status'],
+      ];
+    }
     return [
       ['Index', 'index'],
       ['Builty No', 'builty_no'],
@@ -533,20 +624,20 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
 
   // ── Active filter label ────────────────────────────────────────────────────
   const activeFilterLabel = useMemo(() => {
-    if (!isPBR && !isBR) return null;
-    if (isPBR && isCustomRange && customStartDate && customEndDate) {
+    if (!isPBR && !isBR && !isPPR) return null;
+    if ((isPBR || isPPR) && isCustomRange && customStartDate && customEndDate) {
       return `${customStartDate} → ${customEndDate}`;
     }
     const found = availablePeriods.find(p => p.value === selectedMonth);
     return found ? found.label : selectedMonth;
-  }, [isPBR, isBR, isCustomRange, customStartDate, customEndDate, selectedMonth, availablePeriods]);
+  }, [isPBR, isBR, isPPR, isCustomRange, customStartDate, customEndDate, selectedMonth, availablePeriods]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const showFilter = isPBR || isBR;
+  const showFilter = isPBR || isBR || isPPR;
 
   // Helper styles for long columns
   const getColumnStyle = (key) => {
-    const longColumns = ['consignor', 'consignee', 'challan_status'];
+    const longColumns = ['consignor', 'consignee', 'challan_status', 'payment_status'];
     if (longColumns.includes(key)) {
       return {
         fontSize: '13px',
@@ -562,117 +653,114 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
     };
   };
 
+  // ── Helper to get payment status class ────────────────────────────────────
+  const getPaymentStatusClass = (status) => {
+    if (status === 'Paid') return 'pm-status-paid';
+    if (status === 'Pending') return 'pm-status-pending';
+    if (status === 'Paid-D-' || status === 'Paid-D+') return 'pm-status-partial';
+    return '';
+  };
+
   return (
     <div className={`challan-main-container ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ maxWidth: '1350px', paddingTop: '10px' }}>
-      {/* ── Sticky Top Bar (PBR & BR) ── */}
-      {(isPBR || isBR) && (
-        <div
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 20,
-            backgroundColor: isLightMode ? '#ffffff' : '#2d3748',
-            padding: '0.75rem 0',
-            marginBottom: '1rem',
-            borderBottom: isLightMode ? '1px solid #e2e8f0' : '1px solid #4a5568',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          {/* Left: Heading */}
-          <h2 className={`challan-title ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ margin: 0 }}>
-            {isBR ? 'Booking Register' : 'Paid Builty Report'}
-          </h2>
+      {/* ── Sticky Top Bar for all modes ── */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          backgroundColor: isLightMode ? '#ffffff' : '#2d3748',
+          padding: '0.75rem 0',
+          marginBottom: '1rem',
+          borderBottom: isLightMode ? '1px solid #e2e8f0' : '1px solid #4a5568',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        {/* Left: Heading */}
+        <h2 className={`challan-title ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ margin: 0 }}>
+          {isBR ? 'Booking Register' : isPBR ? 'Paid Builty Report' : isPPR ? 'Payment Status Report' : 'Outstanding Shipment Report'}
+        </h2>
 
-          {/* Right: Records count + Filter + Download */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '4px 14px',
-                borderRadius: '20px',
-                fontWeight: '700',
-                fontSize: '14px',
-                backgroundColor: isLightMode ? '#e0e7ff' : '#1e1b4b',
-                color: isLightMode ? '#4338ca' : '#818cf8',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Records: {processedRecords.length}
-            </span>
+        {/* Right: Records count + Filter (if applicable) + Download */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '4px 14px',
+              borderRadius: '20px',
+              fontWeight: '700',
+              fontSize: '14px',
+              backgroundColor: isLightMode ? '#e0e7ff' : '#1e1b4b',
+              color: isLightMode ? '#4338ca' : '#818cf8',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Records: {processedRecords.length}
+          </span>
 
-            {showFilter && (
-              <div className="challan-form-group" style={{ marginBottom: 0, width: 'auto' }}>
-                <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                  {isBR ? 'Select Period:' : 'Select Month:'}
-                </label>
-                <select
-                  value={selectedMonth}
-                  onChange={handlePeriodChange}
-                  className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                  style={{ width: '151px', paddingRight: '15px' }}
-                >
-                  {availablePeriods.map((period) => (
-                    <option key={period.value} value={period.value}>
-                      {period.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+          {showFilter && (
+            <div className="challan-form-group" style={{ marginBottom: 0, width: 'auto' }}>
+              <label className={`challan-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+                {isBR ? 'Select Period:' : 'Select Month:'}
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={handlePeriodChange}
+                className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                style={{ width: '151px', paddingRight: '15px' }}
+              >
+                {availablePeriods.map((period) => (
+                  <option key={period.value} value={period.value}>
+                    {period.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-            {isPBR && isCustomRange && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                  style={{ width: '150px' }}
-                />
-                <span>to</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
-                  style={{ width: '150px' }}
-                />
-              </div>
-            )}
+          {(isPBR || isPPR) && isCustomRange && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                style={{ width: '150px' }}
+              />
+              <span>to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className={`challan-form-input improved-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
+                style={{ width: '150px' }}
+              />
+            </div>
+          )}
 
-            <button
-              onClick={downloadExcel}
-              style={{
-                backgroundColor: isLightMode ? '#38a169' : '#48bb78',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 18px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                transition: '0.2s ease',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-              }}
-            >
-              Download Excel
-            </button>
-          </div>
+          <button
+            onClick={downloadExcel}
+            style={{
+              backgroundColor: isLightMode ? '#38a169' : '#48bb78',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 18px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              transition: '0.2s ease',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+            }}
+          >
+            Download Excel
+          </button>
         </div>
-      )}
-
-      {/* ── OSR heading ── */}
-      {!isPBR && !isBR && (
-        <div>
-          <h2 className={`challan-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-            Outstanding Shipment Report
-          </h2>
-        </div>
-      )}
+      </div>
 
       {isLoading && (
         <div className="challan-loading-overlay">
@@ -719,7 +807,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
             <tbody>
               {processedRecords.length === 0 ? (
                 <tr className={`challan-table-row ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                  <td colSpan={11} className="text-center">No records found.</td>
+                  <td colSpan={isPPR ? 11 : 11} className="text-center">No records found.</td>
                 </tr>
               ) : (
                 processedRecords.map((rec, idx) => (
@@ -730,23 +818,38 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
                     <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{display(rec.destination)}</td>
                     <td className="text-center" style={{ padding: '8px 6px', fontSize: '13px', maxWidth: '200px', wordBreak: 'break-word' }}>{display(rec.consignor)}</td>
                     <td className="text-center" style={{ padding: '8px 6px', fontSize: '13px', maxWidth: '200px', wordBreak: 'break-word' }}>{display(rec.consignee)}</td>
-                    <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.units || '-'}</td>
-                    <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.weight || '-'}</td>
 
                     {isBR ? (
                       <>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.units || '-'}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.weight || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.toPay || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.paid || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '13px', maxWidth: '200px', wordBreak: 'break-word' }}>{display(rec.challanStatus)}</td>
                       </>
                     ) : isPBR ? (
                       <>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.units || '-'}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.weight || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{display(rec.goodType)}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.paid || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '13px', maxWidth: '200px', wordBreak: 'break-word' }}>{display(rec.challanStatus)}</td>
                       </>
-                    ) : (
+                    ) : isPPR ? (
                       <>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.toPay || '-'}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.paid || '-'}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '13px', maxWidth: '200px', wordBreak: 'break-word' }}>{display(rec.challanStatus)}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.amountCollected || '-'}</td>
+                        <td className={`text-center ${getPaymentStatusClass(rec.paymentStatus)}`} style={{ padding: '8px 6px', fontSize: '13px', fontWeight: '500' }}>
+                          {display(rec.paymentStatus)}
+                        </td>
+                      </>
+                    ) : (
+                      // OSR
+                      <>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.units || '-'}</td>
+                        <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.weight || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{display(rec.goodType)}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.toPay || '-'}</td>
                         <td className="text-center" style={{ padding: '8px 6px', fontSize: '14px' }}>{rec.paid || '-'}</td>
@@ -759,23 +862,36 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
                 <tr className={`challan-table-total-row ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                   <td className="text-center" style={{ fontWeight: 'bold' }}>Total</td>
                   <td></td><td></td><td></td><td></td><td></td>
-                  <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.units}</td>
-                  <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.weight}</td>
 
                   {isBR ? (
                     <>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.units}</td>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.weight}</td>
                       <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.toPay}</td>
                       <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.paid}</td>
                       <td></td>
                     </>
                   ) : isPBR ? (
                     <>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.units}</td>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.weight}</td>
                       <td></td>
                       <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.paid}</td>
                       <td></td>
                     </>
-                  ) : (
+                  ) : isPPR ? (
                     <>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.toPay}</td>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.paid}</td>
+                      <td></td>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.amountCollected}</td>
+                      <td></td>
+                    </>
+                  ) : (
+                    // OSR
+                    <>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.units}</td>
+                      <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.weight}</td>
                       <td></td>
                       <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.toPay}</td>
                       <td className="text-center" style={{ fontWeight: 'bold' }}>{totals.paid}</td>
@@ -787,7 +903,7 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
           </table>
 
           {/* Notes */}
-          {!isPBR && !isBR && records.length > 0 && (
+          {!isPBR && !isBR && !isPPR && records.length > 0 && (
             <div className={`challan-table-total-row ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ fontWeight: 'inherit', marginTop: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'start', padding: '10px' }}>
               <b style={{ marginRight: '4px', marginLeft: '4px' }}>Note:</b> This report shows all builties that have not yet been assigned to a challan (status = NOT SHIPPED)
             </div>
@@ -802,29 +918,11 @@ const ShipmentReportModule = ({ isLightMode, modeOfView }) => {
               <b style={{ marginRight: '4px', marginLeft: '4px' }}>Note:</b> Booking Register: Showing all bookings for the selected period.
             </div>
           )}
-        </div>
-      )}
-
-      {/* OSR-only download button at bottom (kept for fallback) */}
-      {!isPBR && !isBR && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-          <button
-            onClick={downloadExcel}
-            style={{
-              backgroundColor: isLightMode ? '#38a169' : '#48bb78',
-              color: '#fff',
-              border: 'none',
-              padding: '10px 18px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '14px',
-              transition: '0.2s ease',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-            }}
-          >
-            Download Excel
-          </button>
+          {isPPR && processedRecords.length > 0 && (
+            <div className={`challan-table-total-row ${isLightMode ? 'light-mode' : 'dark-mode'}`} style={{ fontWeight: 'inherit', marginTop: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'start', padding: '10px' }}>
+              <b style={{ marginRight: '4px', marginLeft: '4px' }}>Note:</b> This report shows all builties with incomplete payment (Pending, Paid-D-, Paid-D+). You can filter by month or custom date range.
+            </div>
+          )}
         </div>
       )}
     </div>
