@@ -1,5 +1,5 @@
 // dailyReportScheduler.js
-// Runs a scheduled job every day at 10 PM: fetches the combined daily report
+// Runs a scheduled job every day at 7:00 AM IST: fetches the combined daily report
 // (transport + challan + outstanding) from your own /api/report/today endpoint
 // and sends it to every configured WhatsApp recipient.
 //
@@ -7,10 +7,10 @@
 // because /api/report/today already combines transportDB + challanDB logic —
 // reusing it avoids duplicating that logic in two places.
 
-const cron = require("node-cron");
-const axios = require("axios");
-const { sendWhatsAppTemplateMessage } = require("./whatsappService");
-require("dotenv").config();
+const { CronJob } = require('cron');   // npm install cron
+const axios = require('axios');
+const { sendWhatsAppTemplateMessage } = require('./whatsappService');
+require('dotenv').config();
 
 // Comma-separated numbers in .env, e.g: WHATSAPP_RECIPIENTS=919724117255,919812345678
 const RECIPIENTS = (process.env.WHATSAPP_RECIPIENTS || "")
@@ -25,7 +25,7 @@ const INTERNAL_REPORT_URL = process.env.INTERNAL_REPORT_URL || "http://localhost
 /**
  * Sends today's combined report to all configured recipients.
  * Exported separately so it can also be triggered manually for testing
- * via the /api/test-whatsapp-report route, without waiting for 10 PM.
+ * via the /api/test-whatsapp-report route, without waiting for 7 AM.
  */
 async function runDailyReportJob() {
   // console.log(`[${new Date().toISOString()}] Running daily WhatsApp report job...`);
@@ -81,15 +81,18 @@ async function runDailyReportJob() {
 
 /**
  * Registers the cron job. Call this once when the server starts.
- * Cron pattern "0 22 * * *" = every day at 22:00 (10 PM) server local time.
+ * Runs daily at 7:00 AM IST.
  */
 function startDailyReportScheduler() {
-  // cron.schedule("0 22 * * *", () => {
-  cron.schedule("55 11 * * *", () => {
-    runDailyReportJob();
-  });
-
-  // console.log("📅 Daily WhatsApp report scheduler started — runs every day at 10:00 PM");
+  const job = new CronJob(
+    '0 14 * * *',         // 2:00 PM IST
+    runDailyReportJob,
+    null,
+    true,
+    'Asia/Kolkata'
+  );
+  job.start();
+  console.log('📅 Daily WhatsApp report scheduler started — runs every day at 2:00 PM IST');
 }
 
 module.exports = { startDailyReportScheduler, runDailyReportJob };
