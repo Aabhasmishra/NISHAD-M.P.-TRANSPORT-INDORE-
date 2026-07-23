@@ -504,14 +504,21 @@ async function getSummaryForPeriod(startDate, endDate) {
   );
 
   let totalBuilty = rows.length;
-  let totalArticles = 0;
+  let totalArticles = 0;      // will hold sum of all article numbers
   let totalActualWeight = 0;
   let totalToPay = 0;
   let totalPaid = 0;
 
   rows.forEach(row => {
-    // Fix: parse article_length as integer
-    totalArticles += parseInt(row.article_length, 10) || 0;
+    // --- SUM THE ARTICLE NUMBERS ---
+    if (row.article_no) {
+      const parts = row.article_no.split('|');
+      for (const part of parts) {
+        const num = parseInt(part.trim(), 10);
+        if (!isNaN(num)) totalArticles += num;
+      }
+    }
+
     totalToPay += parseFloat(row.to_pay) || 0;
     totalPaid += parseFloat(row.paid) || 0;
 
@@ -525,7 +532,7 @@ async function getSummaryForPeriod(startDate, endDate) {
   });
 
   return {
-    date: startDate.toISOString().split('T')[0], // not used in response
+    date: startDate.toISOString().split('T')[0],
     totalBuilty,
     totalArticles,
     totalActualWeight,
@@ -534,7 +541,7 @@ async function getSummaryForPeriod(startDate, endDate) {
   };
 }
 
-// Keep the old getTodaySummary for backward compatibility if needed
+// Keep the old getTodaySummary for backward compatibility – also fix it
 async function getTodaySummary() {
   const today = new Date();
   const year = today.getFullYear();
@@ -554,7 +561,15 @@ async function getTodaySummary() {
   let totalPaid = 0;
 
   rows.forEach(row => {
-    totalArticles += parseInt(row.article_length, 10) || 0;
+    // --- SUM THE ARTICLE NUMBERS ---
+    if (row.article_no) {
+      const parts = row.article_no.split('|');
+      for (const part of parts) {
+        const num = parseInt(part.trim(), 10);
+        if (!isNaN(num)) totalArticles += num;
+      }
+    }
+
     totalToPay += parseFloat(row.to_pay) || 0;
     totalPaid += parseFloat(row.paid) || 0;
 
