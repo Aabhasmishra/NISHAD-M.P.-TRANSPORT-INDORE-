@@ -494,16 +494,54 @@ async function inspectDatabase() {
   }
 }
 
-// Get today's summary
+// ----- NEW FUNCTIONS FOR 24-HOUR PERIOD -----
+
+// Get summary for a time range (based on created_at)
+async function getSummaryForPeriod(startDate, endDate) {
+  const { rows } = await pool.query(
+    `SELECT * FROM transport_records WHERE created_at >= $1 AND created_at <= $2`,
+    [startDate, endDate]
+  );
+
+  let totalBuilty = rows.length;
+  let totalArticles = 0;
+  let totalActualWeight = 0;
+  let totalToPay = 0;
+  let totalPaid = 0;
+
+  rows.forEach(row => {
+    // Fix: parse article_length as integer
+    totalArticles += parseInt(row.article_length, 10) || 0;
+    totalToPay += parseFloat(row.to_pay) || 0;
+    totalPaid += parseFloat(row.paid) || 0;
+
+    if (row.actual_weight) {
+      const weights = row.actual_weight
+        .split('|')
+        .map(w => parseFloat(w.trim()))
+        .filter(v => !isNaN(v));
+      weights.forEach(w => totalActualWeight += w);
+    }
+  });
+
+  return {
+    date: startDate.toISOString().split('T')[0], // not used in response
+    totalBuilty,
+    totalArticles,
+    totalActualWeight,
+    totalToPay,
+    totalPaid
+  };
+}
+
+// Keep the old getTodaySummary for backward compatibility if needed
 async function getTodaySummary() {
-  // Build today's date in YYYY-MM-DD format (server local time)
   const today = new Date();
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
 
-  // Fetch all records for today
   const { rows } = await pool.query(
     `SELECT * FROM transport_records WHERE date = $1`,
     [dateStr]
@@ -516,12 +554,10 @@ async function getTodaySummary() {
   let totalPaid = 0;
 
   rows.forEach(row => {
-    // Sum simple numeric fields
-    totalArticles += row.article_length || 0;
+    totalArticles += parseInt(row.article_length, 10) || 0;
     totalToPay += parseFloat(row.to_pay) || 0;
     totalPaid += parseFloat(row.paid) || 0;
 
-    // Sum actual_weight (pipe‑separated values)
     if (row.actual_weight) {
       const weights = row.actual_weight
         .split('|')
@@ -535,13 +571,13 @@ async function getTodaySummary() {
     date: dateStr,
     totalBuilty,
     totalArticles,
-    totalActualWeight,   // in KG
+    totalActualWeight,
     totalToPay,
     totalPaid
   };
 }
 
-// Get outstanding shipment summary (all NOT SHIPPED)
+// Get outstanding shipment summary (all NOT SHIPPED) – also fix article length
 async function getOutstandingSummary() {
   const { rows } = await pool.query(
     `SELECT * FROM transport_records WHERE challan_status = 'NOT SHIPPED'`
@@ -568,7 +604,7 @@ async function getOutstandingSummary() {
   return { totalUnits, totalWeight, totalToPay, totalPaid };
 }
 
-// Get summary for specific GR numbers (used by Challan Report)
+// Get summary for specific GR numbers (used by Challan Report) – fix article length
 async function getSummaryForGRs(grNumbers) {
   if (!grNumbers || grNumbers.length === 0) {
     return { totalWeight: 0, totalToPay: 0, totalPaid: 0 };
@@ -614,7 +650,8 @@ module.exports = {
   updateStatusInfo,
   deleteTransportRecord,
   inspectDatabase,
-  getTodaySummary,         
+  getTodaySummary,
   getOutstandingSummary,
-  getSummaryForGRs
+  getSummaryForGRs,
+  getSummaryForPeriod
 };
