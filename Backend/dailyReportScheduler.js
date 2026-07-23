@@ -1,169 +1,107 @@
-const express = require("express");
-const http = require("http");
-const transportDB = require("./transportDB");
-const customersDB = require("./customersDB");
-const transporterDB = require("./transporterDB");
-const userDB = require("./userDB");
-const challanDB = require("./challanDB");
-const crossingDB = require("./crossingDB");
-const otherDB = require("./otherDB");
-const createDatabaseViewer = require("./databaseViewer");
-const { startDailyReportScheduler } = require("./dailyReportScheduler");
-require("dotenv").config();
+// dailyReportScheduler.js
+// Runs a scheduled job every day at 7:00 AM IST (change for testing)
+//
+// Now includes a live clock in the console to help debug time issues.
 
-const app = express();
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+const { CronJob } = require('cron');
+const axios = require('axios');
+const { sendWhatsAppTemplateMessage } = require('./whatsappService');
+require('dotenv').config();
 
-async function initialize() {
+// ------ LIVE CLOCK (console) ------
+function startClock() {
+  setInterval(() => {
+    const now = new Date();
+    const istOptions = { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    const timeStr = now.toLocaleString('en-IN', { ...istOptions, year: 'numeric', month: '2-digit', day: '2-digit' });
+    // Clear line and print updated time
+    process.stdout.write(`\r🕐 Server time (IST): ${timeStr}    `);
+  }, 5000); // update every 5 seconds
+}
+
+// ------ CONFIG ------
+const RECIPIENTS = (process.env.WHATSAPP_RECIPIENTS || "")
+  .split(",")
+  .map((n) => n.trim())
+  .filter(Boolean);
+
+const INTERNAL_REPORT_URL = process.env.INTERNAL_REPORT_URL || "http://localhost:3000/api/report/today";
+
+// ------ JOB FUNCTION ------
+async function runDailyReportJob() {
+  const now = new Date();
+  const istOptions = { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit' };
+  const timeStr = now.toLocaleString('en-IN', { ...istOptions, year: 'numeric', month: '2-digit', day: '2-digit' });
+  console.log(`\n⏰ [${timeStr}] Running daily WhatsApp report job...`);
+
+  if (RECIPIENTS.length === 0) {
+    console.warn("⚠️ No WhatsApp recipients configured. Set WHATSAPP_RECIPIENTS in .env");
+    return;
+  }
+
   try {
-    await transportDB.initialize();
-    await customersDB.initialize();
-    await transporterDB.initialize();
-    await userDB.initialize();
-    await challanDB.initialize();
-    await crossingDB.initialize();
-    await otherDB.initialize();
-    console.log("All databases initialized successfully");
+    const { data } = await axios.get(INTERNAL_REPORT_URL);
+    if (!data.success) throw new Error("Report endpoint returned success: false");
 
-    startDailyReportScheduler();
+    const { generatedAt, date, transportReport, challanReport, outstandingReport } = data;
+
+    const parameters = [
+      date,
+      generatedAt,
+      String(transportReport.totalBuilty),
+      String(transportReport.totalArticles),
+      String(transportReport.totalWeight),
+      String(transportReport.totalToPay),
+      String(transportReport.totalPaid),
+      String(challanReport.totalChallan),
+      challanReport.truckNos,
+      String(challanReport.totalWeight),
+      String(challanReport.totalToPay),
+      String(challanReport.totalPaid),
+      String(outstandingReport.totalUnits),
+      String(outstandingReport.totalWeight),
+      String(outstandingReport.totalToPay),
+      String(outstandingReport.totalPaid),
+    ];
+
+    for (const number of RECIPIENTS) {
+      const result = await sendWhatsAppTemplateMessage(number, parameters);
+      if (result.success) {
+        console.log(`✅ Report sent to ${number}`);
+      } else {
+        console.error(`❌ Report failed for ${number}:`, JSON.stringify(result.error));
+      }
+    }
   } catch (err) {
-    console.error("Failed to initialize databases:", err);
-    process.exit(1);
+    console.error("❌ Daily report job failed:", err.message);
   }
 }
 
-// Enable CORS
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  next();
-});
+// ------ SCHEDULER ------
+function startDailyReportScheduler() {
+  // Show current time and timezone info on startup
+  const now = new Date();
+  const istOptions = { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  const startTime = now.toLocaleString('en-IN', { ...istOptions, year: 'numeric', month: '2-digit', day: '2-digit' });
+  console.log(`\n🚀 Server started at IST: ${startTime}`);
+  console.log(`   Server system time: ${now.toString()}`);
+  console.log(`   Timezone: Asia/Kolkata (IST)`);
 
-// Import route modules
-const transportRoutes = require("./transportRoutes")(transportDB);
-const customerRoutes = require("./customerRoutes")(customersDB);
-const transporterRoutes = require("./transporterRoutes")(transporterDB);
-const userRoutes = require("./userRoutes")(userDB);
-const challanRoutes = require("./challanRoutes")(challanDB);
-const crossingRoutes = require("./crossingRoutes")(crossingDB);
-const otherRoutes = require("./otherRoutes")(otherDB);
+  // Start the live clock
+  startClock();
 
-// Create database viewer routes
-const databaseViewerRoutes = createDatabaseViewer(
-  transportDB,
-  customersDB,
-  transporterDB,
-  userDB,
-  challanDB,
-  crossingDB,
-  otherDB
-);
-
-// Use routes
-app.use("/api", transportRoutes);
-app.use("/api", customerRoutes);
-app.use("/api", transporterRoutes);
-app.use("/api", userRoutes);
-app.use("/api", challanRoutes);
-app.use("/api", crossingRoutes);
-app.use("/api", otherRoutes);
-app.use("/", databaseViewerRoutes);
-
-// TEMPORARY: manual trigger to test the WhatsApp report without waiting for 10 PM
-app.get("/api/test-whatsapp-report", async (req, res) => {
-  try {
-    const { runDailyReportJob } = require("./dailyReportScheduler");
-    await runDailyReportJob();
-    res.json({ success: true, message: "Test report triggered. Check WhatsApp and server logs." });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Database inspection endpoint
-app.get("/api/AabhasServer", async (req, res) => {
-  try {
-    const inspection = await transporterDB.inspectDatabase();
-    res.json(inspection);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ---------- START ONLY HTTP SERVER ----------
-initialize()
-  .then(() => {
-    const httpPort = 3000;
-    const httpServer = http.createServer(app);
-
-    httpServer.listen(httpPort, () => {
-      console.log(`✅ HTTP server running on http://localhost:${httpPort}`);
-      console.log(`(HTTPS temporarily disabled for local testing)`);
-    });
-
-    printEndpoints();
-  })
-  .catch((err) => {
-    console.error("Failed to initialize server:", err);
-  });
-
-// Helper function to print all registered endpoints
-function printEndpoints() {
-  console.log("Available endpoints:");
-  console.log("Transport Records:");
-  console.log(" POST /api/transport-records");
-  console.log(" GET /api/transport-records");
-  console.log(" GET /api/transport-records?grNo=...");
-  console.log(" PUT /api/transport-records/:grNo");
-  console.log(" DELETE /api/transport-records/:grNo");
-
-  console.log("\nCustomers:");
-  console.log(" GET /api/customers?name=...");
-  console.log(" GET /api/customers/all-names");
-  console.log(" GET /api/customers/all");
-  console.log(" POST /api/customers");
-  console.log(" PUT /api/customers/:name");
-  console.log(" DELETE /api/customers/:name");
-
-  console.log("\nTransporters:");
-  console.log(" POST /api/transporters");
-  console.log(" GET /api/transporters?search=...");
-  console.log(" GET /api/transporters/all");
-  console.log(" PUT /api/transporters/:vehicleNumber");
-  console.log(" DELETE /api/transporters/:vehicleNumber");
-
-  console.log("\nUsers:");
-  console.log(" POST /api/users");
-  console.log(" GET /api/users/search?name=...");
-  console.log(" GET /api/users/all");
-  console.log(" GET /api/users/:id");
-  console.log(" PUT /api/users/:id");
-  console.log(" DELETE /api/users/:id");
-
-  console.log("\nChallan:");
-  console.log(" POST /api/challan");
-  console.log(" GET /api/challan");
-  console.log(" GET /api/challan?challan_no=...");
-  console.log(" PUT /api/challan/:challan_no");
-  console.log(" DELETE /api/challan/:challan_no");
-
-  console.log("\nCrossing Statements:");
-  console.log(" POST /api/crossing");
-  console.log(" GET /api/crossing");
-  console.log(" GET /api/crossing?cx_number=...");
-  console.log(" PUT /api/crossing/:cx_number");
-  console.log(" DELETE /api/crossing/:cx_number");
-
-  console.log("\nOther / Stations:");
-  console.log(" GET /api/other/stations");
-  console.log(" POST /api/other/stations");
-
-  console.log("\nDatabase Inspection:");
-  console.log(" GET /api/AabhasServer (JSON API)");
-  console.log(" GET /AabhasServer (HTML Viewer)");
-  console.log(" GET /export/:dbName (Excel Export)");
-
-  console.log("\nDatabase Viewer available at: http://localhost:3000/AabhasServer");
+  // Create cron job – FOR TESTING, CHANGE TO '0 14 * * *' for 2 PM
+  const cronExpression = '0 14 * * *';  // <-- CHANGE TO '0 7 * * *' for 7 AM after testing
+  const job = new CronJob(
+    cronExpression,
+    runDailyReportJob,
+    null,
+    true,
+    'Asia/Kolkata'
+  );
+  job.start();
+  console.log(`\n📅 Daily WhatsApp report scheduled with cron: "${cronExpression}" IST`);
+  console.log(`   (Next run: ${job.nextDate().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
 }
+
+module.exports = { startDailyReportScheduler, runDailyReportJob };
