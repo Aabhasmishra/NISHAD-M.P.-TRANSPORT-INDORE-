@@ -106,7 +106,7 @@ const CrossingStatement = ({ isLightMode, modeOfView }) => {
             try {
                 let formattedBuilty = builtyNo.trim().toUpperCase();
                 if (!formattedBuilty.startsWith("GR")) {
-                    formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(5, "0");
+                    formattedBuilty = "GR" + formattedBuilty.replace(/\D/g, "").padStart(6, "0");
                 }
                 
                 const response = await fetch(`${BASE_URL}/transport-records?grNo=${formattedBuilty}`);
