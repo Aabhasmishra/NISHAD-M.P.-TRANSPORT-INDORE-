@@ -193,13 +193,12 @@ async function getTodayChallans() {
   return rows;
 }
 
-// ----- NEW: Get challans for a time period (by created_at) -----
-async function getChallansForPeriod(startDate, endDate) {
+// Get challans for the last 24 hours (IST)
+async function getChallansForPeriod() {
   const { rows } = await pool.query(
     `SELECT challan_no, truck_no, builty_no 
      FROM challan 
-     WHERE created_at >= $1 AND created_at <= $2`,
-    [startDate, endDate]
+     WHERE created_at >= (CURRENT_TIMESTAMP - INTERVAL '24 hours')`
   );
   return rows;
 }
