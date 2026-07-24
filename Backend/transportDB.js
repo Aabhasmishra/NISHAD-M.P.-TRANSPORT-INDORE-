@@ -496,21 +496,22 @@ async function inspectDatabase() {
 
 // ----- NEW FUNCTIONS FOR 24-HOUR PERIOD -----
 
-// Get summary for a time range (based on created_at)
-async function getSummaryForPeriod(startDate, endDate) {
-  const { rows } = await pool.query(
-    `SELECT * FROM transport_records WHERE created_at >= $1 AND created_at <= $2`,
-    [startDate, endDate]
-  );
+// Get summary for the last 24 hours (IST) – uses PostgreSQL timezone
+async function getSummaryForPeriod() {
+  // Use CURRENT_TIMESTAMP (UTC) - 24 hours
+  const query = `
+    SELECT * FROM transport_records 
+    WHERE created_at >= (CURRENT_TIMESTAMP - INTERVAL '24 hours')
+  `;
+  const { rows } = await pool.query(query);
 
   let totalBuilty = rows.length;
-  let totalArticles = 0;      // will hold sum of all article numbers
+  let totalArticles = 0;
   let totalActualWeight = 0;
   let totalToPay = 0;
   let totalPaid = 0;
 
   rows.forEach(row => {
-    // --- SUM THE ARTICLE NUMBERS ---
     if (row.article_no) {
       const parts = row.article_no.split('|');
       for (const part of parts) {
@@ -518,10 +519,8 @@ async function getSummaryForPeriod(startDate, endDate) {
         if (!isNaN(num)) totalArticles += num;
       }
     }
-
     totalToPay += parseFloat(row.to_pay) || 0;
     totalPaid += parseFloat(row.paid) || 0;
-
     if (row.actual_weight) {
       const weights = row.actual_weight
         .split('|')
@@ -531,8 +530,15 @@ async function getSummaryForPeriod(startDate, endDate) {
     }
   });
 
+  // Get the start date in IST (for the report's "date" field)
+  const dateQuery = `
+    SELECT TO_CHAR((CURRENT_TIMESTAMP - INTERVAL '24 hours') AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY') AS report_date
+  `;
+  const dateResult = await pool.query(dateQuery);
+  const dateFormatted = dateResult.rows[0].report_date;
+
   return {
-    date: startDate.toISOString().split('T')[0],
+    date: dateFormatted,
     totalBuilty,
     totalArticles,
     totalActualWeight,
