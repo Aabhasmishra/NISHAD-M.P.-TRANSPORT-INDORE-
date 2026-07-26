@@ -604,12 +604,22 @@ async function getOutstandingSummary() {
     `SELECT * FROM transport_records WHERE challan_status = 'NOT SHIPPED'`
   );
 
-  let totalUnits = rows.length;
+  let totalBuilty = rows.length;
+  let totalUnits = 0;          // sum of article numbers
   let totalWeight = 0;
   let totalToPay = 0;
   let totalPaid = 0;
 
   rows.forEach(row => {
+    // Sum article numbers from pipe-separated string
+    if (row.article_no) {
+      const parts = row.article_no.split('|');
+      for (const part of parts) {
+        const num = parseInt(part.trim(), 10);
+        if (!isNaN(num)) totalUnits += num;
+      }
+    }
+
     totalToPay += parseFloat(row.to_pay) || 0;
     totalPaid += parseFloat(row.paid) || 0;
 
@@ -622,9 +632,10 @@ async function getOutstandingSummary() {
     }
   });
 
-  return { totalUnits, totalWeight, totalToPay, totalPaid };
-}
+  const totalAmount = totalToPay + totalPaid;
 
+  return { totalBuilty, totalUnits, totalWeight, totalToPay, totalPaid, totalAmount };
+}
 // Get summary for specific GR numbers (used by Challan Report) – fix article length
 async function getSummaryForGRs(grNumbers) {
   if (!grNumbers || grNumbers.length === 0) {
