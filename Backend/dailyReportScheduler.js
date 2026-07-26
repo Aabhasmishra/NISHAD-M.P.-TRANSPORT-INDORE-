@@ -15,6 +15,12 @@ const RECIPIENTS = (process.env.WHATSAPP_RECIPIENTS || "")
 
 const INTERNAL_REPORT_URL = process.env.INTERNAL_REPORT_URL || "http://localhost:3000/api/report/today";
 
+// Helper to format numbers with Indian comma separators (e.g., 20400 → "20,400")
+const formatNum = (num) => {
+  if (num === undefined || num === null) return '0';
+  return num.toLocaleString('en-IN');
+};
+
 // ----- JOB FUNCTION ------
 async function runDailyReportJob() {
   if (RECIPIENTS.length === 0) {
@@ -28,23 +34,30 @@ async function runDailyReportJob() {
 
     const { generatedAt, date, transportReport, challanReport, outstandingReport } = data;
 
+    // Order matches the new WhatsApp template (18 placeholders):
+    // {{1}} date, {{2}} time,
+    // Transport: {{3}} totalBuilty, {{4}} totalArticles, {{5}} totalWeight, {{6}} totalToPay, {{7}} totalPaid,
+    // Challan: {{8}} totalChallan, {{9}} truckNos, {{10}} totalWeight, {{11}} totalToPay, {{12}} totalPaid,
+    // Outstanding: {{13}} totalBuilty, {{14}} totalUnits, {{15}} totalWeight, {{16}} totalToPay, {{17}} totalPaid, {{18}} totalAmount
     const parameters = [
       date,
       generatedAt,
-      String(transportReport.totalBuilty),
-      String(transportReport.totalArticles),
-      String(transportReport.totalWeight),
-      String(transportReport.totalToPay),
-      String(transportReport.totalPaid),
-      String(challanReport.totalChallan),
-      challanReport.truckNos,
-      String(challanReport.totalWeight),
-      String(challanReport.totalToPay),
-      String(challanReport.totalPaid),
-      String(outstandingReport.totalUnits),
-      String(outstandingReport.totalWeight),
-      String(outstandingReport.totalToPay),
-      String(outstandingReport.totalPaid),
+      formatNum(transportReport.totalBuilty),
+      formatNum(transportReport.totalArticles),
+      formatNum(transportReport.totalWeight),
+      formatNum(transportReport.totalToPay),
+      formatNum(transportReport.totalPaid),
+      formatNum(challanReport.totalChallan),
+      challanReport.truckNos,  // string – no formatting
+      formatNum(challanReport.totalWeight),
+      formatNum(challanReport.totalToPay),
+      formatNum(challanReport.totalPaid),
+      formatNum(outstandingReport.totalBuilty),   // new field
+      formatNum(outstandingReport.totalUnits),
+      formatNum(outstandingReport.totalWeight),
+      formatNum(outstandingReport.totalToPay),
+      formatNum(outstandingReport.totalPaid),
+      formatNum(outstandingReport.totalAmount)    // new field
     ];
 
     for (const number of RECIPIENTS) {
@@ -69,7 +82,7 @@ function startDailyReportScheduler() {
     'Asia/Kolkata'
   );
   job.start();
-  // console.log(`📅 Daily WhatsApp report scheduler started — runs at 7:00 AM IST`);
+  console.log(`📅 Daily WhatsApp report scheduler started — runs at 7:00 AM IST`);
 }
 
 module.exports = { startDailyReportScheduler, runDailyReportJob };
