@@ -179,7 +179,7 @@ module.exports = (transportDB) => {
   // Combined daily report with timestamp – NOW USING LAST 24 HOURS
   router.get('/report/today', async (req, res) => {
     try {
-      // Get current IST time for the "generatedAt" field (JavaScript only for display)
+      // Get current IST time for the "generatedAt" field
       const now = new Date();
       const istOptions = { timeZone: 'Asia/Kolkata' };
       const istDate = new Date(now.toLocaleString('en-US', istOptions));
@@ -189,10 +189,10 @@ module.exports = (transportDB) => {
       hours = hours % 12 || 12;
       const timeFormatted = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
 
-      // 1. Transport report for last 24h (now no arguments)
+      // 1. Transport report for last 24h
       const transportSummary = await transportDB.getSummaryForPeriod();
 
-      // 2. Challan report for last 24h (no arguments)
+      // 2. Challan report for last 24h
       const todayChallans = await challanDB.getChallansForPeriod();
       const totalChallan = todayChallans.length;
       let allGRs = [];
@@ -206,13 +206,13 @@ module.exports = (transportDB) => {
       const challanSummary = await transportDB.getSummaryForGRs(uniqueGRs);
       const truckNos = todayChallans.map(ch => ch.truck_no).filter(t => t).join(', ');
 
-      // 3. Outstanding (unchanged)
+      // 3. Outstanding report (now includes totalBuilty and totalAmount)
       const osrSummary = await transportDB.getOutstandingSummary();
 
       res.json({
         success: true,
         generatedAt: timeFormatted,
-        date: transportSummary.date,   // now provided by the DB
+        date: transportSummary.date,
         transportReport: {
           totalBuilty: transportSummary.totalBuilty,
           totalArticles: transportSummary.totalArticles,
@@ -228,10 +228,12 @@ module.exports = (transportDB) => {
           totalPaid: challanSummary.totalPaid
         },
         outstandingReport: {
+          totalBuilty: osrSummary.totalBuilty,
           totalUnits: osrSummary.totalUnits,
           totalWeight: osrSummary.totalWeight,
           totalToPay: osrSummary.totalToPay,
-          totalPaid: osrSummary.totalPaid
+          totalPaid: osrSummary.totalPaid,
+          totalAmount: osrSummary.totalAmount
         }
       });
     } catch (err) {
