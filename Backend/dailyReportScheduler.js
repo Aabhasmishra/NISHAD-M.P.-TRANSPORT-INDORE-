@@ -34,11 +34,11 @@ async function runDailyReportJob() {
 
     const { generatedAt, date, transportReport, challanReport, outstandingReport } = data;
 
-    // Order matches the new WhatsApp template (18 placeholders):
+    // Order matches the new WhatsApp template (21 placeholders):
     // {{1}} date, {{2}} time,
-    // Transport: {{3}} totalBuilty, {{4}} totalArticles, {{5}} totalWeight, {{6}} totalToPay, {{7}} totalPaid,
-    // Challan: {{8}} totalChallan, {{9}} truckNos, {{10}} totalWeight, {{11}} totalToPay, {{12}} totalPaid,
-    // Outstanding: {{13}} totalBuilty, {{14}} totalUnits, {{15}} totalWeight, {{16}} totalToPay, {{17}} totalPaid, {{18}} totalAmount
+    // Transport: {{3}} totalBuilty, {{4}} totalArticles, {{5}} totalWeight, {{6}} totalToPay, {{7}} totalPaid, {{8}} totalAmount,
+    // Challan: {{9}} totalChallan, {{10}} challanNos, {{11}} truckNos, {{12}} totalWeight, {{13}} totalToPay, {{14}} totalPaid, {{15}} totalAmount,
+    // Outstanding: {{16}} totalBuilty, {{17}} totalUnits, {{18}} totalWeight, {{19}} totalToPay, {{20}} totalPaid, {{21}} totalAmount
     const parameters = [
       date,
       generatedAt,
@@ -47,17 +47,20 @@ async function runDailyReportJob() {
       formatNum(transportReport.totalWeight),
       formatNum(transportReport.totalToPay),
       formatNum(transportReport.totalPaid),
+      formatNum(transportReport.totalAmount),
       formatNum(challanReport.totalChallan),
-      challanReport.truckNos,  // string – no formatting
+      challanReport.challanNos,   // string – no formatting
+      challanReport.truckNos,     // string – no formatting
       formatNum(challanReport.totalWeight),
       formatNum(challanReport.totalToPay),
       formatNum(challanReport.totalPaid),
-      formatNum(outstandingReport.totalBuilty),   // new field
+      formatNum(challanReport.totalAmount),
+      formatNum(outstandingReport.totalBuilty),
       formatNum(outstandingReport.totalUnits),
       formatNum(outstandingReport.totalWeight),
       formatNum(outstandingReport.totalToPay),
       formatNum(outstandingReport.totalPaid),
-      formatNum(outstandingReport.totalAmount)    // new field
+      formatNum(outstandingReport.totalAmount)
     ];
 
     for (const number of RECIPIENTS) {
