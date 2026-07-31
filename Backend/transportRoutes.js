@@ -195,6 +195,7 @@ module.exports = (transportDB) => {
       // 2. Challan report for last 24h
       const todayChallans = await challanDB.getChallansForPeriod();
       const totalChallan = todayChallans.length;
+      // Collect all GR numbers from challans
       let allGRs = [];
       todayChallans.forEach(ch => {
         if (ch.builty_no) {
@@ -204,10 +205,17 @@ module.exports = (transportDB) => {
       });
       const uniqueGRs = [...new Set(allGRs)];
       const challanSummary = await transportDB.getSummaryForGRs(uniqueGRs);
+
+      // Build challan numbers list (comma-separated)
+      const challanNos = todayChallans.map(ch => ch.challan_no).join(', ');
       const truckNos = todayChallans.map(ch => ch.truck_no).filter(t => t).join(', ');
 
-      // 3. Outstanding report (now includes totalBuilty and totalAmount)
+      // 3. Outstanding report (already includes totalAmount)
       const osrSummary = await transportDB.getOutstandingSummary();
+
+      // Compute totalAmount for transport and challan
+      const transportTotalAmount = transportSummary.totalToPay + transportSummary.totalPaid;
+      const challanTotalAmount = challanSummary.totalToPay + challanSummary.totalPaid;
 
       res.json({
         success: true,
@@ -218,14 +226,17 @@ module.exports = (transportDB) => {
           totalArticles: transportSummary.totalArticles,
           totalWeight: transportSummary.totalActualWeight,
           totalToPay: transportSummary.totalToPay,
-          totalPaid: transportSummary.totalPaid
+          totalPaid: transportSummary.totalPaid,
+          totalAmount: transportTotalAmount
         },
         challanReport: {
           totalChallan,
+          challanNos: challanNos || 'N/A',
           truckNos: truckNos || 'N/A',
           totalWeight: challanSummary.totalWeight,
           totalToPay: challanSummary.totalToPay,
-          totalPaid: challanSummary.totalPaid
+          totalPaid: challanSummary.totalPaid,
+          totalAmount: challanTotalAmount
         },
         outstandingReport: {
           totalBuilty: osrSummary.totalBuilty,
