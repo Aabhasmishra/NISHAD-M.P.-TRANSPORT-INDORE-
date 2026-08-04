@@ -12,6 +12,7 @@ import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
 import ShipmentReportModule from "./Components/ShipmentReportModule/ShipmentReportModule";
+import ExpenseManagementMob from "./Components/ExpenseManagement/ExpenseManagement";
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -54,6 +55,11 @@ const App = () => {
   const currentPath = window.location.pathname;
   if (currentPath === '/TermsAndConditions') {
     return <TermsAndConditions />;
+  }
+
+  // --- PUBLIC ROUTE: Expense Management (no login required) ---
+  if (currentPath === '/ExpenseManagement') {
+    return <ExpenseManagementMob />;
   }
 
   const change_theme = () => {
