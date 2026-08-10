@@ -2,6 +2,8 @@ const express = require("express");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
+const admin = require('firebase-admin');
+const serviceAccount = require('./firebase-service-account.json');
 const transportDB = require("./transportDB");
 const customersDB = require("./customersDB");
 const transporterDB = require("./transporterDB");
@@ -16,6 +18,41 @@ require("dotenv").config();
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+async function sendChallanNotification(challanData) {
+  const { challan_no, truck_no, from_location, destination } = challanData;
+  try {
+    await admin.messaging().send({
+      notification: {
+        title: '🚛 New Challan Created',
+        body: `${challan_no}  |  ${truck_no}  |  ${from_location} → ${destination}`,
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'challan-alerts',
+          sound: 'default',
+          color: '#ed8936',
+        },
+      },
+      data: {
+        challan_no: String(challan_no),
+        truck_no: String(truck_no),
+        from_location: String(from_location),
+        destination: String(destination),
+        type: 'new_challan',
+      },
+      topic: 'challan-alerts',
+    });
+    console.log(`✅ Notification sent: ${challan_no}`);
+  } catch (err) {
+    console.error('❌ Notification error:', err.message);
+  }
+}
 
 // Initialize all databases
 async function initialize() {
@@ -50,7 +87,7 @@ const transportRoutes = require("./transportRoutes")(transportDB);
 const customerRoutes = require("./customerRoutes")(customersDB);
 const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
-const challanRoutes = require("./challanRoutes")(challanDB);
+const challanRoutes = require("./challanRoutes")(challanDB, sendChallanNotification);
 const crossingRoutes = require("./crossingRoutes")(crossingDB);
 const otherRoutes = require("./otherRoutes")(otherDB); 
 
