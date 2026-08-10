@@ -1,4 +1,4 @@
-module.exports = (challanDB) => {
+module.exports = (challanDB, sendChallanNotification) => {
   const router = require('express').Router();
 
   // Save challan
@@ -13,6 +13,14 @@ module.exports = (challanDB) => {
       }
 
       const result = await challanDB.saveChallan(req.body);
+
+      sendChallanNotification({
+        challan_no: result.challan_no,
+        truck_no: req.body.truck_no,
+        from_location: req.body.from,
+        destination: req.body.destination,
+      });
+
       res.status(201).json({
         success: true,
         challan_no: result.challan_no,
