@@ -4,7 +4,6 @@ const http = require("http");
 const https = require("https");
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getMessaging } = require('firebase-admin/messaging');
-const serviceAccount = require('./firebase-service-account.json');
 const transportDB = require("./transportDB");
 const customersDB = require("./customersDB");
 const transporterDB = require("./transporterDB");
@@ -21,7 +20,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 initializeApp({
-  credential: cert(serviceAccount),
+  credential: cert({
+    projectId:   process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  }),
 });
 
 async function sendChallanNotification(challanData) {
