@@ -636,6 +636,7 @@ async function getOutstandingSummary() {
 
   return { totalBuilty, totalUnits, totalWeight, totalToPay, totalPaid, totalAmount };
 }
+
 // Get summary for specific GR numbers (used by Challan Report) – fix article length
 async function getSummaryForGRs(grNumbers) {
   if (!grNumbers || grNumbers.length === 0) {
@@ -666,6 +667,36 @@ async function getSummaryForGRs(grNumbers) {
   return { totalWeight, totalToPay, totalPaid };
 }
 
+async function getHomeData() {
+  // Latest GR number
+  const latestGR = await pool.query(
+    `SELECT gr_no FROM transport_records ORDER BY created_at DESC LIMIT 1`
+  );
+
+  // Today's bookings — count and total amount
+  const todayStats = await pool.query(`
+    SELECT
+      COUNT(*) as count,
+      SUM(CASE WHEN paid::numeric > 0 THEN paid::numeric ELSE to_pay::numeric END) as total_amount
+    FROM transport_records
+    WHERE DATE(date) = CURRENT_DATE
+  `);
+
+  // Pending shipments — NOT SHIPPED count
+  const pendingStats = await pool.query(`
+    SELECT COUNT(*) as count
+    FROM transport_records
+    WHERE UPPER(TRIM(challan_status)) = 'NOT SHIPPED'
+  `);
+
+  return {
+    latestGR: latestGR.rows[0]?.gr_no || null,
+    todayCount:  parseInt(todayStats.rows[0]?.count)        || 0,
+    todayAmount: parseFloat(todayStats.rows[0]?.total_amount) || 0,
+    pendingCount: parseInt(pendingStats.rows[0]?.count)     || 0,
+  };
+}
+
 process.on('SIGINT', async () => {
   await pool.end();
   process.exit(0);
@@ -685,5 +716,6 @@ module.exports = {
   getTodaySummary,
   getOutstandingSummary,
   getSummaryForGRs,
-  getSummaryForPeriod
+  getSummaryForPeriod,
+  getHomeData
 };
