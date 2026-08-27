@@ -203,6 +203,13 @@ async function getChallansForPeriod() {
   return rows;
 }
 
+async function getLatestChallan() {
+  const { rows } = await pool.query(
+    `SELECT challan_no FROM challan ORDER BY created_at DESC LIMIT 1`
+  );
+  return rows[0]?.challan_no || null;
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   await pool.end();
@@ -218,5 +225,6 @@ module.exports = {
   deleteChallan,
   inspectDatabase,
   getTodayChallans,
-  getChallansForPeriod
+  getChallansForPeriod,
+  getLatestChallan
 };
