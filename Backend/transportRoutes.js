@@ -176,6 +176,16 @@ module.exports = (transportDB) => {
     }
   });
 
+  router.get('/home-data', async (req, res) => {
+    try {
+      const data = await transportDB.getHomeData();
+      res.json(data);
+    } catch (err) {
+      console.error('Home data error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Combined daily report with timestamp – NOW USING LAST 24 HOURS
   router.get('/report/today', async (req, res) => {
     try {
