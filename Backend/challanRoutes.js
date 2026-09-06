@@ -1,7 +1,7 @@
 module.exports = (challanDB, sendChallanNotification) => {
   const router = require('express').Router();
 
-  // Save challan
+  // Save challan – now accepts to_pay, paid, plpl (optional)
   router.post('/challan', async (req, res) => {
     try {
       const { date, truck_no, driver_no, from, destination, builty_no } = req.body;
@@ -35,15 +35,7 @@ module.exports = (challanDB, sendChallanNotification) => {
     }
   });
 
-  router.get('/challan/latest', async (req, res) => {
-    try {
-      const challanNo = await challanDB.getLatestChallan();
-      res.json({ challan_no: challanNo });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
+  // Get challan(s) – includes all freight fields
   router.get('/challan', async (req, res) => {
     try {
       if (req.query.challan_no) {
@@ -51,37 +43,50 @@ module.exports = (challanDB, sendChallanNotification) => {
         if (challan) {
           res.json(challan);
         } else {
-          res.status(404).json({ 
-            error: "Challan not found" 
-          });
+          res.status(404).json({ error: "Challan not found" });
         }
       } else {
         const challans = await challanDB.getAllChallans();
         res.json(challans);
       }
     } catch (err) {
-      res.status(400).json({ 
-        error: err.message 
-      });
+      res.status(400).json({ error: err.message });
     }
   });
 
-  // Update challan
+  // Update challan – accepts any freight fields including to_pay, paid, plpl
   router.put('/challan/:challan_no', async (req, res) => {
     try {
-      const { date, truck_no, driver_no, from, destination, builty_no } = req.body;
-      if (!date || !truck_no || !driver_no || !from || !destination || !builty_no) {
+      // Ensure at least one field is provided
+      if (Object.keys(req.body).length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Missing required fields: date, truck_no, driver_no, from, destination, or builty_no"
+          error: "No fields to update"
         });
       }
 
-      const challan = await challanDB.updateChallan(
-        req.params.challan_no, 
-        req.body
-      );
-      
+      // Basic validation for required core fields if they are present
+      const { date, truck_no, driver_no, from, destination, builty_no } = req.body;
+      if (date !== undefined && !date) {
+        return res.status(400).json({ success: false, error: "date cannot be empty" });
+      }
+      if (truck_no !== undefined && !truck_no) {
+        return res.status(400).json({ success: false, error: "truck_no cannot be empty" });
+      }
+      if (driver_no !== undefined && !driver_no) {
+        return res.status(400).json({ success: false, error: "driver_no cannot be empty" });
+      }
+      if (from !== undefined && !from) {
+        return res.status(400).json({ success: false, error: "from cannot be empty" });
+      }
+      if (destination !== undefined && !destination) {
+        return res.status(400).json({ success: false, error: "destination cannot be empty" });
+      }
+      if (builty_no !== undefined && !builty_no) {
+        return res.status(400).json({ success: false, error: "builty_no cannot be empty" });
+      }
+
+      const challan = await challanDB.updateChallan(req.params.challan_no, req.body);
       if (challan) {
         res.json({
           success: true,
@@ -89,9 +94,7 @@ module.exports = (challanDB, sendChallanNotification) => {
           message: "Challan updated successfully"
         });
       } else {
-        res.status(404).json({ 
-          error: "Challan not found" 
-        });
+        res.status(404).json({ error: "Challan not found" });
       }
     } catch (err) {
       res.status(400).json({ 
@@ -104,19 +107,14 @@ module.exports = (challanDB, sendChallanNotification) => {
   // Delete challan
   router.delete('/challan/:challan_no', async (req, res) => {
     try {
-      const success = await challanDB.deleteChallan(
-        req.params.challan_no
-      );
-      
+      const success = await challanDB.deleteChallan(req.params.challan_no);
       if (success) {
         res.json({
           success: true,
           message: "Challan deleted successfully"
         });
       } else {
-        res.status(404).json({ 
-          error: "Challan not found" 
-        });
+        res.status(404).json({ error: "Challan not found" });
       }
     } catch (err) {
       res.status(400).json({ 
