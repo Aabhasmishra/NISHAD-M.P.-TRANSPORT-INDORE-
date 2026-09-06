@@ -151,12 +151,12 @@ initialize()
     try {
       options = {
         key: fs.readFileSync('/etc/ssl/fintr/fintr.in.key'),
-        cert: fs.readFileSync('/etc/ssl/fintr/www_fintr_in.crt')
+        cert: fs.readFileSync('/etc/ssl/fintr/fintr_in.crt')
       };
     } catch (err) {
       console.error("❌ Failed to read SSL certificate files:");
       console.error(`   Key: /etc/ssl/fintr/fintr.in.key`);
-      console.error(`   Cert: /etc/ssl/fintr/www_fintr_in.crt`);
+      console.error(`   Cert: /etc/ssl/fintr/fintr_in.crt`);
       console.error(`   Error: ${err.message}`);
       process.exit(1); // Exit because HTTPS is required for Android app
     }
