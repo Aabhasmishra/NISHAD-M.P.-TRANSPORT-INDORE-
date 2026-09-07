@@ -673,27 +673,19 @@ async function getHomeData() {
     `SELECT gr_no FROM transport_records ORDER BY created_at DESC LIMIT 1`
   );
 
-  // Today's bookings — count and total amount
-  const todayStats = await pool.query(`
-    SELECT
-      COUNT(*) as count,
-      SUM(CASE WHEN paid::numeric > 0 THEN paid::numeric ELSE to_pay::numeric END) as total_amount
-    FROM transport_records
-    WHERE DATE(date) = CURRENT_DATE
-  `);
-
-  // Pending shipments — NOT SHIPPED count
-  const pendingStats = await pool.query(`
-    SELECT COUNT(*) as count
-    FROM transport_records
-    WHERE UPPER(TRIM(challan_status)) = 'NOT SHIPPED'
-  `);
+  // Today's summary (using existing function)
+  const today = await getTodaySummary();
+  // Pending summary (using existing function)
+  const pending = await getOutstandingSummary();
 
   return {
     latestGR: latestGR.rows[0]?.gr_no || null,
-    todayCount:  parseInt(todayStats.rows[0]?.count)        || 0,
-    todayAmount: parseFloat(todayStats.rows[0]?.total_amount) || 0,
-    pendingCount: parseInt(pendingStats.rows[0]?.count)     || 0,
+    todayCount: today.totalBuilty || 0,
+    todayAmount: (today.totalToPay || 0) + (today.totalPaid || 0),
+    todayWeight: today.totalActualWeight || 0,
+    pendingCount: pending.totalBuilty || 0,
+    pendingAmount: pending.totalAmount || 0,
+    pendingWeight: pending.totalWeight || 0,
   };
 }
 
