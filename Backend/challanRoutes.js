@@ -35,6 +35,15 @@ module.exports = (challanDB, sendChallanNotification) => {
     }
   });
 
+  router.get('/challan/latest', async (req, res) => {
+    try {
+      const challanNo = await challanDB.getLatestChallan();
+      res.json({ challan_no: challanNo });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Get challan(s) – includes all freight fields
   router.get('/challan', async (req, res) => {
     try {
