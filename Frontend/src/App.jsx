@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import UserManagement from "./Components/UserManagement/UserManagement";
 import MySidebar from "./Components/Sidebar/Sidebar";
-import InvoiceGenerator from "./Components/InvoiceGenerator/InvoiceGenerator";
+import InvoiceGenerator from "./Components/InvoiceGenerator/3";
 import CustomerManagement from "./Components/CustomerManagement/CustomerManagement";
 import Transporter from "./Components/Transporter/Transporter";
 import PaymentManagement from "./Components/PaymentManagement/PaymentManagement";
 import Challan from "./Components/Challan/Challan";
+import FreightPayment from "./Components/FreightPayment/FreightPayment";
 import CrossingStatement from "./Components/CrossingStatement/CrossingStatement";
 import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
@@ -127,7 +128,7 @@ const App = () => {
           onGrChange={handleGrChange}
         />;
       case 'Challan':
-        return <Challan 
+        return <Challan
           key={`Challan-${modeOfView}`}
           isLightMode={isLightMode}
           modeOfView={modeOfView}
@@ -163,6 +164,12 @@ const App = () => {
           isLightMode={isLightMode}
           modeOfView={modeOfView}
         />;
+      case 'FreightPayment':
+        return <FreightPayment 
+          key={`FreightPayment-${modeOfView}`}
+          isLightMode={isLightMode}
+          modeOfView={modeOfView}
+        />;
       case 'OSR':
         return <ShipmentReportModule isLightMode={isLightMode} />;
       case 'PBR':
@@ -171,6 +178,8 @@ const App = () => {
         return <ShipmentReportModule isLightMode={isLightMode} modeOfView="BR" />;
       case 'PPR':
         return <ShipmentReportModule isLightMode={isLightMode} modeOfView="PPR" />;
+      case 'TODAY':
+        return <ShipmentReportModule isLightMode={isLightMode} modeOfView="TODAY" />;
       default:
         return <div className="default-content">Select an option from the sidebar</div>;
     }
