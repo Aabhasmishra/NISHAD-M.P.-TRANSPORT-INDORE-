@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { 
   FaChevronDown, FaChevronRight, FaPlus, FaEdit, FaFileAlt, 
   FaUser, FaTruck, FaChartBar, FaBars, FaSun, FaMoon, 
-  FaExternalLinkAlt, FaTimes
+  FaExternalLinkAlt, FaTimes, FaCalendarAlt
 } from "react-icons/fa";
+import { AiOutlineTruck } from "react-icons/ai";
 import { MdOutlineContentPasteSearch } from "react-icons/md";
 import { MdOutlinePayment, MdDelete } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
@@ -397,6 +398,37 @@ export default function SidebarComponent({
           onClick: () => handleComponentClick('UserManagement', 'delete')
         }
       ]
+    },
+    {
+      key: "freight",
+      label: "Freight Payment",
+      icon: <AiOutlineTruck className="sidebar-link-icon" />,
+      subItems: [
+        { 
+          label: "New Freight Payment", 
+          href: "#", 
+          icon: <FaPlus />,
+          onClick: () => handleComponentClick('FreightPayment', 'add')
+        },
+        { 
+          label: "View Freight Payment", 
+          href: "#", 
+          icon: <FaEye />,
+          onClick: () => handleComponentClick('FreightPayment', 'view')
+        },
+        { 
+          label: "Update Freight Payment", 
+          href: "#", 
+          icon: <FaEdit />,
+          onClick: () => handleComponentClick('FreightPayment', 'update')
+        },
+        { 
+          label: "Delete Freight Payment", 
+          href: "#", 
+          icon: <MdDelete />,
+          onClick: () => handleComponentClick('FreightPayment', 'delete')
+        }
+      ]
     }] : []),
     {
       key: "transporter",
@@ -458,6 +490,12 @@ export default function SidebarComponent({
           href: "#",
           icon: <FaFileAlt />,
           onClick: () => handleComponentClick('PPR', 'view')
+        },
+        {   // <-- add this new item
+          label: "Today's Booking",
+          href: "#",
+          icon: <FaCalendarAlt />,
+          onClick: () => handleComponentClick('TODAY', 'view')
         }
       ]
     },
