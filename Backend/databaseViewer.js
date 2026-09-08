@@ -61,6 +61,14 @@ function createDatabaseViewer(
     return stationString ? stationString.split(' | ').filter(s => s.trim() !== '') : [];
   }
 
+  // ── Helper to format date as DD-MM-YYYY ──
+  function formatDateForFilename(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
   // ── Helper to add a worksheet with data ──
   function addDataSheet(workbook, sheetName, columns, rows, isStations = false) {
     const worksheet = workbook.addWorksheet(sheetName);
@@ -179,6 +187,67 @@ function createDatabaseViewer(
     }
   });
 
+  // ============================================================
+  //  IMPORTANT: /export/all MUST come before /export/:dbName
+  // ============================================================
+
+  // ── Export All (single Excel with multiple sheets) ──
+  router.get('/export/all', async (req, res) => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+
+      // Define all databases to export
+      const databases = [
+        { name: 'transport_records', db: transportDB, table: 'transport_records' },
+        { name: 'customers', db: customersDB, table: 'customers' },
+        { name: 'transporter_details', db: transporterDB, table: 'Transporter-details' },
+        { name: 'users', db: userDB, table: 'users' },
+        { name: 'challan', db: challanDB, table: 'challan' },
+        { name: 'crossing', db: crossingDB, table: 'crossing_statement' },
+        { name: 'stations', db: null, table: 'stations' } // handled separately
+      ];
+
+      for (const ds of databases) {
+        let columns, rows;
+        if (ds.name === 'stations') {
+          const stations = await getStationsArray();
+          columns = ['station'];
+          rows = stations.map(s => ({ station: s }));
+        } else {
+          if (!ds.db) {
+            console.warn(`Database "${ds.name}" not initialized, skipping.`);
+            continue;
+          }
+          const data = await getTableData(ds.db, ds.table);
+          columns = data.columns;
+          rows = data.rows;
+        }
+
+        if (rows.length === 0) {
+          // Still add an empty sheet with a note
+          const sheet = workbook.addWorksheet(ds.name);
+          sheet.addRow(['No data available']);
+          continue;
+        }
+
+        const safeName = ds.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+        addDataSheet(workbook, safeName, columns, rows, ds.name === 'stations');
+      }
+
+      const dateObj = new Date();
+      const dateStr = formatDateForFilename(dateObj); // e.g., 8-9-2026
+      const filename = `all_database_export_${dateStr}.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      console.error('Export all error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Individual Excel Export ──
   router.get('/export/:dbName', async (req, res) => {
     try {
@@ -238,7 +307,8 @@ function createDatabaseViewer(
       const safeName = tableName.replace(/[^a-zA-Z0-9_-]/g, '_');
       addDataSheet(workbook, safeName, columns, rows, dbName === 'stations');
 
-      const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const dateObj = new Date();
+      const dateStr = formatDateForFilename(dateObj);
       const filename = `${safeName}_export_${dateStr}.xlsx`;
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -247,63 +317,6 @@ function createDatabaseViewer(
       res.end();
     } catch (err) {
       console.error('Export error:', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // ── Export All (single Excel with multiple sheets) ──
-  router.get('/export/all', async (req, res) => {
-    try {
-      const workbook = new ExcelJS.Workbook();
-
-      // Define all databases to export
-      const databases = [
-        { name: 'transport_records', db: transportDB, table: 'transport_records' },
-        { name: 'customers', db: customersDB, table: 'customers' },
-        { name: 'transporter_details', db: transporterDB, table: 'Transporter-details' },
-        { name: 'users', db: userDB, table: 'users' },
-        { name: 'challan', db: challanDB, table: 'challan' },
-        { name: 'crossing', db: crossingDB, table: 'crossing_statement' },
-        { name: 'stations', db: null, table: 'stations' } // handled separately
-      ];
-
-      for (const ds of databases) {
-        let columns, rows;
-        if (ds.name === 'stations') {
-          const stations = await getStationsArray();
-          columns = ['station'];
-          rows = stations.map(s => ({ station: s }));
-        } else {
-          if (!ds.db) {
-            console.warn(`Database "${ds.name}" not initialized, skipping.`);
-            continue;
-          }
-          const data = await getTableData(ds.db, ds.table);
-          columns = data.columns;
-          rows = data.rows;
-        }
-
-        if (rows.length === 0) {
-          // Still add an empty sheet with headers?
-          // We'll add a sheet with just a note "No data"
-          const sheet = workbook.addWorksheet(ds.name);
-          sheet.addRow(['No data available']);
-          continue;
-        }
-
-        const safeName = ds.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-        addDataSheet(workbook, safeName, columns, rows, ds.name === 'stations');
-      }
-
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `all_database_export_${dateStr}.xlsx`;
-
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      await workbook.xlsx.write(res);
-      res.end();
-    } catch (err) {
-      console.error('Export all error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -780,7 +793,6 @@ function generateHTML() {
     // Export individual
     exportBtn.addEventListener('click', function() {
       var db = state.isStations ? 'stations' : state.dbName;
-      // Now we support stations export
       window.location.href = '/export/' + db;
     });
 
