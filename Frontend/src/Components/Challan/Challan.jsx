@@ -363,7 +363,7 @@ const Challan = ({ isLightMode, modeOfView, currentUser }) => {
             }
 
             // Build payload
-            const payload = { ...formData, builty_no: builtyNos.join(' | ') };
+            const payload = { ...formData, builty_no: builtyNos.join(' | '), to_pay: calculateTotals().to_pay, paid: calculateTotals().paid };
             const url = mode === 'update'
                 ? `${BASE_URL}/challan/${challanNo}`
                 : `${BASE_URL}/challan`;
