@@ -54,6 +54,58 @@ function createDatabaseViewer(
     }
   }
 
+  // ── Helper to get stations as array ──
+  async function getStationsArray() {
+    if (!otherDB) return [];
+    const stationString = await otherDB.getStationList();
+    return stationString ? stationString.split(' | ').filter(s => s.trim() !== '') : [];
+  }
+
+  // ── Helper to add a worksheet with data ──
+  function addDataSheet(workbook, sheetName, columns, rows, isStations = false) {
+    const worksheet = workbook.addWorksheet(sheetName);
+
+    // Header
+    const headerRow = worksheet.addRow(columns);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Data rows
+    rows.forEach((row, rowIndex) => {
+      const rowValues = columns.map(col => {
+        const value = row[col];
+        if (typeof value === 'string' && isDateString(value)) {
+          return parseDateString(value);
+        }
+        return value;
+      });
+      const dataRow = worksheet.addRow(rowValues);
+      dataRow.eachCell((cell) => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        if (cell.value instanceof Date) cell.numFmt = 'dd-mm-yyyy hh:mm:ss';
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: rowIndex % 2 === 0 ? 'FFDDEBF7' : 'FFFFFFFF' }
+        };
+      });
+    });
+
+    // Auto column widths
+    worksheet.columns.forEach(column => {
+      let maxLength = 0;
+      column.eachCell({ includeEmpty: true }, cell => {
+        const length = cell.value ? cell.value.toString().length : 10;
+        if (length > maxLength) maxLength = length;
+      });
+      column.width = Math.min(maxLength + 2, 50);
+    });
+  }
+
   // ── Main HTML page ──
   router.get('/AabhasServer', async (req, res) => {
     try {
@@ -93,7 +145,7 @@ function createDatabaseViewer(
           break;
         case 'crossing':
           db = crossingDB;
-          tableName = 'crossing_statement';   // actual table name from crossingDB
+          tableName = 'crossing_statement';
           break;
         default:
           return res.status(404).json({ error: 'Database not found' });
@@ -119,8 +171,7 @@ function createDatabaseViewer(
         console.error('otherDB is undefined or null.');
         return res.status(500).json({ error: 'Stations database not initialized.' });
       }
-      const stationString = await otherDB.getStationList();
-      const stations = stationString ? stationString.split(' | ').filter(s => s.trim() !== '') : [];
+      const stations = await getStationsArray();
       res.json({ stations });
     } catch (err) {
       console.error('Error fetching stations:', err);
@@ -128,96 +179,131 @@ function createDatabaseViewer(
     }
   });
 
-  // ── Excel Export ──
+  // ── Individual Excel Export ──
   router.get('/export/:dbName', async (req, res) => {
     try {
       const { dbName } = req.params;
-      let db, tableName;
+      let db, tableName, columns, rows;
 
-      switch (dbName) {
-        case 'transport_records':
-          db = transportDB;
-          tableName = 'transport_records';
-          break;
-        case 'customers':
-          db = customersDB;
-          tableName = 'customers';
-          break;
-        case 'transporter_details':
-          db = transporterDB;
-          tableName = 'Transporter-details';
-          break;
-        case 'users':
-          db = userDB;
-          tableName = 'users';
-          break;
-        case 'challan':
-          db = challanDB;
-          tableName = 'challan';
-          break;
-        case 'crossing':
-          db = crossingDB;
-          tableName = 'crossing_statement';
-          break;
-        default:
-          return res.status(404).json({ error: 'Database not found' });
+      if (dbName === 'stations') {
+        // Handle stations separately
+        const stations = await getStationsArray();
+        columns = ['station'];
+        rows = stations.map(s => ({ station: s }));
+        tableName = 'stations';
+      } else {
+        switch (dbName) {
+          case 'transport_records':
+            db = transportDB;
+            tableName = 'transport_records';
+            break;
+          case 'customers':
+            db = customersDB;
+            tableName = 'customers';
+            break;
+          case 'transporter_details':
+            db = transporterDB;
+            tableName = 'Transporter-details';
+            break;
+          case 'users':
+            db = userDB;
+            tableName = 'users';
+            break;
+          case 'challan':
+            db = challanDB;
+            tableName = 'challan';
+            break;
+          case 'crossing':
+            db = crossingDB;
+            tableName = 'crossing_statement';
+            break;
+          default:
+            return res.status(404).json({ error: 'Database not found' });
+        }
+
+        if (!db) {
+          return res.status(500).json({ error: `Database "${dbName}" not initialized.` });
+        }
+
+        const data = await getTableData(db, tableName);
+        columns = data.columns;
+        rows = data.rows;
       }
 
-      if (!db) {
-        return res.status(500).json({ error: `Database "${dbName}" not initialized.` });
-      }
-
-      const { columns, rows } = await getTableData(db, tableName);
       if (rows.length === 0) {
         return res.status(404).json({ error: 'No data available to export' });
       }
 
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet(tableName);
+      const safeName = tableName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      addDataSheet(workbook, safeName, columns, rows, dbName === 'stations');
 
-      const headerRow = worksheet.addRow(columns);
-      headerRow.eachCell((cell) => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
-        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
-
-      rows.forEach((row, rowIndex) => {
-        const rowValues = columns.map(col => {
-          const value = row[col];
-          if (typeof value === 'string' && isDateString(value)) {
-            return parseDateString(value);
-          }
-          return value;
-        });
-        const dataRow = worksheet.addRow(rowValues);
-        dataRow.eachCell((cell) => {
-          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-          if (cell.value instanceof Date) cell.numFmt = 'dd-mm-yyyy hh:mm:ss';
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: rowIndex % 2 === 0 ? 'FFDDEBF7' : 'FFFFFFFF' }
-          };
-        });
-      });
-
-      worksheet.columns.forEach(column => {
-        let maxLength = 0;
-        column.eachCell({ includeEmpty: true }, cell => {
-          const length = cell.value ? cell.value.toString().length : 10;
-          if (length > maxLength) maxLength = length;
-        });
-        column.width = Math.min(maxLength + 2, 50);
-      });
+      const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const filename = `${safeName}_export_${dateStr}.xlsx`;
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${tableName}_export.xlsx`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       await workbook.xlsx.write(res);
       res.end();
     } catch (err) {
       console.error('Export error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Export All (single Excel with multiple sheets) ──
+  router.get('/export/all', async (req, res) => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+
+      // Define all databases to export
+      const databases = [
+        { name: 'transport_records', db: transportDB, table: 'transport_records' },
+        { name: 'customers', db: customersDB, table: 'customers' },
+        { name: 'transporter_details', db: transporterDB, table: 'Transporter-details' },
+        { name: 'users', db: userDB, table: 'users' },
+        { name: 'challan', db: challanDB, table: 'challan' },
+        { name: 'crossing', db: crossingDB, table: 'crossing_statement' },
+        { name: 'stations', db: null, table: 'stations' } // handled separately
+      ];
+
+      for (const ds of databases) {
+        let columns, rows;
+        if (ds.name === 'stations') {
+          const stations = await getStationsArray();
+          columns = ['station'];
+          rows = stations.map(s => ({ station: s }));
+        } else {
+          if (!ds.db) {
+            console.warn(`Database "${ds.name}" not initialized, skipping.`);
+            continue;
+          }
+          const data = await getTableData(ds.db, ds.table);
+          columns = data.columns;
+          rows = data.rows;
+        }
+
+        if (rows.length === 0) {
+          // Still add an empty sheet with headers?
+          // We'll add a sheet with just a note "No data"
+          const sheet = workbook.addWorksheet(ds.name);
+          sheet.addRow(['No data available']);
+          continue;
+        }
+
+        const safeName = ds.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+        addDataSheet(workbook, safeName, columns, rows, ds.name === 'stations');
+      }
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `all_database_export_${dateStr}.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      console.error('Export all error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -252,7 +338,7 @@ function createDatabaseViewer(
   return router;
 }
 
-// ── HTML generation (unchanged, but included for completeness) ──
+// ── HTML generation (updated with Export All button and fixed stations export) ──
 function generateHTML() {
   return `
 <!DOCTYPE html>
@@ -338,9 +424,21 @@ function generateHTML() {
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     h1 { font-size: 1.5rem; font-weight: 600; }
-    .theme-toggle {
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .theme-toggle, .export-all-btn {
       background: rgba(255,255,255,0.15);
       border: none;
       border-radius: 6px;
@@ -354,7 +452,10 @@ function generateHTML() {
       gap: 6px;
       font-size: 0.85rem;
     }
-    .theme-toggle:hover { background: rgba(255,255,255,0.25); }
+    .theme-toggle:hover, .export-all-btn:hover { background: rgba(255,255,255,0.25); }
+    .export-all-btn { background: rgba(255,255,255,0.2); }
+    .export-all-btn i { font-size: 0.9rem; }
+
     .database-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -543,7 +644,8 @@ function generateHTML() {
       .database-buttons { gap: 4px; }
       .db-btn { padding: 6px 12px; font-size: 0.8rem; }
       .db-info { flex-direction: column; gap: 6px; text-align: center; }
-      header { flex-direction: column; gap: 8px; }
+      header { flex-direction: column; gap: 8px; align-items: stretch; }
+      .header-left, .header-actions { justify-content: center; }
       .sort-buttons { margin-left: 4px; }
       .sort-btn { width: 14px; font-size: 8px; }
       th, td { padding: 8px 10px; }
@@ -554,10 +656,17 @@ function generateHTML() {
 <body>
 <div class="container">
   <header>
-    <h1>Database Viewer</h1>
-    <button class="theme-toggle" id="themeToggle">
-      <i class="fas fa-moon"></i> Dark Mode
-    </button>
+    <div class="header-left">
+      <h1>Database Viewer</h1>
+    </div>
+    <div class="header-actions">
+      <button class="export-all-btn" id="exportAllBtn">
+        <i class="fas fa-download"></i> Export All
+      </button>
+      <button class="theme-toggle" id="themeToggle">
+        <i class="fas fa-moon"></i> Dark Mode
+      </button>
+    </div>
   </header>
 
   <div class="database-buttons">
@@ -612,6 +721,7 @@ function generateHTML() {
     var dbNameLabel = document.getElementById('dbNameLabel');
     var recordCount = document.getElementById('recordCount');
     var exportBtn = document.getElementById('exportBtn');
+    var exportAllBtn = document.getElementById('exportAllBtn');
     var tableWrapper = document.getElementById('tableWrapper');
     var prevBtn = document.getElementById('prevPage');
     var nextBtn = document.getElementById('nextPage');
@@ -633,6 +743,11 @@ function generateHTML() {
         localStorage.setItem('theme', 'light');
         themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
       }
+    });
+
+    // Export All button
+    exportAllBtn.addEventListener('click', function() {
+      window.location.href = '/export/all';
     });
 
     // Database buttons
@@ -662,13 +777,10 @@ function generateHTML() {
       }
     });
 
-    // Export
+    // Export individual
     exportBtn.addEventListener('click', function() {
       var db = state.isStations ? 'stations' : state.dbName;
-      if (db === 'stations') {
-        alert('Export for Stations is not implemented yet.');
-        return;
-      }
+      // Now we support stations export
       window.location.href = '/export/' + db;
     });
 
