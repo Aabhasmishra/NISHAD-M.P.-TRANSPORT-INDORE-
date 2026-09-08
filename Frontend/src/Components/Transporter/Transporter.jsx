@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+// Transporter.jsx
+import { useState, useEffect, useRef } from 'react';
 import "./Transporter.css";
 import BASE_URL from "../../config";
-import { IoSearch } from "react-icons/io5";
+import { IoSearch, IoAdd, IoClose } from "react-icons/io5";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 const Transporter = ({ isLightMode, modeOfView }) => {
-  // State for form fields
+  // State for form fields (excluding vehicle numbers)
   const [formData, setFormData] = useState({
     ownerName: '',
-    vehicleNumber: '',
     type: 'Individual',
     idType: 'GST number',
     idNumber: '',
@@ -18,7 +18,10 @@ const Transporter = ({ isLightMode, modeOfView }) => {
     comments: ''
   });
 
-  const [mode, setMode] = useState(modeOfView);
+  // State for multiple vehicle numbers (array)
+  const [vehicleNumbers, setVehicleNumbers] = useState(['']);
+  const originalVehicleNumberRef = useRef('');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [foundTransporter, setFoundTransporter] = useState(null);
   const [confirmAlert, setConfirmAlert] = useState({ message: '', show: false, onConfirm: null });
@@ -38,9 +41,15 @@ const Transporter = ({ isLightMode, modeOfView }) => {
         const response = await fetch(`${BASE_URL}/transporters/all`);
         if (response.ok) {
           const data = await response.json();
-          const vehicleNumbers = data.map(item => item.vehicle_number);
-          setAllVehicleNumbers(vehicleNumbers);
-          // console.log('Fetched vehicle numbers:', vehicleNumbers);
+          // Split each concatenated vehicle number and collect unique ones
+          const allNumbers = new Set();
+          data.forEach(item => {
+            if (item.vehicle_number) {
+              const parts = item.vehicle_number.split(' | ');
+              parts.forEach(part => allNumbers.add(part.trim()));
+            }
+          });
+          setAllVehicleNumbers(Array.from(allNumbers));
         }
       } catch (err) {
         console.error('Failed to fetch vehicle numbers:', err);
@@ -74,7 +83,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
     setShowSuggestions(false);
   };
 
-  // Handle input changes
+  // Handle input changes for non-vehicle fields
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -83,10 +92,43 @@ const Transporter = ({ isLightMode, modeOfView }) => {
     }));
   };
 
+  // Vehicle number array handlers
+  const handleVehicleChange = (index, value) => {
+    const updated = [...vehicleNumbers];
+    updated[index] = value;
+    setVehicleNumbers(updated);
+  };
+
+  const addVehicleNumber = () => {
+    if (vehicleNumbers.length < 5) {
+      setVehicleNumbers([...vehicleNumbers, '']);
+    }
+  };
+
+  const removeVehicleNumber = (index) => {
+    if (vehicleNumbers.length > 1) {
+      const updated = vehicleNumbers.filter((_, i) => i !== index);
+      setVehicleNumbers(updated);
+    }
+  };
+
+  // Helper: join vehicle numbers with separator
+  const getVehicleNumberString = () => {
+    return vehicleNumbers
+      .map(v => v.trim())
+      .filter(v => v !== '')
+      .join(' | ');
+  };
+
   // Handle form submission for add
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    const vehicleNumberStr = getVehicleNumberString();
+    if (!vehicleNumberStr) {
+      showAlert('Please enter at least one vehicle number', 'error');
+      return;
+    }
+
     try {
       const response = await fetch(`${BASE_URL}/transporters`, {
         method: 'POST',
@@ -95,7 +137,7 @@ const Transporter = ({ isLightMode, modeOfView }) => {
         },
         body: JSON.stringify({
           ownerName: formData.ownerName,
-          vehicleNumber: formData.vehicleNumber,
+          vehicleNumber: vehicleNumberStr,
           type: formData.type,
           idType: formData.idType,
           idNumber: formData.idNumber,
@@ -130,9 +172,9 @@ const Transporter = ({ isLightMode, modeOfView }) => {
       
       const data = await response.json();
       setFoundTransporter(data);
+      originalVehicleNumberRef.current = data.vehicle_number;
       setFormData({
         ownerName: data.owner_name,
-        vehicleNumber: data.vehicle_number,
         type: data.type,
         idType: data.id_type,
         idNumber: data.id_number,
@@ -141,6 +183,13 @@ const Transporter = ({ isLightMode, modeOfView }) => {
         declarationFile: data.declaration_upload,
         comments: data.comments || ''
       });
+      // Split vehicle numbers
+      if (data.vehicle_number) {
+        const parts = data.vehicle_number.split(' | ').map(s => s.trim());
+        setVehicleNumbers(parts.length > 0 ? parts : ['']);
+      } else {
+        setVehicleNumbers(['']);
+      }
     } catch (err) {
       showAlert(err.message, 'error');
       setFoundTransporter(null);
@@ -150,62 +199,80 @@ const Transporter = ({ isLightMode, modeOfView }) => {
   // Handle update submission
   const handleUpdate = async (e) => {
     e.preventDefault();
+    const vehicleNumberStr = getVehicleNumberString();
+    if (!vehicleNumberStr) {
+      showAlert('Please enter at least one vehicle number', 'error');
+      return;
+    }
+
+    // Use the stored original
+    const originalKey = originalVehicleNumberRef.current;
+    if (!originalKey) {
+      showAlert('No original vehicle number found. Please search again.', 'error');
+      return;
+    }
+
     try {
-      const response = await fetch(`${BASE_URL}/transporters/${formData.vehicleNumber}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ownerName: formData.ownerName,
-          vehicleNumber: formData.vehicleNumber,
-          type: formData.type,
-          idType: formData.idType,
-          idNumber: formData.idNumber,
-          aadhaarNumber: formData.aadhaarNumber || '',
-          contactNumber: formData.contactNumber,
-          declaration_upload: formData.declarationFile,
-          comments: formData.comments || ''
-        })
-      });
+      const response = await fetch(
+        `${BASE_URL}/transporters/${encodeURIComponent(originalKey)}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ownerName: formData.ownerName,
+            vehicleNumber: vehicleNumberStr,
+            type: formData.type,
+            idType: formData.idType,
+            idNumber: formData.idNumber,
+            aadhaarNumber: formData.aadhaarNumber || '',
+            contactNumber: formData.contactNumber,
+            declaration_upload: formData.declarationFile,
+            comments: formData.comments || ''
+          })
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update transporter');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update transporter');
       }
 
       showAlert('Transporter updated successfully!', 'success');
+      // Optionally refresh the found transporter
+      const updatedData = await response.json();
+      setFoundTransporter(updatedData);
+      originalVehicleNumberRef.current = updatedData.vehicle_number;
     } catch (err) {
       showAlert(err.message, 'error');
     }
   };
 
-// Replace the confirm dialog and alerts:
-const handleDelete = async () => {
-  showConfirm('Are you sure you want to delete this transporter?', async () => {
-    try {
-      const response = await fetch(`${BASE_URL}/transporters/${formData.vehicleNumber}`, {
-        method: 'DELETE'
-      });
+  // Handle delete
+  const handleDelete = async () => {
+    showConfirm('Are you sure you want to delete this transporter?', async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/transporters/${foundTransporter.vehicle_number}`, {
+          method: 'DELETE'
+        });
 
-      if (response.ok) {
-        showAlert('Transporter deleted successfully!', 'success');
-        resetForm();
-        setFoundTransporter(null);
-        setSearchTerm('');
-      } else {
-        throw new Error('Failed to delete transporter');
+        if (response.ok) {
+          showAlert('Transporter deleted successfully!', 'success');
+          resetForm();
+          setFoundTransporter(null);
+          setSearchTerm('');
+        } else {
+          throw new Error('Failed to delete transporter');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
       }
-    } catch (err) {
-      showAlert(err.message, 'error');
-    }
-  });
-};
+    });
+  };
 
   // Reset form
   const resetForm = () => {
     setFormData({
       ownerName: '',
-      vehicleNumber: '',
       type: 'Individual',
       idType: 'GST number',
       idNumber: '',
@@ -214,6 +281,9 @@ const handleDelete = async () => {
       declarationFile: 'Yes',
       comments: ''
     });
+    setVehicleNumbers(['']);
+    setFoundTransporter(null);
+    setSearchTerm('');
   };
 
   // Show alert function
@@ -244,6 +314,12 @@ const handleDelete = async () => {
     hideConfirm();
   };
 
+  // Dynamic title based on mode
+  const getTitle = () => {
+    const mode = modeOfView.charAt(0).toUpperCase() + modeOfView.slice(1);
+    return `${mode} Transporter`;
+  };
+
   return (
     <div className={`transporter-main-container ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
       {/* Popup Alert Component */}
@@ -269,38 +345,11 @@ const handleDelete = async () => {
         </div>
       )}
 
-      <h2 className="transporter-title">Transporter Management</h2>
-      
-      {/* Mode Selection */}
-      <div className="transporter-mode-selector">
-        <button 
-          className={`transporter-mode-button ${mode === 'add' ? 'transporter-active' : ''}`}
-          onClick={() => setMode('add')}
-        >
-          Add Transporter
-        </button>
-        <button 
-          className={`transporter-mode-button ${mode === 'view' ? 'transporter-active' : ''}`}
-          onClick={() => setMode('view')}
-        >
-          View Transporter
-        </button>
-        <button 
-          className={`transporter-mode-button ${mode === 'update' ? 'transporter-active' : ''}`}
-          onClick={() => setMode('update')}
-        >
-          Update Transporter
-        </button>
-        <button 
-          className={`transporter-mode-button ${mode === 'delete' ? 'transporter-active' : ''}`}
-          onClick={() => setMode('delete')}
-        >
-          Delete Transporter
-        </button>
-      </div>
+      <h2 className="transporter-title">{getTitle()}</h2>
+      <hr className="transporter-divider" />
 
       {/* Search Form (for view/update/delete) */}
-      {(mode === 'view' || mode === 'update' || mode === 'delete') && (
+      {(modeOfView === 'view' || modeOfView === 'update' || modeOfView === 'delete') && (
         <div className="transporter-search-container">
           <form onSubmit={handleSearch} className="transporter-search-form">
             <div className="transporter-form-group">
@@ -356,7 +405,7 @@ const handleDelete = async () => {
       )}
 
       {/* Display found transporter info (view mode) */}
-      {mode === 'view' && foundTransporter && (
+      {modeOfView === 'view' && foundTransporter && (
         <div className="transporter-details-container">
           <h3 className="transporter-details-container-header">Transporter Details</h3>
           <div className="transporter-detail-item">
@@ -364,8 +413,10 @@ const handleDelete = async () => {
             <span className="transporter-detail-value">{foundTransporter.owner_name}</span>
           </div>
           <div className="transporter-detail-item">
-            <span className="transporter-detail-label">Vehicle Number:</span>
-            <span className="transporter-detail-value">{foundTransporter.vehicle_number}</span>
+            <span className="transporter-detail-label">Vehicle Number(s):</span>
+            <span className="transporter-detail-value">
+              {foundTransporter.vehicle_number.split(' | ').join(', ')}
+            </span>
           </div>
           <div className="transporter-detail-item">
             <span className="transporter-detail-label">Type:</span>
@@ -391,7 +442,7 @@ const handleDelete = async () => {
           </div>
           <div className="transporter-detail-item">
             <span className="transporter-detail-label">Declaration Received:</span>
-            <span className="transporter-detail-value">{formData.declarationFile}</span>
+            <span className="transporter-detail-value">{foundTransporter.declaration_upload}</span>
           </div>
           {foundTransporter.comments && (
             <div className="transporter-detail-item">
@@ -405,14 +456,16 @@ const handleDelete = async () => {
       )}
 
       {/* Delete confirmation */}
-      {mode === 'delete' && foundTransporter && (
+      {modeOfView === 'delete' && foundTransporter && (
         <div className="transporter-delete-confirmation">
           <h3>Delete Transporter</h3>
           <p>Are you sure you want to delete the following transporter?</p>
           <div className="transporter-details-container">
             <div className="transporter-detail-item">
-              <span className="transporter-detail-label">Vehicle Number:</span>
-              <span className="transporter-detail-value">{foundTransporter.vehicle_number}</span>
+              <span className="transporter-detail-label">Vehicle Number(s):</span>
+              <span className="transporter-detail-value">
+                {foundTransporter.vehicle_number.split(' | ').join(', ')}
+              </span>
             </div>
             <div className="transporter-detail-item">
               <span className="transporter-detail-label">Owner Name:</span>
@@ -426,9 +479,9 @@ const handleDelete = async () => {
       )}
 
       {/* Transporter Form (add/update) */}
-      {(mode === 'add' || (mode === 'update' && foundTransporter)) && (
+      {(modeOfView === 'add' || (modeOfView === 'update' && foundTransporter)) && (
         <form 
-          onSubmit={mode === 'add' ? handleSubmit : handleUpdate} 
+          onSubmit={modeOfView === 'add' ? handleSubmit : handleUpdate} 
           className="transporter-form-container"
         >
           {/* Owner Name */}
@@ -444,18 +497,42 @@ const handleDelete = async () => {
             />
           </div>
 
-          {/* Vehicle Number */}
+          {/* Vehicle Numbers - multiple inputs */}
           <div className="transporter-form-group">
-            <label className="transporter-form-label">Vehicle Number</label>
-            <input
-              type="text"
-              name="vehicleNumber"
-              value={formData.vehicleNumber}
-              onChange={handleChange}
-              required
-              className="transporter-form-input"
-              disabled={mode === 'update'}
-            />
+            <label className="transporter-form-label">Vehicle Number(s)</label>
+            {vehicleNumbers.map((number, index) => (
+              <div key={index} className="transporter-vehicle-input-row">
+                <input
+                  type="text"
+                  value={number}
+                  onChange={(e) => handleVehicleChange(index, e.target.value)}
+                  placeholder={`Vehicle Number ${index + 1}`}
+                  required
+                  className="transporter-form-input transporter-vehicle-input"
+                />
+                {index === vehicleNumbers.length - 1 && vehicleNumbers.length < 5 && (
+                  <button
+                  type="button"
+                  className="transporter-add-vehicle-btn"
+                  onClick={addVehicleNumber}
+                  title="Add another vehicle number"
+                  >
+                    <IoAdd />
+                  </button>
+                )}
+                {vehicleNumbers.length > 1 && (
+                  <button
+                    type="button"
+                    className="transporter-remove-vehicle-btn"
+                    onClick={() => removeVehicleNumber(index)}
+                    title="Remove this vehicle number"
+                  >
+                    <IoClose />
+                  </button>
+                )}
+              </div>
+            ))}
+            <small className="transporter-vehicle-helper">Up to 5 vehicle numbers allowed</small>
           </div>
 
           {/* Type (Individual/Company) */}
@@ -604,7 +681,7 @@ const handleDelete = async () => {
 
           {/* Submit Button */}
           <button type="submit" className="transporter-submit-button">
-            {mode === 'add' ? 'Add Transporter' : 'Update Transporter'}
+            {modeOfView === 'add' ? 'Add Transporter' : 'Update Transporter'}
           </button>
         </form>
       )}
