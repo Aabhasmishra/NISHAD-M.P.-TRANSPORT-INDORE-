@@ -1,7 +1,7 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 
-// ── Signature matches your mainServer.js call ──
+// ── Signature now accepts expenseDB (placed after otherDB) ──
 function createDatabaseViewer(
   transportDB,
   customersDB,
@@ -9,9 +9,28 @@ function createDatabaseViewer(
   userDB,
   challanDB,
   crossingDB,
-  otherDB
+  otherDB,
+  expenseDB
 ) {
   const router = express.Router();
+
+  // Fallback column order for the expenses table when it is empty
+  const EXPENSE_DEFAULT_COLUMNS = [
+    'exp_id',
+    'station',
+    'expense_date',
+    'hammali',
+    'auto_fare',
+    'food',
+    'petrol',
+    'rent',
+    'electricity',
+    'mobile',
+    'internet',
+    'stationary',
+    'travel',
+    'others',
+  ];
 
   // ── Helper to fetch table data ──
   async function getTableData(db, tableName) {
@@ -32,7 +51,6 @@ function createDatabaseViewer(
             rows: table.Table_Content || []
           };
         }
-        // fallback
         return { columns: [], rows: [] };
       }
 
@@ -43,6 +61,16 @@ function createDatabaseViewer(
         const result = await db.pool.query(query);
         const rows = result.rows || [];
         const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        return { columns, rows };
+      }
+
+      // NEW: DB modules that expose a generic getAllRows() method (e.g. expenseDB)
+      if (db && typeof db.getAllRows === 'function') {
+        const rows = await db.getAllRows();
+        const columns =
+          rows.length > 0
+            ? Object.keys(rows[0])
+            : (tableName === 'expenses' ? EXPENSE_DEFAULT_COLUMNS : []);
         return { columns, rows };
       }
 
@@ -73,7 +101,6 @@ function createDatabaseViewer(
   function addDataSheet(workbook, sheetName, columns, rows, isStations = false) {
     const worksheet = workbook.addWorksheet(sheetName);
 
-    // Header
     const headerRow = worksheet.addRow(columns);
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
@@ -82,7 +109,6 @@ function createDatabaseViewer(
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
-    // Data rows
     rows.forEach((row, rowIndex) => {
       const rowValues = columns.map(col => {
         const value = row[col];
@@ -103,7 +129,6 @@ function createDatabaseViewer(
       });
     });
 
-    // Auto column widths
     worksheet.columns.forEach(column => {
       let maxLength = 0;
       column.eachCell({ includeEmpty: true }, cell => {
@@ -155,6 +180,10 @@ function createDatabaseViewer(
           db = crossingDB;
           tableName = 'crossing_statement';
           break;
+        case 'expenses':                     // ← NEW
+          db = expenseDB;
+          tableName = 'expenses';
+          break;
         default:
           return res.status(404).json({ error: 'Database not found' });
       }
@@ -196,7 +225,6 @@ function createDatabaseViewer(
     try {
       const workbook = new ExcelJS.Workbook();
 
-      // Define all databases to export
       const databases = [
         { name: 'transport_records', db: transportDB, table: 'transport_records' },
         { name: 'customers', db: customersDB, table: 'customers' },
@@ -204,7 +232,8 @@ function createDatabaseViewer(
         { name: 'users', db: userDB, table: 'users' },
         { name: 'challan', db: challanDB, table: 'challan' },
         { name: 'crossing', db: crossingDB, table: 'crossing_statement' },
-        { name: 'stations', db: null, table: 'stations' } // handled separately
+        { name: 'expenses', db: expenseDB, table: 'expenses' },   // ← NEW
+        { name: 'stations', db: null, table: 'stations' }          // handled separately
       ];
 
       for (const ds of databases) {
@@ -224,7 +253,6 @@ function createDatabaseViewer(
         }
 
         if (rows.length === 0) {
-          // Still add an empty sheet with a note
           const sheet = workbook.addWorksheet(ds.name);
           sheet.addRow(['No data available']);
           continue;
@@ -235,7 +263,7 @@ function createDatabaseViewer(
       }
 
       const dateObj = new Date();
-      const dateStr = formatDateForFilename(dateObj); // e.g., 8-9-2026
+      const dateStr = formatDateForFilename(dateObj);
       const filename = `all_database_export_${dateStr}.xlsx`;
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -255,7 +283,6 @@ function createDatabaseViewer(
       let db, tableName, columns, rows;
 
       if (dbName === 'stations') {
-        // Handle stations separately
         const stations = await getStationsArray();
         columns = ['station'];
         rows = stations.map(s => ({ station: s }));
@@ -285,6 +312,10 @@ function createDatabaseViewer(
           case 'crossing':
             db = crossingDB;
             tableName = 'crossing_statement';
+            break;
+          case 'expenses':                        // ← NEW
+            db = expenseDB;
+            tableName = 'expenses';
             break;
           default:
             return res.status(404).json({ error: 'Database not found' });
@@ -351,7 +382,7 @@ function createDatabaseViewer(
   return router;
 }
 
-// ── HTML generation (updated with Export All button and fixed stations export) ──
+// ── HTML generation (added Expenses button before Stations) ──
 function generateHTML() {
   return `
 <!DOCTYPE html>
@@ -362,7 +393,6 @@ function generateHTML() {
   <title>Database Viewer</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* same CSS as before – keep it */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
     :root {
       --primary-bg: #f9fafb;
@@ -689,6 +719,7 @@ function generateHTML() {
     <button class="db-btn" data-db="users">Users</button>
     <button class="db-btn" data-db="challan">Challan</button>
     <button class="db-btn" data-db="crossing">Crossing</button>
+    <button class="db-btn" data-db="expenses">Expenses</button>   <!-- ← NEW -->
     <button class="db-btn" data-db="stations">Stations</button>
   </div>
 
@@ -740,7 +771,6 @@ function generateHTML() {
     var nextBtn = document.getElementById('nextPage');
     var pageInfo = document.getElementById('pageInfo');
 
-    // Theme toggle
     var themeToggle = document.getElementById('themeToggle');
     var body = document.body;
     if (localStorage.getItem('theme') === 'dark') {
@@ -758,12 +788,10 @@ function generateHTML() {
       }
     });
 
-    // Export All button
     exportAllBtn.addEventListener('click', function() {
       window.location.href = '/export/all';
     });
 
-    // Database buttons
     var dbButtons = document.querySelectorAll('.db-btn');
     dbButtons.forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -775,7 +803,6 @@ function generateHTML() {
       });
     });
 
-    // Pagination
     prevBtn.addEventListener('click', function() {
       if (state.currentPage > 1) {
         state.currentPage--;
@@ -790,7 +817,6 @@ function generateHTML() {
       }
     });
 
-    // Export individual
     exportBtn.addEventListener('click', function() {
       var db = state.isStations ? 'stations' : state.dbName;
       window.location.href = '/export/' + db;
@@ -848,7 +874,8 @@ function generateHTML() {
               'transporter_details': 'Transporters',
               'users': 'Users',
               'challan': 'Challan',
-              'crossing': 'Crossing'
+              'crossing': 'Crossing',
+              'expenses': 'Expenses'   // ← NEW
             };
             dbNameLabel.textContent = labelMap[dbName] || dbName;
             recordCount.textContent = state.rows.length + ' records';
@@ -890,7 +917,7 @@ function generateHTML() {
       html += '</tr></thead><tbody>';
 
       if (pageRows.length === 0) {
-        html += '<tr><td colspan="' + columns.length + '" class="no-data">' + 
+        html += '<tr><td colspan="' + columns.length + '" class="no-data">' +
                 (state.isStations ? 'No stations found' : 'No records') + '</td></tr>';
       } else {
         pageRows.forEach(function(row) {
@@ -958,7 +985,6 @@ function generateHTML() {
       renderTable();
     }
 
-    // Initial load
     loadDatabase('transport_records');
   })();
 </script>
