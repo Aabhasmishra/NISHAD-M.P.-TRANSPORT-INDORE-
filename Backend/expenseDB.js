@@ -5,6 +5,7 @@
      getExpensesByStationAndMonth(station, year, month)
      upsertExpenses(station, entries)
      deleteExpenses(expIds)
+     getAllRows()                   <-- NEW (used by databaseViewer)
      buildExpId(station, dateStr)   (exported for reuse / testing)
    ========================================================================== */
 
@@ -70,6 +71,20 @@ async function getExpensesByStationAndMonth(station, year, month) {
 }
 
 /**
+ * Fetch every row from the expenses table.
+ * Used by databaseViewer.js to render the "Expenses" tab
+ * and to produce the export files.
+ */
+async function getAllRows() {
+  const { rows } = await pool.query(
+    `SELECT *
+       FROM expenses
+      ORDER BY expense_date ASC, station ASC, exp_id ASC`
+  );
+  return rows;
+}
+
+/**
  * Upsert a batch of entries for a station.
  * Each entry: { expense_date: "YYYY-MM-DD", hammali, auto_fare, ... }
  * exp_id is derived automatically if missing.
@@ -120,7 +135,7 @@ async function deleteExpenses(expIds) {
   return rowCount;
 }
 
-/* No-op — table is created by AAA.js run manually. Kept so Mainserver3 can
+/* No-op — table is created by AAA.js run manually. Kept so Mainserver2 can
    call initialize() uniformly alongside the other DB modules. */
 async function initialize() {
   return;
@@ -131,6 +146,7 @@ module.exports = {
   getExpensesByStationAndMonth,
   upsertExpenses,
   deleteExpenses,
+  getAllRows,
   buildExpId,
   EXPENSE_FIELDS,
 };
