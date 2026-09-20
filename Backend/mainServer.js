@@ -11,6 +11,7 @@ const userDB = require("./userDB");
 const challanDB = require("./challanDB");
 const crossingDB = require("./crossingDB");
 const otherDB = require("./otherDB");
+const expenseDB = require("./expenseDB");
 const createDatabaseViewer = require("./databaseViewer");
 const { startDailyReportScheduler } = require("./dailyReportScheduler");
 require("dotenv").config();
@@ -64,6 +65,7 @@ async function initialize() {
     await challanDB.initialize();
     await crossingDB.initialize();
     await otherDB.initialize();
+    await expenseDB.initialize();
     console.log("All databases initialized successfully");
 
     // Start the daily WhatsApp report job (runs every day at 10 PM)
@@ -89,7 +91,8 @@ const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
 const challanRoutes = require("./challanRoutes")(challanDB, sendChallanNotification);
 const crossingRoutes = require("./crossingRoutes")(crossingDB);
-const otherRoutes = require("./otherRoutes")(otherDB); 
+const otherRoutes = require("./otherRoutes")(otherDB);
+const expenseRoutes = require("./expenseRoutes")(expenseDB);
 
 // Create database viewer routes
 const databaseViewerRoutes = createDatabaseViewer(
@@ -109,7 +112,8 @@ app.use("/api", transporterRoutes);
 app.use("/api", userRoutes);
 app.use("/api", challanRoutes);
 app.use("/api", crossingRoutes);
-app.use("/api", otherRoutes);    
+app.use("/api", otherRoutes);
+app.use("/api", expenseRoutes);
 app.use("/", databaseViewerRoutes);
 
 // TEMPORARY: manual trigger to test the WhatsApp report without waiting for 10 PM
@@ -224,6 +228,11 @@ function printEndpoints() {
   console.log("\nOther / Stations:");
   console.log("  GET    /api/other/stations");
   console.log("  POST   /api/other/stations");
+
+  console.log("\nExpenses:");
+  console.log("  GET    /api/expenses?station=...&year=...&month=...");
+  console.log("  POST   /api/expenses");
+  console.log("  DELETE /api/expenses");
 
   console.log("\nDatabase Inspection:");
   console.log("  GET    /api/AabhasServer (JSON API)");
