@@ -152,31 +152,15 @@
 }
 
 .exg-btn svg,
-.exg-icon svg,
 .exg-chev svg {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
 }
 
-.exg-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
 .exg-chev svg {
   width: 12px;
   height: 12px;
-}
-
-.exg-cap {
-  font-size: 11px;
-  color: var(--faint);
-  margin-left: 2px;
-}
-
-.exg-cap-dark {
-  color: #6b5a10;
 }
 
 .exg-btn-save {
@@ -196,7 +180,7 @@
 
 .exg-scroller {
   overflow: auto;
-  max-height: calc(100vh - 230px);
+  max-height: calc(100vh - 215px);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -375,6 +359,16 @@
   color: var(--faint);
 }
 
+.exg-cell-dirty {
+  background: rgba(245, 197, 66, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(245, 197, 66, 0.35);
+}
+
+.exg-cell-dirty:focus {
+  background: rgba(245, 197, 66, 0.14);
+  box-shadow: inset 0 0 0 1px var(--amber);
+}
+
 .exg-mtot-val {
   padding: 0 12px;
   height: 46px;
@@ -469,73 +463,19 @@
   color: var(--amber);
 }
 
-.exg-catcount {
-  font-size: 11px;
-  color: var(--faint);
-  font-weight: 600;
-}
-
-.exg-rowbtn {
-  margin-left: auto;
-  display: flex;
-  gap: 6px;
-  opacity: 0.65;
-  transition: 0.15s;
-}
-
-.exg-cat-row:hover .exg-rowbtn,
-.exg-exp-row:hover .exg-rowbtn {
-  opacity: 1;
-}
-
-.exg-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--muted);
-}
-
-.exg-icon:hover {
-  border-color: var(--amber);
-  color: var(--amber);
-}
-
-.exg-icon-del:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-/* ---------- Expense row ---------- */
+/* ---------- Station (branch) row ---------- */
 
 .exg-exp-row td {
   background: var(--row);
   border-bottom: 1px solid var(--border);
 }
 
-.exg-exp-row:nth-of-type(even) td {
-  background: var(--row-alt);
-}
-
 .exg-exp-row .exg-stick-l {
   background: var(--row);
 }
 
-.exg-exp-row:nth-of-type(even) .exg-stick-l {
-  background: var(--row-alt);
-}
-
 .exg-exp-row .exg-stick-r {
   background: var(--row);
-}
-
-.exg-exp-row:nth-of-type(even) .exg-stick-r {
-  background: var(--row-alt);
 }
 
 .exg-namecell-child {
@@ -561,10 +501,10 @@
   flex: 0 0 auto;
 }
 
-/* ---------- Empty state ---------- */
+/* ---------- Empty state (branch-not-configured / no data) ---------- */
 
 .exg-empty {
-  padding: 56px 20px;
+  padding: 72px 24px;
   text-align: center;
   color: var(--muted);
 }
@@ -608,83 +548,6 @@
   margin-left: 6px;
 }
 
-/* ---------- Dialogs ---------- */
-
-.exg-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  border: 1px solid var(--border-strong);
-  background: var(--panel);
-  color: var(--txt);
-  border-radius: 16px;
-  padding: 0;
-  width: min(420px, 92vw);
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: var(--shadow);
-  font-family: inherit;
-}
-
-.exg-dialog::backdrop {
-  background: rgba(4, 7, 12, 0.65);
-  backdrop-filter: blur(2px);
-}
-
-.exg-dlg-h {
-  padding: 18px 20px 4px;
-  font-weight: 800;
-  font-size: 16px;
-}
-
-.exg-dlg-b {
-  padding: 14px 20px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.exg-field label {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
-  letter-spacing: 0.03em;
-}
-
-.exg-field input,
-.exg-field select {
-  width: 100%;
-  background: var(--panel-2);
-  border: 1px solid var(--border-strong);
-  color: var(--txt);
-  border-radius: 10px;
-  padding: 11px 12px;
-  outline: none;
-  font: inherit;
-}
-
-.exg-field input:focus,
-.exg-field select:focus {
-  border-color: var(--amber);
-}
-
-.exg-dlg-f {
-  padding: 16px 20px 20px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.exg-dlg-err {
-  color: var(--danger);
-  font-size: 12px;
-  min-height: 16px;
-  padding: 0 20px;
-}
-
 /* ---------- Toast ---------- */
 
 .exg-toast {
@@ -710,22 +573,23 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ---------- Accessibility ---------- */
+/* ---------- Auth wrapper (rendered in place of the grid when logged out) - */
 
-/* .exg-btn:focus-visible,
-.exg-select:focus-visible,
-.exg-icon:focus-visible,
-.exg-chev:focus-visible,
-.exg-cell:focus-visible,
-.exg-field input:focus-visible,
-.exg-field select:focus-visible {
-  outline: 2px solid var(--amber);
-  outline-offset: 2px;
-} */
+.exg-auth-wrap {
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  display: block;
+}
+
+.exg-auth-wrap .login-main-container {
+  min-height: 100vh;
+}
+
+/* ---------- Motion preferences ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   .exg-btn,
-  .exg-icon,
   .exg-chev,
   .exg-cell,
   .exg-toast {
@@ -747,4 +611,74 @@
   .exg-footer {
     padding: 12px 14px 16px;
   }
+
+  .exg-grand span {
+    display: block;
+    margin-left: 0 !important;
+    margin-top: 2px;
+  }
+}
+
+.exg-day.exg-weekend {
+  box-shadow: inset 0 0 0 999px var(--weekend);
+}
+
+/* Never overlay on the grand TOTAL row */
+.exg-total-row .exg-day.exg-weekend {
+  box-shadow: none !important;
+}
+
+/* was: .exg-exp-row:nth-of-type(even) td { ... } etc. — delete those three rules */
+.exg-exp-row-alt td,
+.exg-exp-row-alt .exg-stick-l,
+.exg-exp-row-alt .exg-stick-r {
+  background: var(--row-alt);
+}
+
+.exg-cell-zero {
+  color: var(--faint);
+}
+
+.exg-cell-nonzero {
+  color: var(--txt);
+  font-weight: 600;
+}
+
+.exg-cat-row-emp .exg-cell {
+  padding-left: 12px;
+}
+
+.exg-cval-zero {
+  color: var(--faint);
+}
+
+.exg-cval-nonzero {
+  color: #b9c2d1;
+  font-weight: 700;
+}
+
+/* Base station row (Indore) */
+.exg-exp-row td,
+.exg-exp-row .exg-stick-l,
+.exg-exp-row .exg-stick-r {
+  background: var(--row);
+}
+
+/* Second station row (Raipur) — targeted by class, not position */
+.exg-exp-row-alt td,
+.exg-exp-row-alt .exg-stick-l,
+.exg-exp-row-alt .exg-stick-r {
+  background: var(--row-alt);
+}
+
+/* Weekend tint overlays whatever background the row already has.
+   Because it's an inset box-shadow (not a background), it stacks on top
+   of both --row and --row-alt without specificity fights. */
+.exg-day.exg-weekend {
+  box-shadow: inset 0 0 0 999px var(--weekend);
+}
+
+/* Never overlay the grand TOTAL row */
+.exg-total-row .exg-day.exg-weekend {
+  box-shadow: none !important;
 }
