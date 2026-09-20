@@ -13,7 +13,7 @@ import Cookies from 'js-cookie';
 import LoginSignup from "./Components/LoginSignup/LoginSignup";
 import TermsAndConditions from "./Components/TermsAndConditions/TermsAndConditions";
 import ShipmentReportModule from "./Components/ShipmentReportModule/ShipmentReportModule";
-import ExpenseManagementMob from "./Components/ExpenseManagement/ExpenseManagement";
+import ExpenseManagement from "./Components/ExpenseManagement/ExpenseManagement";
 
 const App = () => {
   const [isLightMode, setIsLightMode] = useState(false);
@@ -58,9 +58,11 @@ const App = () => {
     return <TermsAndConditions />;
   }
 
-  // --- PUBLIC ROUTE: Expense Management (no login required) ---
+  // --- PUBLIC ROUTE: Expense Management ---
+  // The component handles its own login (reads the userData cookie and
+  // renders <LoginSignup /> when no session exists). No prop is required.
   if (currentPath === '/ExpenseManagement') {
-    return <ExpenseManagementMob />;
+    return <ExpenseManagement />;
   }
 
   const change_theme = () => {
@@ -170,6 +172,8 @@ const App = () => {
           isLightMode={isLightMode}
           modeOfView={modeOfView}
         />;
+      case 'ExpenseManagement':
+        return <ExpenseManagement currentUser={currentUser} />;
       case 'OSR':
         return <ShipmentReportModule isLightMode={isLightMode} />;
       case 'PBR':
