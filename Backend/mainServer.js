@@ -94,7 +94,7 @@ const crossingRoutes = require("./crossingRoutes")(crossingDB);
 const otherRoutes = require("./otherRoutes")(otherDB);
 const expenseRoutes = require("./expenseRoutes")(expenseDB);
 
-// Create database viewer routes
+// Create database viewer routes  ← expenseDB added as 8th argument
 const databaseViewerRoutes = createDatabaseViewer(
   transportDB,
   customersDB,
@@ -102,7 +102,8 @@ const databaseViewerRoutes = createDatabaseViewer(
   userDB,
   challanDB,
   crossingDB,
-  otherDB
+  otherDB,
+  expenseDB
 );
 
 // Use routes
