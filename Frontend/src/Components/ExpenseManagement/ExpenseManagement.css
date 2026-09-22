@@ -1,38 +1,247 @@
 /* ==========================================================================
-   Expense Management (Desktop — spreadsheet grid)
-   Token summary — lifted from the senior's mockup, kept as the source of truth
-   bg #0b0f17  panel #141b26  panel-2 #182131  row #111825  row-alt #0f1420
-   border rgba(255,255,255,.07)  border-strong rgba(255,255,255,.12)
-   text #e8edf4  muted #8a94a6  faint #5c6678
-   amber #f5c542  amber-dim #c9a02f  total #f5c542  danger #ef5f6b
+   Expense Management — spreadsheet grid
+   --------------------------------------------------------------------------
+   Themes are chosen by adding .exg-dark or .exg-light next to .exg-wrap.
+   Every colour in this file resolves from a CSS variable defined once per
+   theme in section 01. Do not use colour literals anywhere else.
+
+   Table of contents
+     01. Theme tokens
+     02. Base wrap + reset
+     03. Header
+     04. Controls & buttons
+     05. Card & scroller
+     06. Table header
+     07. Columns & sticky edges
+     08. Editable cells
+     09. Total row
+     10. Category row
+     11. Branch (station) rows
+     12. Weekend overlay
+     13. Empty state
+     14. Footer
+     15. Toast
+     16. Auth wrapper
+     17. Light‑mode refinements
+     18. Motion & responsive
    ========================================================================== */
 
-.exg-wrap {
-  --bg: #0b0f17;
-  --panel: #141b26;
-  --panel-2: #182131;
-  --row: #111825;
-  --row-alt: #0f1420;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.12);
-  --txt: #e8edf4;
-  --muted: #8a94a6;
-  --faint: #5c6678;
+
+/* ==========================================================================
+   01. Theme tokens
+   ========================================================================== */
+
+/* ---------- Dark theme (default) ---------- */
+.exg-dark {
+  /* Page & surfaces */
+  --bg: #12161f;
+  --panel: #1b2330;
+  --panel-2: #212b3b;
+  --row: #171f2c;
+  --row-alt: #141b27;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --cell-divider: rgba(255, 255, 255, 0.03);
+
+  /* Text */
+  --txt: #eef1f6;
+  --text-secondary: #b9c2d1;
+  --muted: #98a2b3;
+  --faint: #6b7688;
+
+  /* Accents */
   --amber: #f5c542;
   --amber-dim: #c9a02f;
   --total: #f5c542;
   --danger: #ef5f6b;
-  --weekend: rgba(255, 255, 255, 0.02);
-  --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+
+  /* Weekend */
+  --weekend: rgba(255, 255, 255, 0.035);
+  --weekend-header: #161d29;
+  --weekend-text: #c9a02f;
+
+  /* Elevation */
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --thead-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  --bar-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+
+  /* Table zones */
+  --thead-bg: #161d29;
+  --thead-text: #98a2b3;
+  --total-row-bg: #1a2c46;
+  --cat-row-bg: #212b3b;
+
+  /* Interactive */
+  --btn-hover-bg: #24303f;
+  --toast-bg: #1a2c46;
+
+  /* Logo */
+  --logo-grad-1: #3a2f0c;
+  --logo-grad-2: #1c1806;
+  --logo-border: rgba(245, 197, 66, 0.25);
+
+  /* Input cells */
+  --cell-dirty-bg: rgba(245, 197, 66, 0.08);
+  --cell-dirty-border: rgba(245, 197, 66, 0.35);
+  --cell-dirty-bg-focus: rgba(245, 197, 66, 0.14);
+  --cell-focus-bg: rgba(245, 197, 66, 0.10);
+  --cell-hover-bg: rgba(255, 255, 255, 0.03);
+  --cell-focus-shadow: inset 0 0 0 1px var(--amber);
+
+  /* Cell text colours */
+  --cell-zero-text: #6b7688;
+  --cell-zero-weight: 400;
+  --cell-nonzero-text: #eef1f6;
+  --cell-nonzero-weight: 600;
+
+  /* Category value text */
+  --cval-zero-text: #6b7688;
+  --cval-nonzero-text: #b9c2d1;
+  --cval-nonzero-weight: 700;
+
+  /* Row label / total text */
+  --cat-name-text: #eef1f6;
+  --cat-name-weight: 700;
+  --child-name-text: #b9c2d1;
+
+  --mtot-text: #98a2b3;
+  --exp-mtot-text: #98a2b3;
+  --cat-mtot-text: #eef1f6;
+  --cat-mtot-weight: 700;
+
+  --total-name-text: #f5c542;
+  --total-value-text: #f5c542;
+  --total-row-shadow: none;
+  --cat-row-shadow: none;
+
+  /* Submit button */
+  --save-grad-1: #f7d05c;
+  --save-grad-2: #eab72f;
+  --save-text: #1a1400;
+  --save-shadow:
+    0 7px 18px rgba(23, 107, 209, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- Light theme ---------- */
+.exg-light {
+  /* Page & surfaces */
+  --bg: #dfe8f3;
+  --panel: #f8fbff;
+  --panel-2: #dbe8f7;
+  --row: #f7faff;
+  --row-alt: #eaf2fb;
+
+  /* Borders */
+  --border: rgba(24, 61, 103, 0.14);
+  --border-strong: rgba(24, 61, 103, 0.28);
+  --cell-divider: rgba(24, 61, 103, 0.09);
+
+  /* Text */
+  --txt: #17365d;
+  --text-secondary: #31577e;
+  --muted: #526b88;
+  --faint: #7189a3;
+
+  /* Accents */
+  --amber: #d58a00;
+  --amber-dim: #a96900;
+  --total: #c47700;
+  --danger: #dc4355;
+
+  /* Weekend */
+  --weekend: #fff0c9;
+  --weekend-header: #ffd978;
+  --weekend-text: #8f5700;
+
+  /* Elevation */
+  --shadow:
+    0 18px 45px rgba(35, 76, 120, 0.16),
+    0 4px 12px rgba(35, 76, 120, 0.08);
+  --thead-shadow: 0 2px 6px rgba(30, 55, 85, 0.06);
+  --bar-shadow: 1px 0 5px rgba(25, 60, 100, 0.12);
+
+  /* Table zones */
+  --thead-bg: #4d82c5;
+  --thead-text: #ffffff;
+  --total-row-bg: #d5e6fa;
+  --cat-row-bg: #dceafa;
+
+  /* Interactive */
+  --btn-hover-bg: #d3e3f4;
+  --toast-bg: #ffffff;
+
+  /* Logo */
+  --logo-grad-1: #d8ebff;
+  --logo-grad-2: #a9d0fa;
+  --logo-border: rgba(42, 126, 218, 0.35);
+
+  /* Input cells */
+  --cell-dirty-bg: rgba(213, 138, 0, 0.13);
+  --cell-dirty-border: rgba(213, 138, 0, 0.45);
+  --cell-dirty-bg-focus: rgba(213, 138, 0, 0.20);
+  --cell-focus-bg: rgba(63, 156, 255, 0.13);
+  --cell-hover-bg: rgba(63, 156, 255, 0.08);
+  --cell-focus-shadow:
+    inset 0 0 0 2px #3f9cff,
+    inset 0 0 10px rgba(63, 156, 255, 0.08);
+
+  /* Cell text colours */
+  --cell-zero-text: #8192a8;
+  --cell-zero-weight: 500;
+  --cell-nonzero-text: #124f91;
+  --cell-nonzero-weight: 800;
+
+  /* Category value text */
+  --cval-zero-text: #8192a8;
+  --cval-nonzero-text: #124f91;
+  --cval-nonzero-weight: 800;
+
+  /* Row label / total text */
+  --cat-name-text: #173f70;
+  --cat-name-weight: 800;
+  --child-name-text: #31577e;
+
+  --mtot-text: #294767;
+  --exp-mtot-text: #31577e;
+  --cat-mtot-text: #173f70;
+  --cat-mtot-weight: 800;
+
+  --total-name-text: #a86100;
+  --total-value-text: #b96d00;
+  --total-row-shadow:
+    inset 0 2px 0 rgba(63, 156, 255, 0.22),
+    inset 0 -2px 0 rgba(63, 156, 255, 0.14);
+  --cat-row-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(30, 55, 85, 0.06);
+
+  /* Submit button */
+  --save-grad-1: #3f9cff;
+  --save-grad-2: #176bd1;
+  --save-text: #ffffff;
+  --save-shadow:
+    0 7px 18px rgba(23, 107, 209, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+
+/* ==========================================================================
+   02. Base wrap + reset
+   ========================================================================== */
+
+.exg-wrap {
   --cell-w: 66px;
   --name-w: 250px;
   --mtot-w: 118px;
 
-  background: var(--bg);
-  color: var(--txt);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--txt);
   padding: 22px 26px 110px;
   min-height: 100vh;
   position: relative;
@@ -44,7 +253,10 @@
   box-sizing: border-box;
 }
 
-/* ---------- Header ---------- */
+
+/* ==========================================================================
+   03. Header
+   ========================================================================== */
 
 .exg-top {
   display: flex;
@@ -66,8 +278,8 @@
   height: 56px;
   min-width: 56px;
   border-radius: 14px;
-  background: linear-gradient(155deg, #3a2f0c, #1c1806);
-  border: 1px solid rgba(245, 197, 66, 0.25);
+  background: linear-gradient(155deg, var(--logo-grad-1), var(--logo-grad-2));
+  border: 1px solid var(--logo-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,6 +303,11 @@
   font-size: 13px;
   margin-top: 3px;
 }
+
+
+/* ==========================================================================
+   04. Controls & buttons
+   ========================================================================== */
 
 .exg-controls {
   display: flex;
@@ -131,24 +348,13 @@
 
 .exg-btn:hover {
   border-color: var(--amber);
-  background: #1e2838;
+  background: var(--btn-hover-bg);
 }
 
 .exg-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   border-color: var(--border);
-}
-
-.exg-btn-amber {
-  background: linear-gradient(180deg, #f7d05c, #eab72f);
-  color: #1a1400;
-  border: none;
-  font-weight: 700;
-}
-
-.exg-btn-amber:hover {
-  filter: brightness(1.05);
 }
 
 .exg-btn svg,
@@ -168,7 +374,32 @@
   font-size: 15px;
 }
 
-/* ---------- Table card ---------- */
+.exg-btn-amber {
+  background: linear-gradient(135deg, var(--save-grad-1), var(--save-grad-2));
+  color: var(--save-text);
+  border: none;
+  font-weight: 800;
+  box-shadow: var(--save-shadow);
+}
+
+.exg-btn-amber:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.exg-theme-toggle {
+  color: var(--amber);
+  border-color: var(--logo-border);
+}
+
+.exg-theme-toggle:hover {
+  border-color: var(--amber);
+}
+
+
+/* ==========================================================================
+   05. Card & scroller
+   ========================================================================== */
 
 .exg-card {
   background: var(--panel);
@@ -224,19 +455,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+
+/* ==========================================================================
+   06. Table header
+   ========================================================================== */
+
 .exg-table thead th {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #0e1622;
+  background: var(--thead-bg);
   border-bottom: 1px solid var(--border-strong);
-  color: var(--muted);
+  color: var(--thead-text);
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.05em;
   padding: 10px 8px;
   height: 52px;
   white-space: nowrap;
+  box-shadow: var(--thead-shadow);
 }
 
 .exg-daynum {
@@ -259,6 +496,17 @@
   color: var(--amber-dim);
 }
 
+/* Weekend header chip — the light theme recolours it further in §17. */
+.exg-daynum.exg-weekend {
+  background: var(--weekend-header);
+  color: var(--weekend-text);
+}
+
+
+/* ==========================================================================
+   07. Columns & sticky edges
+   ========================================================================== */
+
 .exg-colname {
   width: var(--name-w);
   min-width: var(--name-w);
@@ -273,8 +521,6 @@
   width: var(--mtot-w);
   min-width: var(--mtot-w);
 }
-
-/* sticky first + last columns */
 
 .exg-stick-l {
   position: sticky;
@@ -296,18 +542,19 @@
 .exg-table thead .exg-stick-l,
 .exg-table thead .exg-stick-r {
   z-index: 5;
-  background: #0e1622;
+  background: var(--thead-bg);
 }
+
+
+/* ==========================================================================
+   08. Editable cells
+   ========================================================================== */
 
 .exg-day,
 .exg-mtot {
   padding: 0;
   border-bottom: 1px solid var(--border);
-  border-right: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.exg-day.exg-weekend {
-  background: var(--weekend);
+  border-right: 1px solid var(--cell-divider);
 }
 
 .exg-namecell {
@@ -321,13 +568,11 @@
 }
 
 .exg-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 4px;
   flex: 0 0 auto;
 }
-
-/* ---------- Input cells ---------- */
 
 .exg-cell {
   width: 100%;
@@ -336,7 +581,7 @@
   border: none;
   color: var(--txt);
   text-align: right;
-  padding: 12px 10px;
+  padding: 12.5px 10px;
   font: inherit;
   font-variant-numeric: tabular-nums;
   outline: none;
@@ -346,55 +591,70 @@
   color: var(--faint);
 }
 
-.exg-cell:focus {
-  background: rgba(245, 197, 66, 0.1);
-  box-shadow: inset 0 0 0 1px var(--amber);
+.exg-cell:hover {
+  background: var(--cell-hover-bg);
 }
 
-.exg-cell:hover {
-  background: rgba(255, 255, 255, 0.03);
+.exg-cell:focus {
+  background: var(--cell-focus-bg);
+  box-shadow: var(--cell-focus-shadow);
 }
 
 .exg-cell-def {
   color: var(--faint);
 }
 
+/* Unsaved / edited cell */
 .exg-cell-dirty {
-  background: rgba(245, 197, 66, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(245, 197, 66, 0.35);
+  background: var(--cell-dirty-bg);
+  box-shadow: inset 0 0 0 1px var(--cell-dirty-border);
 }
 
 .exg-cell-dirty:focus {
-  background: rgba(245, 197, 66, 0.14);
+  background: var(--cell-dirty-bg-focus);
   box-shadow: inset 0 0 0 1px var(--amber);
 }
 
+/* Value weight / colour */
+.exg-cell-zero {
+  color: var(--cell-zero-text);
+  font-weight: var(--cell-zero-weight);
+}
+
+.exg-cell-nonzero {
+  color: var(--cell-nonzero-text);
+  font-weight: var(--cell-nonzero-weight);
+}
+
+/* Read‑only month‑total pill (default colour, overridden per row) */
 .exg-mtot-val {
   padding: 0 12px;
   height: 46px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  color: var(--muted);
+  color: var(--mtot-text);
   font-weight: 600;
 }
 
-/* ---------- TOTAL row ---------- */
+
+/* ==========================================================================
+   09. Total row
+   ========================================================================== */
 
 .exg-total-row td {
-  background: #12203a !important;
+  background: var(--total-row-bg);
   border-bottom: 1px solid var(--border-strong);
 }
 
-.exg-total-row .exg-stick-l,
-.exg-total-row .exg-stick-r {
-  background: #12203a;
+.exg-total-row .exg-stick-l {
+  box-shadow: inset 4px 0 0 var(--amber);
 }
 
 .exg-total-row .exg-namecell {
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: var(--total);
+  color: var(--total-name-text);
   font-size: 12px;
 }
 
@@ -405,28 +665,29 @@
   align-items: center;
   justify-content: flex-end;
   font-weight: 700;
-  color: var(--total);
+  color: var(--total-value-text);
 }
 
+.exg-total-row .exg-tval,
 .exg-total-row .exg-mtot-val {
-  color: var(--total);
   font-weight: 800;
+  color: var(--total-value-text);
 }
 
-/* ---------- Category row ---------- */
+
+/* ==========================================================================
+   10. Category row
+   ========================================================================== */
 
 .exg-cat-row td {
-  background: var(--panel-2);
-  border-bottom: 1px solid var(--border);
-}
-
-.exg-cat-row .exg-stick-l,
-.exg-cat-row .exg-stick-r {
-  background: var(--panel-2);
+  background: var(--cat-row-bg);
+  border-bottom: 1px solid var(--border-strong);
+  box-shadow: var(--cat-row-shadow);
 }
 
 .exg-cat-row .exg-namecell {
-  font-weight: 700;
+  color: var(--cat-name-text);
+  font-weight: var(--cat-name-weight);
   font-size: 13.5px;
 }
 
@@ -436,15 +697,25 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  color: #b9c2d1;
+  color: var(--cval-zero-text);
   font-weight: 600;
 }
 
-.exg-cat-row .exg-mtot-val {
-  color: var(--txt);
-  font-weight: 700;
+.exg-cval-zero {
+  color: var(--cval-zero-text);
 }
 
+.exg-cval-nonzero {
+  color: var(--cval-nonzero-text);
+  font-weight: var(--cval-nonzero-weight);
+}
+
+.exg-cat-row .exg-mtot-val {
+  color: var(--cat-mtot-text);
+  font-weight: var(--cat-mtot-weight);
+}
+
+/* Collapse / expand chevron */
 .exg-chev {
   width: 18px;
   height: 18px;
@@ -463,24 +734,32 @@
   color: var(--amber);
 }
 
-/* ---------- Station (branch) row ---------- */
+/* Employee‑mode category rows: tighter padding on the editable cells */
+.exg-cat-row-emp .exg-cell {
+  padding-left: 12px;
+}
+
+
+/* ==========================================================================
+   11. Branch (station) rows
+   ========================================================================== */
 
 .exg-exp-row td {
   background: var(--row);
   border-bottom: 1px solid var(--border);
 }
 
-.exg-exp-row .exg-stick-l {
-  background: var(--row);
+.exg-exp-row-alt td {
+  background: var(--row-alt);
 }
 
-.exg-exp-row .exg-stick-r {
-  background: var(--row);
+.exg-exp-row .exg-mtot-val {
+  color: var(--exp-mtot-text);
 }
 
 .exg-namecell-child {
   padding-left: 34px;
-  color: #cfd6e0;
+  color: var(--child-name-text);
   position: relative;
 }
 
@@ -495,13 +774,35 @@
 }
 
 .exg-bar {
-  width: 3px;
+  width: 4px;
   align-self: stretch;
-  border-radius: 2px;
+  border-radius: 4px;
   flex: 0 0 auto;
+  box-shadow: var(--bar-shadow);
 }
 
-/* ---------- Empty state (branch-not-configured / no data) ---------- */
+
+/* ==========================================================================
+   12. Weekend overlay
+   --------------------------------------------------------------------------
+   The weekend tint is applied as an inset box-shadow rather than a background,
+   so it paints over whatever the underlying row already has (--row / --row-alt
+   / cat-row wash) without the specificity games the old file needed.
+   ========================================================================== */
+
+.exg-day.exg-weekend {
+  box-shadow: inset 0 0 0 999px var(--weekend);
+}
+
+/* Grand TOTAL row keeps its own colour */
+.exg-total-row .exg-day.exg-weekend {
+  box-shadow: none;
+}
+
+
+/* ==========================================================================
+   13. Empty state
+   ========================================================================== */
 
 .exg-empty {
   padding: 72px 24px;
@@ -520,7 +821,10 @@
   font-size: 13px;
 }
 
-/* ---------- Footer ---------- */
+
+/* ==========================================================================
+   14. Footer
+   ========================================================================== */
 
 .exg-footer {
   position: fixed;
@@ -548,14 +852,17 @@
   margin-left: 6px;
 }
 
-/* ---------- Toast ---------- */
+
+/* ==========================================================================
+   15. Toast
+   ========================================================================== */
 
 .exg-toast {
   position: fixed;
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: #12203a;
+  background: var(--toast-bg);
   border: 1px solid var(--amber);
   color: var(--txt);
   padding: 12px 20px;
@@ -573,7 +880,10 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ---------- Auth wrapper (rendered in place of the grid when logged out) - */
+
+/* ==========================================================================
+   16. Auth wrapper (rendered in place of the grid when logged out)
+   ========================================================================== */
 
 .exg-auth-wrap {
   padding: 0;
@@ -586,7 +896,90 @@
   min-height: 100vh;
 }
 
-/* ---------- Motion preferences ---------- */
+
+/* ==========================================================================
+   17. Light‑mode refinements
+   --------------------------------------------------------------------------
+   Everything that only applies to .exg-light and can't be expressed purely
+   through the theme tokens above.
+   ========================================================================== */
+
+/* --- Table header on coloured background --- */
+.exg-light .exg-table thead th {
+  background: var(--thead-bg);
+  color: var(--thead-text);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+
+.exg-light .exg-table thead .exg-daynum {
+  color: #ffffff;
+}
+
+.exg-light .exg-table thead .exg-dow {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.exg-light .exg-table thead .exg-stick-l,
+.exg-light .exg-table thead .exg-stick-r {
+  background: #3c70ae;
+}
+
+/* --- Weekend header chip --- */
+.exg-light .exg-table thead .exg-daynum.exg-weekend {
+  background: var(--weekend-header);
+  color: #744500;
+}
+
+.exg-light .exg-table thead .exg-daynum.exg-weekend .exg-dow {
+  color: var(--weekend-text);
+}
+
+/* --- Totals row edges --- */
+.exg-light .exg-total-row {
+  box-shadow: var(--total-row-shadow);
+}
+
+/* --- Colourful category rows (visual grouping) --- */
+.exg-light .exg-cat-row:nth-of-type(3n + 1) td { background: #e4eefc; }
+.exg-light .exg-cat-row:nth-of-type(3n + 2) td { background: #eee8fc; }
+.exg-light .exg-cat-row:nth-of-type(3n + 3) td { background: #e2f5f1; }
+
+/* --- Controls look (select / toggle / plain buttons) --- */
+.exg-light .exg-select {
+  background: #edf5ff;
+  border-color: #a9c8ea;
+  color: #173f70;
+  font-weight: 600;
+}
+
+.exg-light .exg-select:hover {
+  background: #e2efff;
+  border-color: #7eaddf;
+}
+
+.exg-light .exg-theme-toggle {
+  background: #fff4d8;
+  border-color: #e9bd55;
+  color: #9a6100;
+  font-weight: 700;
+}
+
+.exg-light .exg-controls .exg-btn:not(.exg-btn-amber):not(.exg-theme-toggle) {
+  background: #edf5ff;
+  border-color: #a9c8ea;
+  color: #244d78;
+  font-weight: 600;
+}
+
+.exg-light .exg-controls .exg-btn:not(.exg-btn-amber):not(.exg-theme-toggle):hover {
+  background: #dcecff;
+  border-color: #6fa4dd;
+}
+
+
+/* ==========================================================================
+   18. Motion & responsive
+   ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
   .exg-btn,
@@ -596,8 +989,6 @@
     transition: none;
   }
 }
-
-/* ---------- Responsive ---------- */
 
 @media (max-width: 640px) {
   .exg-title {
@@ -617,68 +1008,4 @@
     margin-left: 0 !important;
     margin-top: 2px;
   }
-}
-
-.exg-day.exg-weekend {
-  box-shadow: inset 0 0 0 999px var(--weekend);
-}
-
-/* Never overlay on the grand TOTAL row */
-.exg-total-row .exg-day.exg-weekend {
-  box-shadow: none !important;
-}
-
-/* was: .exg-exp-row:nth-of-type(even) td { ... } etc. — delete those three rules */
-.exg-exp-row-alt td,
-.exg-exp-row-alt .exg-stick-l,
-.exg-exp-row-alt .exg-stick-r {
-  background: var(--row-alt);
-}
-
-.exg-cell-zero {
-  color: var(--faint);
-}
-
-.exg-cell-nonzero {
-  color: var(--txt);
-  font-weight: 600;
-}
-
-.exg-cat-row-emp .exg-cell {
-  padding-left: 12px;
-}
-
-.exg-cval-zero {
-  color: var(--faint);
-}
-
-.exg-cval-nonzero {
-  color: #b9c2d1;
-  font-weight: 700;
-}
-
-/* Base station row (Indore) */
-.exg-exp-row td,
-.exg-exp-row .exg-stick-l,
-.exg-exp-row .exg-stick-r {
-  background: var(--row);
-}
-
-/* Second station row (Raipur) — targeted by class, not position */
-.exg-exp-row-alt td,
-.exg-exp-row-alt .exg-stick-l,
-.exg-exp-row-alt .exg-stick-r {
-  background: var(--row-alt);
-}
-
-/* Weekend tint overlays whatever background the row already has.
-   Because it's an inset box-shadow (not a background), it stacks on top
-   of both --row and --row-alt without specificity fights. */
-.exg-day.exg-weekend {
-  box-shadow: inset 0 0 0 999px var(--weekend);
-}
-
-/* Never overlay the grand TOTAL row */
-.exg-total-row .exg-day.exg-weekend {
-  box-shadow: none !important;
 }
