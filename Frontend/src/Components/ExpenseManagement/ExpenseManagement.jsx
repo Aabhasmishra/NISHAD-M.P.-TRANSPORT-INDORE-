@@ -5,6 +5,8 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaMinus,
+  FaSun,
+  FaMoon,
 } from 'react-icons/fa';
 import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
@@ -110,9 +112,11 @@ function branchOf(user) {
 /* ============================================================================
    Outer shell — handles auth. Shows LoginSignup when there is no session.
    ========================================================================== */
-export default function ExpenseManagement({ currentUser: propUser }) {
+export default function ExpenseManagement({ currentUser: propUser, isLightMode = true }) {
   const [internalUser, setInternalUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [lightMode, setLightMode] = useState(isLightMode);
+  const toggleTheme = () => setLightMode((v) => !v);
 
   useEffect(() => {
     if (propUser) { setAuthChecked(true); return; }
@@ -124,12 +128,13 @@ export default function ExpenseManagement({ currentUser: propUser }) {
   }, [propUser]);
 
   const user = propUser || internalUser;
+  const themeClass = lightMode ? 'exg-light' : 'exg-dark';
 
   if (!authChecked) return null;
 
   if (!user) {
     return (
-      <div className="exg-wrap exg-auth-wrap">
+      <div className={`exg-wrap exg-auth-wrap ${themeClass}`}>
         <LoginSignup
           onLoginSuccess={(u) => {
             Cookies.set('userData', JSON.stringify(u), { expires: 3 / 24 });
@@ -140,16 +145,17 @@ export default function ExpenseManagement({ currentUser: propUser }) {
     );
   }
 
-  return <ExpenseGrid currentUser={user} />;
+  return <ExpenseGrid currentUser={user} lightMode={lightMode} onToggleTheme={toggleTheme} />;
 }
 
 /* ============================================================================
    Grid
    ========================================================================== */
-function ExpenseGrid({ currentUser }) {
+function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   const todayRef = useRef(new Date());
   const today = todayRef.current;
   const todayISO = toISO(today);
+  const themeClass = lightMode ? 'exg-light' : 'exg-dark';
 
   const isAdmin = isAdminUser(currentUser);
   const myBranch = useMemo(() => branchOf(currentUser), [currentUser]);
@@ -390,7 +396,7 @@ function ExpenseGrid({ currentUser }) {
   /* ---- Employee with no branch mapping ---- */
   if (!isAdmin && !myBranch) {
     return (
-      <div className="exg-wrap">
+      <div className={`exg-wrap ${themeClass}`}>
         <div className="exg-top">
           <div className="exg-brand">
             <div className="exg-logo"><FaWallet /></div>
@@ -412,7 +418,7 @@ function ExpenseGrid({ currentUser }) {
 
   /* ---- Render ---- */
   return (
-    <div className="exg-wrap">
+    <div className={`exg-wrap ${themeClass}`}>
       <div className="exg-top">
         <div className="exg-brand">
           <div className="exg-logo"><FaWallet /></div>
@@ -427,6 +433,15 @@ function ExpenseGrid({ currentUser }) {
         </div>
 
         <div className="exg-controls">
+          <button
+            type="button"
+            className="exg-btn exg-theme-toggle"
+            onClick={onToggleTheme}
+            title={lightMode ? 'Switch to dark mode' : 'Switch to light mode'}
+          >
+            {lightMode ? <FaMoon /> : <FaSun />}
+            <span>{lightMode ? 'Dark' : 'Light'}</span>
+          </button>
           <select
             className="exg-select"
             aria-label="Month"
