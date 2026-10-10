@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   FaChevronDown, FaChevronRight, FaPlus, FaEdit, FaFileAlt, 
   FaUser, FaTruck, FaChartBar, FaBars, FaSun, FaMoon, 
-  FaExternalLinkAlt, FaTimes, FaCalendarAlt
+  FaExternalLinkAlt, FaTimes, FaCalendarAlt, FaSignOutAlt
 } from "react-icons/fa";
 import { AiOutlineTruck } from "react-icons/ai";
 import { MdOutlineContentPasteSearch } from "react-icons/md";
@@ -12,6 +12,7 @@ import { FaEye } from "react-icons/fa";
 import { HiDocumentText } from "react-icons/hi2";
 import MyLogo from "../../Images/Logo.png";
 import MyLogo2 from "../../Images/Logo2.png";
+import { MdOutlineReceiptLong } from "react-icons/md";
 import "./Sidebar.css";
 
 // Thin sidebar (always visible when extended is closed)
@@ -120,10 +121,14 @@ const SidebarBody = ({ children }) => (
   </div>
 );
 
-const SidebarLink = ({ link, open, hasSubmenu, isSubmenuOpen, onClick, isLightMode }) => (
-  <div className={`sidebar-link-container ${isLightMode ? "light-mode" : "dark-mode"}`}>
+const SidebarLink = ({ link, open, hasSubmenu, isSubmenuOpen, onClick, isLightMode, isLogout }) => (
+  <div
+    className={`sidebar-link-container ${isLightMode ? "light-mode" : "dark-mode"} ${
+      isLogout ? "sidebar-link-container-logout" : ""
+    }`}
+  >
     <a 
-      href={link.href} 
+      href={link.href || "#"} 
       className={`sidebar-link ${isLightMode ? "light-mode" : "dark-mode"}`}
       onClick={(e) => {
         e.preventDefault();
@@ -179,7 +184,8 @@ export default function SidebarComponent({
   isLightMode, 
   currentUser, 
   onItemClick, 
-  onThemeChange 
+  onThemeChange,
+  onLogout           // 👈 NEW: logout handler passed from App.jsx
 }) {
   const [isExtendedOpen, setIsExtendedOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState({});
@@ -205,8 +211,19 @@ export default function SidebarComponent({
     setIsExtendedOpen(false); // close extended sidebar after selection
   };
 
+  const handleOpenExpenseManagement = () => {
+    // Open as a brand-new tab so it loads its own standalone layout + login gate
+    window.open("/ExpenseManagement", "_blank", "noopener,noreferrer");
+    setIsExtendedOpen(false); // close the sidebar in the current tab
+  };
+
   const handleExternalLink = () => {
     window.open("https://eportal.incometax.gov.in/iec/foservices/#/pre-login/link-aadhaar-status", "_blank");
+  };
+
+  const handleLogoutClick = () => {
+    setIsExtendedOpen(false); // close sidebar first, then logout
+    if (onLogout) onLogout();
   };
 
   const isAdmin = currentUser === 'Admin';
@@ -398,37 +415,6 @@ export default function SidebarComponent({
           onClick: () => handleComponentClick('UserManagement', 'delete')
         }
       ]
-    },
-    {
-      key: "freight",
-      label: "Freight Payment",
-      icon: <AiOutlineTruck className="sidebar-link-icon" />,
-      subItems: [
-        { 
-          label: "New Freight Payment", 
-          href: "#", 
-          icon: <FaPlus />,
-          onClick: () => handleComponentClick('FreightPayment', 'add')
-        },
-        { 
-          label: "View Freight Payment", 
-          href: "#", 
-          icon: <FaEye />,
-          onClick: () => handleComponentClick('FreightPayment', 'view')
-        },
-        { 
-          label: "Update Freight Payment", 
-          href: "#", 
-          icon: <FaEdit />,
-          onClick: () => handleComponentClick('FreightPayment', 'update')
-        },
-        { 
-          label: "Delete Freight Payment", 
-          href: "#", 
-          icon: <MdDelete />,
-          onClick: () => handleComponentClick('FreightPayment', 'delete')
-        }
-      ]
     }] : []),
     {
       key: "transporter",
@@ -499,11 +485,30 @@ export default function SidebarComponent({
         }
       ]
     },
+    ...(isAdmin ? [{
+      key: "freight",
+      label: "Freight Payment",
+      icon: <AiOutlineTruck className="sidebar-link-icon" />,
+      onClick: () => handleComponentClick('FreightPayment', 'view')
+    }] : []),
+    {
+      key: "expense",
+      label: "Expense Management",
+      icon: <MdOutlineReceiptLong style={{position: 'relative', right: '4px', fontSize: '25px', margin: '0', padding: '0'}} className="sidebar-link-icon" />,
+      onClick: handleOpenExpenseManagement
+    },
     {
       key: "theme",
       label: isLightMode ? "Dark Mode" : "Light Mode",
       icon: isLightMode ? <FaMoon className="sidebar-link-icon" /> : <FaSun className="sidebar-link-icon" />,
       onClick: () => onThemeChange()
+    },
+    // 👇 NEW: Logout item (always last)
+    {
+      key: "logout",
+      label: "Logout",
+      icon: <FaSignOutAlt className="sidebar-link-icon" />,
+      onClick: handleLogoutClick
     }
   ];
 
@@ -534,6 +539,7 @@ export default function SidebarComponent({
                   isSubmenuOpen={openSubmenus[item.key]}
                   onClick={() => item.onClick ? item.onClick() : toggleSubmenu(item.key)}
                   isLightMode={isLightMode}
+                  isLogout={item.key === "logout"}   // 👈 NEW
                 />
               ))}
             </div>
