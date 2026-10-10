@@ -62,7 +62,7 @@ const App = () => {
   // The component handles its own login (reads the userData cookie and
   // renders <LoginSignup /> when no session exists). No prop is required.
   if (currentPath === '/ExpenseManagement') {
-    return <ExpenseManagement />;
+    return <ExpenseManagement currentUser={currentUser} isLightMode={isLightMode} />;
   }
 
   const change_theme = () => {
@@ -173,7 +173,7 @@ const App = () => {
           modeOfView={modeOfView}
         />;
       case 'ExpenseManagement':
-        return <ExpenseManagement currentUser={currentUser} />;
+        return <ExpenseManagement currentUser={currentUser} isLightMode={isLightMode} />;
       case 'OSR':
         return <ShipmentReportModule isLightMode={isLightMode} />;
       case 'PBR':
