@@ -44,18 +44,19 @@ const CATEGORIES = [
 const STATIONS = ['Indore', 'Raipur'];
 
 /* ============================================================================
-   USER → BRANCH MAP   ⬅ EDIT THIS LIST LATER
+   USER → BRANCH MAP   (LEGACY FALLBACK ONLY)
    ---------------------------------------------------------------------------
-   Key   : any of the user's identifiers (name / mobile / username / identifier)
-   Value : 'Indore' or 'Raipur'
-   Admin users (currentUser.type === 'Admin') bypass this map entirely.
+   The real source of truth is now `currentUser.branch`, which the backend
+   sends from the `users.branch` column:
+       Admin    -> 'All'
+       Employee -> 'Indore' | 'Raipur'
+   This map is only consulted when a user object has NO `.branch` field —
+   i.e. an old cookie stored before the column existed. You can safely
+   delete it once all sessions have refreshed.
    ========================================================================== */
 const USER_BRANCH_MAP = {
-  // 'ramesh':     'Indore',
-  // '9876543210': 'Raipur',
-  // 'suresh':     'Indore',
   'nmpt01': 'Indore',
-  'nmpt02': 'Raipur'
+  'nmpt02': 'Raipur',
 };
 
 /* ---- Helpers ---- */
@@ -72,22 +73,6 @@ function inr(n) {
   return '₹' + Math.round(n).toLocaleString('en-IN');
 }
 
-/* ---------------------------------------------------------------------------
-   Robust date parsing for what the backend sends back.
-
-   Problem: node-pg parses a PostgreSQL DATE as `new Date(y, m-1, d)` in the
-   SERVER's local timezone. JSON.stringify converts that to a UTC ISO string.
-   e.g. PG 2026-09-18 on an IST server → "2026-09-17T18:30:00.000Z".
-   Blindly slicing 10 chars yields the wrong day.
-
-   Fix: if it's a plain "YYYY-MM-DD" string, trust it as-is. Otherwise parse
-   it as a Date and read the LOCAL year/month/day, which restores the original
-   calendar day assuming the browser is in the same TZ as the server.
-
-   (The cleanest permanent fix is to make the backend return a plain
-   YYYY-MM-DD string — e.g. `TO_CHAR(expense_date, 'YYYY-MM-DD')` in the
-   SELECT. Do that when convenient and this helper becomes a no-op.)
-   ------------------------------------------------------------------------- */
 function isoDateOnly(v) {
   if (v == null) return '';
   const s = String(v);
@@ -100,11 +85,30 @@ function isoDateOnly(v) {
 function isAdminUser(user) {
   return String(user?.type || '').toLowerCase() === 'admin';
 }
+
+/* ---------------------------------------------------------------------------
+   Resolve the user's branch.
+     1. Prefer `user.branch` — the value that came from the DB via the
+        /users/authenticate response.
+     2. Fall back to the legacy hardcoded map for old sessions.
+   ------------------------------------------------------------------------- */
 function branchOf(user) {
   if (!user) return null;
-  const keys = [user.name, user.mobile, user.identifier, user.username]
+
+  // 1) DB-provided branch (current path).
+  if (user.branch) return String(user.branch).trim();
+
+  // 2) Legacy fallback.
+  const keys = [
+    user.name,
+    user.mobile,
+    user.mobile_number,   // <- was missing previously
+    user.identifier,
+    user.username,
+  ]
     .filter(Boolean)
     .map((s) => String(s).trim());
+
   for (const k of keys) if (USER_BRANCH_MAP[k]) return USER_BRANCH_MAP[k];
   return null;
 }
@@ -168,7 +172,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   const [curYear, setCurYear] = useState(today.getFullYear());
   const [curMonth, setCurMonth] = useState(today.getMonth());
 
-  // key: `${station}__${catId}__${dateISO}` -> string
   const [amounts, setAmounts] = useState({});
   const [dirtyCells, setDirtyCells] = useState(() => new Set());
   const [collapsed, setCollapsed] = useState({});
@@ -194,7 +197,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     return out;
   }, [today]);
 
-  /* ---- Days of the selected month ---- */
   const days = useMemo(() => {
     const n = daysInMonth(curYear, curMonth);
     const out = [];
@@ -212,7 +214,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     return out;
   }, [curYear, curMonth, todayISO]);
 
-  /* ---- Cell value helpers ---- */
   function valFor(station, catId, dISO, past) {
     const k = `${station}__${catId}__${dISO}`;
     if (k in amounts) return amounts[k];
@@ -233,7 +234,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
   function handleCellFocus(e) { e.target.select(); }
 
-  /* ---- Load month when it changes (or the user's branch changes) ---- */
   useEffect(() => {
     if (stationsToShow.length === 0) return;
     let cancelled = false;
@@ -273,7 +273,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curYear, curMonth, isAdmin, myBranch]);
 
-  /* ---- Totals ---- */
   const totals = useMemo(() => {
     const dateGrand = {};
     days.forEach((d) => (dateGrand[d.iso] = 0));
@@ -305,7 +304,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     return { dateGrand, catDayTotals, catMonthTotals, stationMonthTotals, grandMonth };
   }, [amounts, days, stationsToShow]);
 
-  /* ---- Collapse / expand (admin only) ---- */
   const anyOpen = CATEGORIES.some((c) => !collapsed[c.id]);
   function toggleCat(id) {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -316,7 +314,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     setCollapsed(next);
   }
 
-  /* ---- Submit: only (station, date) rows that were touched ---- */
   async function handleSave() {
     if (dirtyCells.size === 0) {
       toast('No changes to save');
@@ -366,7 +363,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     }
   }
 
-  /* ---- Helper: render one editable input cell ---- */
   function renderInputCell(station, catId, day) {
     const key = `${station}__${catId}__${day.iso}`;
     const rawVal = valFor(station, catId, day.iso, day.past);
@@ -393,7 +389,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
-  /* ---- Employee with no branch mapping ---- */
   if (!isAdmin && !myBranch) {
     return (
       <div className={`exg-wrap ${themeClass}`}>
@@ -416,7 +411,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
-  /* ---- Render ---- */
   return (
     <div className={`exg-wrap ${themeClass}`}>
       <div className="exg-top">
@@ -463,7 +457,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
             ))}
           </select>
 
-          {/* Collapse / Expand: admin only */}
           {isAdmin && (
             <button
               type="button"
@@ -508,7 +501,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
             </thead>
 
             <tbody>
-              {/* Grand total row — both admin and employee */}
               <tr className="exg-total-row">
                 <td className="exg-stick-l">
                   <div className="exg-namecell">TOTAL</div>
@@ -528,7 +520,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
               </tr>
 
               {CATEGORIES.map((cat) => {
-                /* ----------------------------- ADMIN ----------------------------- */
                 if (isAdmin) {
                   const isCollapsed = !!collapsed[cat.id];
                   return (
@@ -587,7 +578,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                   );
                 }
 
-                /* --------------------------- EMPLOYEE ---------------------------- */
                 const st = stationsToShow[0];
                 return (
                   <tr key={cat.id} className="exg-cat-row exg-cat-row-emp">
