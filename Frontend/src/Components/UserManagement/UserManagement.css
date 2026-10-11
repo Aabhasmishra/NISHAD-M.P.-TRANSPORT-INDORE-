@@ -130,6 +130,15 @@
   box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.3);
 }
 
+/* Disabled input (e.g. Admin branch dropdown) */
+.user-input-disabled,
+.user-form-input.user-input-disabled,
+.user-form-input.light-mode.user-input-disabled,
+.user-form-input.dark-mode.user-input-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .user-search-button {
   border-radius: 4px;
   height: 45px;
