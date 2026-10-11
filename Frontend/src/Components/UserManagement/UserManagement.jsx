@@ -10,7 +10,8 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
     password: '',
     type: 'Employee',
     mobile_number: '',
-    status: 'Active'
+    status: 'Active',
+    branch: 'Indore'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState(modeOfView);
@@ -19,7 +20,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [activeUsers, setActiveUsers] = useState([]);
   const [inactiveUsers, setInactiveUsers] = useState([]);
-  
+
   // Popup Alert State
   const [alert, setAlert] = useState({ message: '', type: 'info', show: false });
   const [confirmAlert, setConfirmAlert] = useState({ message: '', show: false, onConfirm: null });
@@ -67,7 +68,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
         showAlert('Failed to fetch users', 'error');
       }
     };
-    
+
     fetchUsers();
   }, [mode]);
 
@@ -76,7 +77,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
     try {
       const response = await fetch(`${BASE_URL}/users/search?name=${searchTerm}`);
       if (!response.ok) throw new Error('User not found');
-      
+
       const data = await response.json();
       setFoundUser(data[0]);
       if (data.length > 0) {
@@ -85,7 +86,8 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
           password: data[0].password,
           type: data[0].type,
           mobile_number: data[0].mobile_number,
-          status: data[0].status
+          status: data[0].status,
+          branch: data[0].branch || (data[0].type === 'Admin' ? 'All' : 'Indore')
         });
       }
     } catch (err) {
@@ -96,6 +98,17 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'type') {
+      // When type changes, force a valid branch for the new type
+      setFormData(prev => ({
+        ...prev,
+        type: value,
+        branch: value === 'Admin' ? 'All' : (prev.branch === 'All' ? 'Indore' : prev.branch)
+      }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -166,7 +179,8 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
       password: '',
       type: 'Employee',
       mobile_number: '',
-      status: 'Active'
+      status: 'Active',
+      branch: 'Indore'
     });
     setShowPassword(false);
   };
@@ -182,7 +196,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
         isLightMode={isLightMode}
         position="top-right"
       />
-      
+
       {/* Confirm Modal */}
       {confirmAlert.show && (
         <div className="modal-overlay">
@@ -195,29 +209,29 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
           </div>
         </div>
       )}
-      
+
       <h2 className={`user-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>User Management</h2>
-      
+
       <div className={`user-mode-selector ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-        <button 
+        <button
           className={`user-mode-button ${mode === 'add' ? 'user-active' : ''} ${isLightMode ? 'light-mode' : 'dark-mode'}`}
           onClick={() => setMode('add')}
         >
           Add User
         </button>
-        <button 
+        <button
           className={`user-mode-button ${mode === 'view' ? 'user-active' : ''} ${isLightMode ? 'light-mode' : 'dark-mode'}`}
           onClick={() => setMode('view')}
         >
           View Users
         </button>
-        <button 
+        <button
           className={`user-mode-button ${mode === 'update' ? 'user-active' : ''} ${isLightMode ? 'light-mode' : 'dark-mode'}`}
           onClick={() => setMode('update')}
         >
           Update User
         </button>
-        <button 
+        <button
           className={`user-mode-button ${mode === 'delete' ? 'user-active' : ''} ${isLightMode ? 'light-mode' : 'dark-mode'}`}
           onClick={() => setMode('delete')}
         >
@@ -258,6 +272,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
                   <tr className={`user-table-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Branch</th>
                     <th>Mobile</th>
                     <th>Status</th>
                   </tr>
@@ -267,6 +282,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
                     <tr key={user.id} className={`user-active-row ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                       <td>{user.name}</td>
                       <td>{user.type}</td>
+                      <td>{user.branch}</td>
                       <td>{user.mobile_number}</td>
                       <td>
                         <span className={`user-status-badge active ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
@@ -288,6 +304,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
                   <tr className={`user-table-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Branch</th>
                     <th>Mobile</th>
                     <th>Status</th>
                   </tr>
@@ -297,6 +314,7 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
                     <tr key={user.id} className={`user-inactive-row ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                       <td>{user.name}</td>
                       <td>{user.type}</td>
+                      <td>{user.branch}</td>
                       <td>{user.mobile_number}</td>
                       <td>
                         <span className={`user-status-badge inactive ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
@@ -332,6 +350,10 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
             <span className={`user-detail-value ${isLightMode ? 'light-mode' : 'dark-mode'}`}>{foundUser.type}</span>
           </div>
           <div className={`user-detail-item ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+            <span className={`user-detail-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Branch:</span>
+            <span className={`user-detail-value ${isLightMode ? 'light-mode' : 'dark-mode'}`}>{foundUser.branch}</span>
+          </div>
+          <div className={`user-detail-item ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
             <span className={`user-detail-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Mobile Number:</span>
             <span className={`user-detail-value ${isLightMode ? 'light-mode' : 'dark-mode'}`}>{foundUser.mobile_number}</span>
           </div>
@@ -357,6 +379,10 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
               <span className={`user-detail-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Type:</span>
               <span className={`user-detail-value ${isLightMode ? 'light-mode' : 'dark-mode'}`}>{foundUser.type}</span>
             </div>
+            <div className={`user-detail-item ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+              <span className={`user-detail-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Branch:</span>
+              <span className={`user-detail-value ${isLightMode ? 'light-mode' : 'dark-mode'}`}>{foundUser.branch}</span>
+            </div>
           </div>
           <button onClick={handleDelete} className={`user-delete-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
             Confirm Delete
@@ -365,8 +391,8 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
       )}
 
       {(mode === 'add' || (mode === 'update' && foundUser)) && (
-        <form 
-          onSubmit={mode === 'add' ? handleSubmit : handleUpdate} 
+        <form
+          onSubmit={mode === 'add' ? handleSubmit : handleUpdate}
           className={`user-form-container ${isLightMode ? 'light-mode' : 'dark-mode'}`}
         >
           <div className={`user-form-group ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
@@ -394,8 +420,8 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
                 required={mode === 'add'}
                 className={`user-form-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`user-password-toggle ${isLightMode ? 'light-mode' : 'dark-mode'}`}
                 onClick={() => setShowPassword(!showPassword)}
               >
@@ -414,6 +440,26 @@ const UserManagement = ({ isLightMode, modeOfView }) => {
             >
               <option value="Admin">Admin</option>
               <option value="Employee">Employee</option>
+            </select>
+          </div>
+
+          <div className={`user-form-group ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+            <label className={`user-form-label ${isLightMode ? 'light-mode' : 'dark-mode'}`}>Branch</label>
+            <select
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              disabled={formData.type === 'Admin'}
+              className={`user-form-input ${isLightMode ? 'light-mode' : 'dark-mode'} ${formData.type === 'Admin' ? 'user-input-disabled' : ''}`}
+            >
+              {formData.type === 'Admin' ? (
+                <option value="All">All</option>
+              ) : (
+                <>
+                  <option value="Indore">Indore</option>
+                  <option value="Raipur">Raipur</option>
+                </>
+              )}
             </select>
           </div>
 
