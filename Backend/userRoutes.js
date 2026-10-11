@@ -39,47 +39,48 @@ module.exports = (userDB) => {
   router.post('/users/authenticate', async (req, res) => {
     try {
       const { identifier, password } = req.body;
-      
+
       // Search by name or mobile number
       const { rows } = await userDB.query(
-        `SELECT * FROM users 
-        WHERE (name = $1 OR mobile_number = $1) 
-        AND password = $2 
-        LIMIT 1`,
+        `SELECT * FROM users
+         WHERE (name = $1 OR mobile_number = $1)
+         AND password = $2
+         LIMIT 1`,
         [identifier, password]
       );
 
       if (rows.length > 0) {
         const user = rows[0];
-        
+
         // Check if user is active
         if (user.status !== 'Active') {
-          return res.status(401).json({ 
+          return res.status(401).json({
             success: false,
             message: "Your account is inactive. Please contact administrator.",
             status: 'inactive'
           });
         }
-        
-        res.json({ 
+
+        res.json({
           success: true,
           user: {
             id: user.id,
             name: user.name,
             type: user.type,
-            mobile_number: user.mobile_number
+            mobile_number: user.mobile_number,
+            branch: user.branch
           }
         });
       } else {
-        res.status(401).json({ 
+        res.status(401).json({
           success: false,
-          message: "Invalid credentials" 
+          message: "Invalid credentials"
         });
       }
     } catch (err) {
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        message: err.message 
+        message: err.message
       });
     }
   });
