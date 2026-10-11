@@ -4,8 +4,7 @@ import BASE_URL from "../../config";
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 // Build a fresh row object for a given challan number using the DB snapshot.
-// driver_name / driver_pan are intentionally NOT sourced from the challan anymore
-// — they're derived at render time from the transporter cache.
+// driver_name / driver_pan are derived at render time from the transporter cache.
 const buildRowFromChallan = (challanNo, map) => {
   const data = map[challanNo];
   return {
@@ -22,10 +21,9 @@ const buildRowFromChallan = (challanNo, map) => {
       ? String(data.transaction_date).split('T')[0]
       : '',
     transaction_id: data?.transaction_id || '',
-    bulk_wt: data?.bulk_wt || '',
-    other_wt: data?.other_wt || '',
     to_pay: data?.to_pay || '',
     paid: data?.paid || '',
+    crossing: data?.crossing || '',
     isDirty: false,
   };
 };
@@ -192,6 +190,7 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
   };
 
   // ---------- Per-row derived values ----------
+  // P/L = (To Pay + Paid) - Total Freight - Crossing
   const getRowCalculated = (row) => {
     const totalFreight  = Number(row.total_freight) || 0;
     const advance       = Number(row.advance) || 0;
@@ -202,7 +201,8 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     const toPay = Number(row.to_pay) || 0;
     const paid  = Number(row.paid) || 0;
     const totalAmount = toPay + paid;
-    const pl = totalAmount - totalFreight;
+    const crossing = Number(row.crossing) || 0;
+    const pl = totalAmount - totalFreight - crossing;
     return { balanceIndore, totalAmount, pl };
   };
 
@@ -214,17 +214,15 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     t.deduction      += Number(row.deduction) || 0;
     t.freight_raipur += Number(row.freight_raipur) || 0;
     t.balance_indore += balanceIndore;
-    t.bulk_wt        += Number(row.bulk_wt) || 0;
-    t.other_wt       += Number(row.other_wt) || 0;
     t.to_pay         += Number(row.to_pay) || 0;
     t.paid           += Number(row.paid) || 0;
     t.total_amount   += totalAmount;
+    t.crossing       += Number(row.crossing) || 0;
     t.pl             += pl;
     return t;
   }, {
     weight: 0, total_freight: 0, advance: 0, deduction: 0, freight_raipur: 0,
-    balance_indore: 0, bulk_wt: 0, other_wt: 0, to_pay: 0, paid: 0,
-    total_amount: 0, pl: 0
+    balance_indore: 0, to_pay: 0, paid: 0, total_amount: 0, crossing: 0, pl: 0
   });
 
   const dirtyCount = rows.filter(r => r.isDirty).length;
@@ -241,9 +239,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
       for (const row of dirtyRows) {
         const { balanceIndore, pl } = getRowCalculated(row);
         const payload = {
-          // driver_pan is now sourced from the transporter backend
-          // (falls back to 'NA' when the transporter is not on file).
-          driver_pan: getDriverPan(row),
           weight:         row.weight || 0,
           rate:           row.rate || 0,
           total_freight:  row.total_freight || 0,
@@ -253,10 +248,9 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
           balance_indore: balanceIndore,
           transaction_date: row.transaction_date || null,
           transaction_id:   row.transaction_id,
-          bulk_wt:  row.bulk_wt || 0,
-          other_wt: row.other_wt || 0,
           to_pay:   row.to_pay || 0,
           paid:     row.paid || 0,
+          crossing: row.crossing || 0,
           plpl:     pl,
           freight_created_at: new Date().toISOString(),
         };
@@ -307,6 +301,9 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
             <h2 className={`fr-page-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
               Freight Payment
             </h2>
+            {/* <span className={`fr-row-count ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+              Showing {rows.length} of {allNumbers.length} challans
+            </span> */}
           </div>
           <div className="fr-page-header-right">
             {dirtyCount > 0 && (
@@ -351,11 +348,10 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                   <th>Balance Indore</th>
                   <th>Txn Date</th>
                   <th>Txn ID</th>
-                  <th>Bulk Wt</th>
-                  <th>Other Wt</th>
                   <th>To Pay</th>
                   <th>Paid</th>
-                  <th>Total Amount</th>
+                  <th>Total</th>
+                  <th>Crossing</th>
                   <th>P/L</th>
                 </tr>
               </thead>
@@ -412,14 +408,21 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                         />
                       </td>
 
-                      <td>{renderNumberInput(row, 'bulk_wt')}</td>
-                      <td>{renderNumberInput(row, 'other_wt')}</td>
-                      <td>{renderNumberInput(row, 'to_pay')}</td>
-                      <td>{renderNumberInput(row, 'paid')}</td>
+                      {/* To Pay — read-only, sourced from DB */}
+                      <td className="text-center">{row.to_pay ? Number(row.to_pay).toString() : '-'}</td>
 
+                      {/* Paid — read-only, sourced from DB */}
+                      <td className="text-center">{row.paid ? Number(row.paid).toString() : '-'}</td>
+
+                      {/* Total = To Pay + Paid (auto) */}
                       <td className={`text-center fr-auto-calc ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                         {displayVal(totalAmount)}
                       </td>
+
+                      {/* Crossing — editable */}
+                      <td>{renderNumberInput(row, 'crossing')}</td>
+
+                      {/* P/L = Total - Total Freight - Crossing */}
                       <td className={`text-center fr-auto-calc ${pl < 0 ? 'fr-negative' : 'fr-positive'} ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                         {displayVal(pl)}
                       </td>
@@ -439,11 +442,10 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                     <td className="text-center">{displayVal(totals.freight_raipur)}</td>
                     <td className="text-center">{displayVal(totals.balance_indore)}</td>
                     <td colSpan="2"></td>
-                    <td className="text-center">{displayVal(totals.bulk_wt)}</td>
-                    <td className="text-center">{displayVal(totals.other_wt)}</td>
                     <td className="text-center">{displayVal(totals.to_pay)}</td>
                     <td className="text-center">{displayVal(totals.paid)}</td>
                     <td className="text-center">{displayVal(totals.total_amount)}</td>
+                    <td className="text-center">{displayVal(totals.crossing)}</td>
                     <td className="text-center">{displayVal(totals.pl)}</td>
                   </tr>
                 )}
