@@ -12,7 +12,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// Initialize challan table with all new columns
+// Initialize challan table with all current columns
 async function initialize() {
   try {
     await pool.query(`
@@ -25,9 +25,7 @@ async function initialize() {
           destination VARCHAR(255) NOT NULL,
           builty_no TEXT NOT NULL,
 
-          -- New freight fields
-          freight_no VARCHAR(50) DEFAULT 'Not Assigned',
-          driver_pan VARCHAR(50) DEFAULT '',
+          -- Freight fields
           weight DECIMAL(12,2) DEFAULT 0,
           rate DECIMAL(12,2) DEFAULT 0,
           total_freight DECIMAL(12,2) DEFAULT 0,
@@ -37,11 +35,10 @@ async function initialize() {
           balance_indore DECIMAL(12,2) DEFAULT 0,
           transaction_date DATE,
           transaction_id VARCHAR(100) DEFAULT '',
-          bulk_wt DECIMAL(12,2) DEFAULT 0,
-          other_wt DECIMAL(12,2) DEFAULT 0,
           to_pay DECIMAL(12,2) DEFAULT 0,
           paid DECIMAL(12,2) DEFAULT 0,
           plpl DECIMAL(12,2) DEFAULT 0,
+          crossing DECIMAL(12,2) DEFAULT 0,
           freight_created_at TIMESTAMPTZ,
 
           created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -77,14 +74,12 @@ async function generateChallanNo() {
   return `${prefix}${newNumericPart.toString().padStart(5, "0")}`;
 }
 
-// Save challan record – to_pay, paid, plpl are provided by frontend
+// Save challan record – to_pay, paid, plpl, crossing are provided by frontend
 async function saveChallan(challanData) {
   const challanNo = await generateChallanNo();
 
   const {
     date, truck_no, driver_no, from, destination, builty_no,
-    freight_no = 'Not Assigned',
-    driver_pan = '',
     weight = 0,
     rate = 0,
     total_freight = 0,
@@ -94,25 +89,24 @@ async function saveChallan(challanData) {
     balance_indore = 0,
     transaction_date = null,
     transaction_id = '',
-    bulk_wt = 0,
-    other_wt = 0,
     to_pay = 0,
     paid = 0,
     plpl = 0,
+    crossing = 0,
     freight_created_at = null
   } = challanData;
 
   await pool.query(
     `INSERT INTO challan (
       challan_no, date, truck_no, driver_no, from_location, destination, builty_no,
-      freight_no, driver_pan, weight, rate, total_freight, advance, deduction,
+      weight, rate, total_freight, advance, deduction,
       freight_raipur, balance_indore, transaction_date, transaction_id,
-      bulk_wt, other_wt, to_pay, paid, plpl, freight_created_at
+      to_pay, paid, plpl, crossing, freight_created_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
-      $8, $9, $10, $11, $12, $13, $14,
-      $15, $16, $17, $18,
-      $19, $20, $21, $22, $23, $24
+      $8, $9, $10, $11, $12,
+      $13, $14, $15, $16,
+      $17, $18, $19, $20, $21
     )`,
     [
       challanNo,
@@ -122,8 +116,6 @@ async function saveChallan(challanData) {
       from,
       destination,
       builty_no,
-      freight_no,
-      driver_pan,
       weight,
       rate,
       total_freight,
@@ -133,11 +125,10 @@ async function saveChallan(challanData) {
       balance_indore,
       transaction_date,
       transaction_id,
-      bulk_wt,
-      other_wt,
       to_pay,
       paid,
       plpl,
+      crossing,
       freight_created_at
     ]
   );
@@ -160,14 +151,13 @@ async function getAllChallans() {
   return rows;
 }
 
-// Update challan record – accepts all fields including to_pay, paid, plpl
+// Update challan record – accepts any freight fields
 async function updateChallan(challanNo, challanData) {
-  // Extract all possible fields
   const {
     date, truck_no, driver_no, from, destination, builty_no,
-    freight_no, driver_pan, weight, rate, total_freight, advance, deduction,
+    weight, rate, total_freight, advance, deduction,
     freight_raipur, balance_indore, transaction_date, transaction_id,
-    bulk_wt, other_wt, to_pay, paid, plpl, freight_created_at
+    to_pay, paid, plpl, crossing, freight_created_at
   } = challanData;
 
   // Build dynamic SET clause
@@ -182,8 +172,6 @@ async function updateChallan(challanNo, challanData) {
     { key: 'from_location', val: from },
     { key: 'destination', val: destination },
     { key: 'builty_no', val: builty_no },
-    { key: 'freight_no', val: freight_no },
-    { key: 'driver_pan', val: driver_pan },
     { key: 'weight', val: weight },
     { key: 'rate', val: rate },
     { key: 'total_freight', val: total_freight },
@@ -193,11 +181,10 @@ async function updateChallan(challanNo, challanData) {
     { key: 'balance_indore', val: balance_indore },
     { key: 'transaction_date', val: transaction_date },
     { key: 'transaction_id', val: transaction_id },
-    { key: 'bulk_wt', val: bulk_wt },
-    { key: 'other_wt', val: other_wt },
     { key: 'to_pay', val: to_pay },
     { key: 'paid', val: paid },
     { key: 'plpl', val: plpl },
+    { key: 'crossing', val: crossing },
     { key: 'freight_created_at', val: freight_created_at }
   ];
 
