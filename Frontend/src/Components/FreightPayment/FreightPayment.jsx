@@ -14,10 +14,8 @@ const buildRowFromChallan = (challanNo, map) => {
     exists: !!data,
     vehicle: data?.truck_no || '',
     weight: data?.weight || '',
-    rate: data?.rate || '',
     total_freight: data?.total_freight || '',
-    advance: data?.advance || '',
-    deduction: data?.deduction || '',
+    advance_deduction: data?.advance_deduction || '',
     freight_raipur: data?.freight_raipur || '',
     transaction_date: data?.transaction_date
       ? String(data.transaction_date).split('T')[0]
@@ -135,10 +133,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
   }, [allNumbers, visibleCount, challanMap]);
 
   // ---------- STEP 1: Fetch /transporters/all → build map of known trucks ----------
-  // Map: normalizedTruckNo -> full vehicle_number string as stored in DB.
-  // Storing the full string lets us call /transporters?search=<full-string>
-  // later, which uniquely identifies the record (avoids LIKE-substring
-  // matching picking the wrong transporter).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -154,7 +148,7 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
           t.vehicle_number.split(' | ').forEach(v => {
             const key = normalizeTruckNo(v);
             if (key && !map.has(key)) {
-              map.set(key, t.vehicle_number); // full concatenated string
+              map.set(key, t.vehicle_number);
             }
           });
         });
@@ -167,8 +161,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
   }, []);
 
   // ---------- STEP 2: For each visible truck, fetch full details ----------
-  // Only fires for trucks we KNOW exist (from STEP 1), so no 404s ever occur.
-  // Trucks not in the map are marked NA immediately, no network call.
   useEffect(() => {
     if (knownTrucks === null) return;
 
@@ -180,12 +172,11 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     const naTrucks = [];
 
     visibleTrucks.forEach(t => {
-      if (fetchedTrucksRef.current.has(t)) return;   // already handled
+      if (fetchedTrucksRef.current.has(t)) return;
       if (knownTrucks.has(t)) toFetch.push(t);
       else naTrucks.push(t);
     });
 
-    // Mark non-existent trucks as NA right away (no fetch, no 404)
     if (naTrucks.length > 0) {
       const patch = {};
       naTrucks.forEach(t => {
@@ -201,8 +192,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     (async () => {
       const results = {};
       await Promise.all(toFetch.map(async (truck) => {
-        // Use the exact full vehicle_number string as the search term so the
-        // backend's LIKE '%term%' matches exactly one record.
         const fullString = knownTrucks.get(truck);
         try {
           const res = await fetch(
@@ -250,11 +239,10 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
 
   // ---------- Per-row derived values ----------
   const getRowCalculated = (row) => {
-    const totalFreight  = Number(row.total_freight) || 0;
-    const advance       = Number(row.advance) || 0;
-    const deduction     = Number(row.deduction) || 0;
-    const freightRaipur = Number(row.freight_raipur) || 0;
-    const balanceIndore = totalFreight - advance - deduction - freightRaipur;
+    const totalFreight       = Number(row.total_freight) || 0;
+    const advanceDeduction   = Number(row.advance_deduction) || 0;
+    const freightRaipur      = Number(row.freight_raipur) || 0;
+    const balanceIndore = totalFreight - advanceDeduction - freightRaipur;
 
     const toPay = Number(row.to_pay) || 0;
     const paid  = Number(row.paid) || 0;
@@ -266,20 +254,19 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
 
   const totals = rows.reduce((t, row) => {
     const { balanceIndore, totalAmount, pl } = getRowCalculated(row);
-    t.weight         += Number(row.weight) || 0;
-    t.total_freight  += Number(row.total_freight) || 0;
-    t.advance        += Number(row.advance) || 0;
-    t.deduction      += Number(row.deduction) || 0;
-    t.freight_raipur += Number(row.freight_raipur) || 0;
-    t.balance_indore += balanceIndore;
-    t.to_pay         += Number(row.to_pay) || 0;
-    t.paid           += Number(row.paid) || 0;
-    t.total_amount   += totalAmount;
-    t.crossing       += Number(row.crossing) || 0;
-    t.pl             += pl;
+    t.weight            += Number(row.weight) || 0;
+    t.total_freight     += Number(row.total_freight) || 0;
+    t.advance_deduction += Number(row.advance_deduction) || 0;
+    t.freight_raipur    += Number(row.freight_raipur) || 0;
+    t.balance_indore    += balanceIndore;
+    t.to_pay            += Number(row.to_pay) || 0;
+    t.paid              += Number(row.paid) || 0;
+    t.total_amount      += totalAmount;
+    t.crossing          += Number(row.crossing) || 0;
+    t.pl                += pl;
     return t;
   }, {
-    weight: 0, total_freight: 0, advance: 0, deduction: 0, freight_raipur: 0,
+    weight: 0, total_freight: 0, advance_deduction: 0, freight_raipur: 0,
     balance_indore: 0, to_pay: 0, paid: 0, total_amount: 0, crossing: 0, pl: 0
   });
 
@@ -290,19 +277,17 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
 
     const { balanceIndore, pl } = getRowCalculated(row);
     const payload = {
-      weight:         row.weight || 0,
-      rate:           row.rate || 0,
-      total_freight:  row.total_freight || 0,
-      advance:        row.advance || 0,
-      deduction:      row.deduction || 0,
-      freight_raipur: row.freight_raipur || 0,
-      balance_indore: balanceIndore,
-      transaction_date: row.transaction_date || null,
-      transaction_id:   row.transaction_id,
-      to_pay:   row.to_pay || 0,
-      paid:     row.paid || 0,
-      crossing: row.crossing || 0,
-      plpl:     pl,
+      weight:            row.weight || 0,
+      total_freight:     row.total_freight || 0,
+      advance_deduction: row.advance_deduction || 0,
+      freight_raipur:    row.freight_raipur || 0,
+      balance_indore:    balanceIndore,
+      transaction_date:  row.transaction_date || null,
+      transaction_id:    row.transaction_id,
+      to_pay:            row.to_pay || 0,
+      paid:              row.paid || 0,
+      crossing:          row.crossing || 0,
+      plpl:              pl,
       freight_created_at: new Date().toISOString(),
     };
 
@@ -367,25 +352,23 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
       });
 
       ws.columns = [
-        { header: 'Index',           key: 'index',            width: 7  },
-        { header: 'Challan No',      key: 'challan_no',       width: 14 },
-        { header: 'Vehicle',         key: 'vehicle',          width: 14 },
-        { header: 'Driver Name',     key: 'driver_name',      width: 22 },
-        { header: 'Driver PAN',      key: 'driver_pan',       width: 15 },
-        { header: 'Weight',          key: 'weight',           width: 11 },
-        { header: 'Rate',            key: 'rate',             width: 11 },
-        { header: 'Total Freight',   key: 'total_freight',    width: 13 },
-        { header: 'Advance',         key: 'advance',          width: 11 },
-        { header: 'Deduction',       key: 'deduction',        width: 11 },
-        { header: 'Freight Raipur',  key: 'freight_raipur',   width: 13 },
-        { header: 'Balance Indore',  key: 'balance_indore',   width: 13 },
-        { header: 'Txn Date',        key: 'transaction_date', width: 13 },
-        { header: 'Txn ID',          key: 'transaction_id',   width: 16 },
-        { header: 'To Pay',          key: 'to_pay',           width: 11 },
-        { header: 'Paid',            key: 'paid',             width: 11 },
-        { header: 'Total',           key: 'total_amount',     width: 11 },
-        { header: 'Crossing',        key: 'crossing',         width: 11 },
-        { header: 'P/L',             key: 'pl',               width: 11 },
+        { header: 'Index',            key: 'index',             width: 7  },
+        { header: 'Challan No',       key: 'challan_no',        width: 14 },
+        { header: 'Vehicle',          key: 'vehicle',           width: 14 },
+        { header: 'Driver Name',      key: 'driver_name',       width: 22 },
+        { header: 'Driver PAN',       key: 'driver_pan',        width: 15 },
+        { header: 'Weight',           key: 'weight',            width: 11 },
+        { header: 'Total Freight',    key: 'total_freight',     width: 13 },
+        { header: 'Advance/Deduct',   key: 'advance_deduction', width: 15 },
+        { header: 'Freight Raipur',   key: 'freight_raipur',    width: 13 },
+        { header: 'Balance Indore',   key: 'balance_indore',    width: 13 },
+        { header: 'Txn Date',         key: 'transaction_date',  width: 13 },
+        { header: 'Txn ID',           key: 'transaction_id',    width: 16 },
+        { header: 'To Pay',           key: 'to_pay',            width: 11 },
+        { header: 'Paid',             key: 'paid',              width: 11 },
+        { header: 'Total',            key: 'total_amount',      width: 11 },
+        { header: 'Crossing',         key: 'crossing',          width: 11 },
+        { header: 'P/L',              key: 'pl',                width: 11 },
       ];
 
       const headerRow = ws.getRow(1);
@@ -416,10 +399,8 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
           driver_name: getDriverName(row),
           driver_pan: getDriverPan(row),
           weight: cleanNum(row.weight) ?? '',
-          rate: cleanNum(row.rate) ?? '',
           total_freight: cleanNum(row.total_freight) ?? '',
-          advance: cleanNum(row.advance) ?? '',
-          deduction: cleanNum(row.deduction) ?? '',
+          advance_deduction: cleanNum(row.advance_deduction) ?? '',
           freight_raipur: cleanNum(row.freight_raipur) ?? '',
           balance_indore: cleanNum(balanceIndore) ?? '',
           transaction_date: row.transaction_date ? formatDateForDisplay(row.transaction_date) : '',
@@ -505,14 +486,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
             <h2 className={`fr-page-title ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
               Freight Payment
             </h2>
-            {/* <span className={`fr-row-count ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-              Showing {rows.length} of {allNumbers.length} challans
-            </span> */}
-            {/* {recentlySaved && (
-              <span className={`fr-autosave-hint ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                ✓ Auto-saved
-              </span>
-            )} */}
           </div>
           <div className="fr-page-header-right">
             <button
@@ -543,14 +516,12 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                   <th>Driver Name</th>
                   <th>Driver PAN</th>
                   <th>Weight</th>
-                  <th>Rate</th>
                   <th>Total Freight</th>
-                  <th>Advance</th>
-                  <th>Deduction</th>
+                  <th>Advance/Deduct</th>
                   <th>Freight Raipur</th>
                   <th>Balance Indore</th>
                   <th>Txn Date</th>
-                  <th>Txn ID</th>
+                  <th style={{width: '100px'}}>  Txn ID</th>
                   <th>To Pay</th>
                   <th>Paid</th>
                   <th>Total</th>
@@ -578,10 +549,8 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                       <td className="text-center">{getDriverPan(row)}</td>
 
                       <td>{renderNumberInput(row, 'weight')}</td>
-                      <td>{renderNumberInput(row, 'rate')}</td>
                       <td>{renderNumberInput(row, 'total_freight')}</td>
-                      <td>{renderNumberInput(row, 'advance')}</td>
-                      <td>{renderNumberInput(row, 'deduction')}</td>
+                      <td>{renderNumberInput(row, 'advance_deduction')}</td>
                       <td>{renderNumberInput(row, 'freight_raipur')}</td>
 
                       <td className={`text-center fr-auto-calc ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
@@ -628,10 +597,8 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                     <td className="text-center">Total</td>
                     <td colSpan="4"></td>
                     <td className="text-center">{displayVal(totals.weight)}</td>
-                    <td></td>
                     <td className="text-center">{displayVal(totals.total_freight)}</td>
-                    <td className="text-center">{displayVal(totals.advance)}</td>
-                    <td className="text-center">{displayVal(totals.deduction)}</td>
+                    <td className="text-center">{displayVal(totals.advance_deduction)}</td>
                     <td className="text-center">{displayVal(totals.freight_raipur)}</td>
                     <td className="text-center">{displayVal(totals.balance_indore)}</td>
                     <td colSpan="2"></td>
