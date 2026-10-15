@@ -1,7 +1,7 @@
 module.exports = (challanDB, sendChallanNotification) => {
   const router = require('express').Router();
 
-  // Save challan – now accepts to_pay, paid, plpl (optional)
+  // Save challan – now accepts advance_deduction, to_pay, paid, plpl (optional)
   router.post('/challan', async (req, res) => {
     try {
       const { date, truck_no, driver_no, from, destination, builty_no } = req.body;
@@ -63,7 +63,7 @@ module.exports = (challanDB, sendChallanNotification) => {
     }
   });
 
-  // Update challan – accepts any freight fields including to_pay, paid, plpl
+  // Update challan – accepts any freight fields including advance_deduction, to_pay, paid, plpl
   router.put('/challan/:challan_no', async (req, res) => {
     try {
       // Ensure at least one field is provided
