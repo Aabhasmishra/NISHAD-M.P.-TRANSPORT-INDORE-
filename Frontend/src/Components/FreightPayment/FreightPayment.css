@@ -216,6 +216,32 @@
   white-space: nowrap;
 }
 
+/* --- Balance Indore (10th column) – narrower --- */
+.fr-table th:nth-child(10),
+.fr-table td:nth-child(10) {
+  width: 85px;
+  min-width: 85px;
+  max-width: 85px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* --- Txn ID (12th column) – wider so full ID is visible --- */
+.fr-table th:nth-child(12),
+.fr-table td:nth-child(12) {
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
+}
+
+/* The input inside Txn ID must also be wide enough, otherwise the
+   88px min-width from .fr-table-input would still be the limiting factor. */
+.fr-table td:nth-child(12) .fr-table-input {
+  width: 100%;
+  /* min-width: 130px; */
+  text-align: center;   /* long IDs read better left-aligned; drop this line if you want centered */
+}
+
 /* Sticky header — must be on TH, not TR, for cross-browser support */
 .fr-table-header th {
   position: sticky;
