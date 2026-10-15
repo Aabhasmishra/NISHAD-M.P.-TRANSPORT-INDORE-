@@ -27,10 +27,8 @@ async function initialize() {
 
           -- Freight fields
           weight DECIMAL(12,2) DEFAULT 0,
-          rate DECIMAL(12,2) DEFAULT 0,
           total_freight DECIMAL(12,2) DEFAULT 0,
-          advance DECIMAL(12,2) DEFAULT 0,
-          deduction DECIMAL(12,2) DEFAULT 0,
+          advance_deduction DECIMAL(12,2) DEFAULT 0,
           freight_raipur DECIMAL(12,2) DEFAULT 0,
           balance_indore DECIMAL(12,2) DEFAULT 0,
           transaction_date DATE,
@@ -81,10 +79,8 @@ async function saveChallan(challanData) {
   const {
     date, truck_no, driver_no, from, destination, builty_no,
     weight = 0,
-    rate = 0,
     total_freight = 0,
-    advance = 0,
-    deduction = 0,
+    advance_deduction = 0,
     freight_raipur = 0,
     balance_indore = 0,
     transaction_date = null,
@@ -99,14 +95,14 @@ async function saveChallan(challanData) {
   await pool.query(
     `INSERT INTO challan (
       challan_no, date, truck_no, driver_no, from_location, destination, builty_no,
-      weight, rate, total_freight, advance, deduction,
+      weight, total_freight, advance_deduction,
       freight_raipur, balance_indore, transaction_date, transaction_id,
       to_pay, paid, plpl, crossing, freight_created_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
-      $8, $9, $10, $11, $12,
-      $13, $14, $15, $16,
-      $17, $18, $19, $20, $21
+      $8, $9, $10,
+      $11, $12, $13, $14,
+      $15, $16, $17, $18, $19
     )`,
     [
       challanNo,
@@ -117,10 +113,8 @@ async function saveChallan(challanData) {
       destination,
       builty_no,
       weight,
-      rate,
       total_freight,
-      advance,
-      deduction,
+      advance_deduction,
       freight_raipur,
       balance_indore,
       transaction_date,
@@ -155,7 +149,7 @@ async function getAllChallans() {
 async function updateChallan(challanNo, challanData) {
   const {
     date, truck_no, driver_no, from, destination, builty_no,
-    weight, rate, total_freight, advance, deduction,
+    weight, total_freight, advance_deduction,
     freight_raipur, balance_indore, transaction_date, transaction_id,
     to_pay, paid, plpl, crossing, freight_created_at
   } = challanData;
@@ -173,10 +167,8 @@ async function updateChallan(challanNo, challanData) {
     { key: 'destination', val: destination },
     { key: 'builty_no', val: builty_no },
     { key: 'weight', val: weight },
-    { key: 'rate', val: rate },
     { key: 'total_freight', val: total_freight },
-    { key: 'advance', val: advance },
-    { key: 'deduction', val: deduction },
+    { key: 'advance_deduction', val: advance_deduction },
     { key: 'freight_raipur', val: freight_raipur },
     { key: 'balance_indore', val: balance_indore },
     { key: 'transaction_date', val: transaction_date },
