@@ -521,7 +521,7 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
                   <th>Freight Raipur</th>
                   <th>Balance Indore</th>
                   <th>Txn Date</th>
-                  <th style={{width: '100px'}}>  Txn ID</th>
+                  <th>Txn ID</th>
                   <th>To Pay</th>
                   <th>Paid</th>
                   <th>Total</th>
