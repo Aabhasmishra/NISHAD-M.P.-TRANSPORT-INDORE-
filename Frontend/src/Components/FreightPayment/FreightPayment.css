@@ -87,48 +87,6 @@
   color: #f1f5f9;
 }
 
-/* .fr-row-count {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
-.fr-row-count.light-mode {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.fr-row-count.dark-mode {
-  background: #262f43;
-  color: #94a3b8;
-} */
-
-/* Amber pill showing how many rows have pending edits */
-.fr-dirty-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.fr-dirty-badge.light-mode {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
-}
-
-.fr-dirty-badge.dark-mode {
-  background: #3d2c0a;
-  color: #fbbf24;
-  border: 1px solid #524014;
-}
-
 .fr-divider {
   height: 1px;
   border: none;
@@ -216,14 +174,14 @@
   white-space: nowrap;
 }
 
-/* --- Balance Indore (10th column) – narrower --- */
-.fr-table th:nth-child(10),
-.fr-table td:nth-child(10) {
-  width: 85px;
-  min-width: 85px;
-  max-width: 85px;
-  padding-left: 6px;
-  padding-right: 6px;
+/* --- Balance Indore (10th column) – narrower + smaller font --- */
+.fr-table th:nth-child(10){
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
+  padding-left: 4px;
+  padding-right: 4px;
+  font-size: 10px;
 }
 
 /* --- Txn ID (12th column) – wider so full ID is visible --- */
@@ -238,8 +196,7 @@
    88px min-width from .fr-table-input would still be the limiting factor. */
 .fr-table td:nth-child(12) .fr-table-input {
   width: 100%;
-  /* min-width: 130px; */
-  text-align: center;   /* long IDs read better left-aligned; drop this line if you want centered */
+  text-align: center;
 }
 
 /* Sticky header — must be on TH, not TR, for cross-browser support */
@@ -267,6 +224,80 @@
   border-bottom: 1px solid #37306a;
 }
 
+/* ======================= SORTABLE HEADER CELLS ========================= */
+
+/* Base for any header that supports sorting */
+.fr-th-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.fr-th-sortable .fr-th-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.fr-th-sortable .fr-th-label {
+  display: inline-block;
+}
+
+/* The arrow badge — only rendered on the active sort column.
+   Uses a React Icon (chevron) inside a small rounded chip. */
+.fr-sort-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  animation: fr-arrow-in 0.18s ease;
+}
+
+@keyframes fr-arrow-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* --- Light mode: hover / active states --- */
+.fr-table-header.light-mode th.fr-th-sortable:hover {
+  background: #f3eeff;
+  color: #4c1d95;
+}
+
+.fr-table-header.light-mode th.fr-th-sortable.active {
+  background: #ede9fe;
+  color: #4c1d95;
+}
+
+.fr-table-header.light-mode .fr-sort-arrow.active {
+  background: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 2px 6px -1px rgba(124, 58, 237, 0.5);
+}
+
+/* --- Dark mode: hover / active states --- */
+.fr-table-header.dark-mode th.fr-th-sortable:hover {
+  background: #2b2559;
+  color: #ede9fe;
+}
+
+.fr-table-header.dark-mode th.fr-th-sortable.active {
+  background: #332a6b;
+  color: #f5f3ff;
+}
+
+.fr-table-header.dark-mode .fr-sort-arrow.active {
+  background: #a78bfa;
+  color: #1c2333;
+  box-shadow: 0 2px 8px -1px rgba(167, 139, 250, 0.6);
+}
+
+/* Row styling */
 .fr-table-row.light-mode {
   background-color: #ffffff;
   border-bottom: 1px solid #f1f3f7;
@@ -446,6 +477,42 @@
   box-shadow: none !important;
 }
 
+/* Download button — green gradient */
+.fr-download-button {
+  padding: 11px 22px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.18s ease;
+}
+
+.fr-download-button.light-mode {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.fr-download-button.dark-mode {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  color: #0b1f18;
+}
+
+.fr-download-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.45);
+}
+
+.fr-download-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* =============================== LOADING ================================ */
 
 .fr-loading-overlay {
@@ -504,42 +571,6 @@
     width: 100%;
     justify-content: center;
   }
-}
-
-/* Download button — green gradient */
-.fr-download-button {
-  padding: 11px 22px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  transition: all 0.18s ease;
-}
-
-.fr-download-button.light-mode {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.fr-download-button.dark-mode {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-  color: #0b1f18;
-}
-
-.fr-download-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.45);
-}
-
-.fr-download-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
 }
 
 /* Subtle autosave confirmation that fades in and out */
