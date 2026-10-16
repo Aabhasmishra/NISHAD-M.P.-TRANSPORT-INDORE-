@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import "./FreightPayment.css";
 import BASE_URL from "../../config";
 import PopupAlert from '../PopupAlert/PopupAlert';
+import { FiChevronUp, FiChevronDown } from 'react-icons/fi';
 
 // Normalize for case/whitespace-safe matching.
 const normalizeTruckNo = (t) => (t || '').toString().trim().toUpperCase();
@@ -42,6 +43,10 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [recentlySaved, setRecentlySaved] = useState(false);
+
+  // Sorting state — default is challan_no descending (current behaviour).
+  const [sortConfig, setSortConfig] = useState({ key: 'challan_no', direction: 'desc' });
+
   const tableContainerRef = useRef(null);
 
   const rowsRef = useRef([]);
@@ -120,18 +125,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Rebuild visible rows ----------
-  useEffect(() => {
-    if (allNumbers.length === 0) return;
-    setRows(prev => {
-      const byNo = new Map(prev.map(r => [r.challan_no, r]));
-      return allNumbers
-        .slice(0, visibleCount)
-        .map(no => byNo.get(no) || buildRowFromChallan(no, challanMap));
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allNumbers, visibleCount, challanMap]);
-
   // ---------- STEP 1: Fetch /transporters/all → build map of known trucks ----------
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +152,138 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // ---------- Derived driver info ----------
+  const getDriverName = (row) => {
+    const key = normalizeTruckNo(row.vehicle);
+    if (!key) return 'NA';
+    return transporterCache[key]?.owner_name || 'NA';
+  };
+  const getDriverPan = (row) => {
+    const key = normalizeTruckNo(row.vehicle);
+    if (!key) return 'NA';
+    return transporterCache[key]?.id_number || 'NA';
+  };
+
+  // ---------- Per-row derived values ----------
+  const getRowCalculated = (row) => {
+    const totalFreight       = Number(row.total_freight) || 0;
+    const advanceDeduction   = Number(row.advance_deduction) || 0;
+    const freightRaipur      = Number(row.freight_raipur) || 0;
+    const balanceIndore = totalFreight - advanceDeduction - freightRaipur;
+
+    const toPay = Number(row.to_pay) || 0;
+    const paid  = Number(row.paid) || 0;
+    const totalAmount = toPay + paid;
+    const crossing = Number(row.crossing) || 0;
+    const pl = totalAmount - totalFreight - crossing;
+    return { balanceIndore, totalAmount, pl };
+  };
+
+  // ---------- Sort helpers ----------
+  const getSortValue = (row, key) => {
+    switch (key) {
+      case 'challan_no':
+        return row.challan_no || '';
+      case 'vehicle':
+        return normalizeTruckNo(row.vehicle);
+      case 'driver_name': {
+        const k = normalizeTruckNo(row.vehicle);
+        return (transporterCache[k]?.owner_name || 'NA').toUpperCase();
+      }
+      case 'driver_pan': {
+        const k = normalizeTruckNo(row.vehicle);
+        return (transporterCache[k]?.id_number || 'NA').toUpperCase();
+      }
+      case 'weight':
+        return Number(row.weight) || 0;
+      case 'total_freight':
+        return Number(row.total_freight) || 0;
+      case 'advance_deduction':
+        return Number(row.advance_deduction) || 0;
+      case 'freight_raipur':
+        return Number(row.freight_raipur) || 0;
+      case 'balance_indore':
+        return getRowCalculated(row).balanceIndore;
+      case 'transaction_date':
+        return row.transaction_date || '';
+      case 'transaction_id':
+        return (row.transaction_id || '').toUpperCase();
+      case 'to_pay':
+        return Number(row.to_pay) || 0;
+      case 'paid':
+        return Number(row.paid) || 0;
+      case 'total_amount':
+        return getRowCalculated(row).totalAmount;
+      case 'crossing':
+        return Number(row.crossing) || 0;
+      case 'pl':
+        return getRowCalculated(row).pl;
+      default:
+        return '';
+    }
+  };
+
+  const handleSort = (key) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  // Sorted list of ALL challan numbers based on current sortConfig.
+  // Uses rowsRef.current so we don't re-sort on every keystroke/edit —
+  // only when sortConfig / challanMap / transporterCache change.
+  const sortedNumbers = useMemo(() => {
+    if (allNumbers.length === 0) return [];
+    if (!sortConfig.key) return allNumbers;
+
+    const byNo = new Map(rowsRef.current.map(r => [r.challan_no, r]));
+    const getRow = (no) => byNo.get(no) || buildRowFromChallan(no, challanMap);
+
+    const items = allNumbers.map(no => ({
+      no,
+      val: getSortValue(getRow(no), sortConfig.key),
+    }));
+
+    items.sort((a, b) => {
+      const av = a.val;
+      const bv = b.val;
+      const aEmpty = av === null || av === undefined || av === '';
+      const bEmpty = bv === null || bv === undefined || bv === '';
+      if (aEmpty && bEmpty) return 0;
+      if (aEmpty) return 1;   // empties always at the bottom
+      if (bEmpty) return -1;
+
+      let cmp;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      }
+      return sortConfig.direction === 'asc' ? cmp : -cmp;
+    });
+
+    return items.map(x => x.no);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allNumbers, sortConfig, challanMap, transporterCache]);
+
+  // ---------- Rebuild visible rows from sortedNumbers ----------
+  useEffect(() => {
+    if (sortedNumbers.length === 0) return;
+    setRows(prev => {
+      const byNo = new Map(prev.map(r => [r.challan_no, r]));
+      return sortedNumbers
+        .slice(0, visibleCount)
+        .map(no => byNo.get(no) || buildRowFromChallan(no, challanMap));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedNumbers, visibleCount, challanMap]);
 
   // ---------- STEP 2: For each visible truck, fetch full details ----------
   useEffect(() => {
@@ -215,18 +340,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, knownTrucks]);
 
-  // ---------- Derived driver info ----------
-  const getDriverName = (row) => {
-    const key = normalizeTruckNo(row.vehicle);
-    if (!key) return 'NA';
-    return transporterCache[key]?.owner_name || 'NA';
-  };
-  const getDriverPan = (row) => {
-    const key = normalizeTruckNo(row.vehicle);
-    if (!key) return 'NA';
-    return transporterCache[key]?.id_number || 'NA';
-  };
-
   // ---------- Infinite scroll ----------
   const handleTableScroll = (e) => {
     const el = e.currentTarget;
@@ -235,21 +348,6 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
         setVisibleCount(prev => Math.min(prev + 5, allNumbers.length));
       }
     }
-  };
-
-  // ---------- Per-row derived values ----------
-  const getRowCalculated = (row) => {
-    const totalFreight       = Number(row.total_freight) || 0;
-    const advanceDeduction   = Number(row.advance_deduction) || 0;
-    const freightRaipur      = Number(row.freight_raipur) || 0;
-    const balanceIndore = totalFreight - advanceDeduction - freightRaipur;
-
-    const toPay = Number(row.to_pay) || 0;
-    const paid  = Number(row.paid) || 0;
-    const totalAmount = toPay + paid;
-    const crossing = Number(row.crossing) || 0;
-    const pl = totalAmount - totalFreight - crossing;
-    return { balanceIndore, totalAmount, pl };
   };
 
   const totals = rows.reduce((t, row) => {
@@ -385,8 +483,9 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
         };
       });
 
+      // Export respects the current on-screen sort order.
       const rowsByNo = new Map(rows.map(r => [r.challan_no, r]));
-      const exportRows = allNumbers.map(no =>
+      const exportRows = sortedNumbers.map(no =>
         rowsByNo.get(no) || buildRowFromChallan(no, challanMap)
       );
 
@@ -464,10 +563,49 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
       type="number"
       value={inputVal(row[field])}
       onChange={(e) => handleChange(row.challan_no, field, e.target.value)}
+      onKeyDown={(e) => {
+        // Block ↑ / ↓ from incrementing / decrementing the value.
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+        }
+      }}
+      onWheel={(e) => {
+        // Blur on wheel so the browser doesn't scroll-change the value.
+        // The blur lets the parent container scroll normally instead.
+        e.currentTarget.blur();
+      }}
       disabled={!row.exists}
       className={`fr-table-input ${isLightMode ? 'light-mode' : 'dark-mode'}`}
     />
   );
+
+  const renderSortableTh = (key, label) => {
+    const isActive = sortConfig.key === key;
+    const direction = sortConfig.direction;
+
+    return (
+      <th
+        className={`fr-th-sortable ${isActive ? 'active' : ''}`}
+        onClick={() => handleSort(key)}
+        title={
+          isActive
+            ? `Sorted by ${label} (${direction === 'asc' ? 'ascending' : 'descending'}) — click to toggle`
+            : `Click to sort by ${label}`
+        }
+      >
+        <span className="fr-th-inner">
+          <span className="fr-th-label">{label}</span>
+          {isActive && (
+            <span className="fr-sort-arrow active">
+              {direction === 'asc'
+                ? <FiChevronUp size={14} strokeWidth={3} />
+                : <FiChevronDown size={14} strokeWidth={3} />}
+            </span>
+          )}
+        </span>
+      </th>
+    );
+  };
 
   return (
     <>
@@ -511,22 +649,22 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
               <thead>
                 <tr className={`fr-table-header ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
                   <th>Index</th>
-                  <th>Challan No</th>
-                  <th>Vehicle</th>
-                  <th>Driver Name</th>
-                  <th>Driver PAN</th>
-                  <th>Weight</th>
-                  <th>Total Freight</th>
-                  <th>Advance/Deduct</th>
-                  <th>Freight Raipur</th>
-                  <th>Balance Indore</th>
-                  <th>Txn Date</th>
-                  <th>Txn ID</th>
-                  <th>To Pay</th>
-                  <th>Paid</th>
-                  <th>Total</th>
-                  <th>Crossing</th>
-                  <th>P/L</th>
+                  {renderSortableTh('challan_no', 'Challan No')}
+                  {renderSortableTh('vehicle', 'Vehicle')}
+                  {renderSortableTh('driver_name', 'Driver Name')}
+                  {renderSortableTh('driver_pan', 'Driver PAN')}
+                  {renderSortableTh('weight', 'Weight')}
+                  {renderSortableTh('total_freight', 'Total Freight')}
+                  {renderSortableTh('advance_deduction', 'Advance/Deduct')}
+                  {renderSortableTh('freight_raipur', 'Freight Raipur')}
+                  {renderSortableTh('balance_indore', 'Balance Indore')}
+                  {renderSortableTh('transaction_date', 'Txn Date')}
+                  {renderSortableTh('transaction_id', 'Txn ID')}
+                  {renderSortableTh('to_pay', 'To Pay')}
+                  {renderSortableTh('paid', 'Paid')}
+                  {renderSortableTh('total_amount', 'Total')}
+                  {renderSortableTh('crossing', 'Crossing')}
+                  {renderSortableTh('pl', 'P/L')}
                 </tr>
               </thead>
               <tbody>
