@@ -13,16 +13,16 @@
      05. Card & scroller
      06. Table header
      07. Columns & sticky edges
-     08. Editable cells
+     08. Editable cells (incl. locked read-only cells)
      09. Total row
      10. Category row
      11. Branch (station) rows
      12. Weekend overlay
      13. Empty state
-     14. Footer
+     14. Month-total modal
      15. Toast
      16. Auth wrapper
-     17. Light‑mode refinements
+     17. Light-mode refinements
      18. Motion & responsive
    ========================================================================== */
 
@@ -116,13 +116,37 @@
   --total-row-shadow: none;
   --cat-row-shadow: none;
 
-  /* Submit button */
+  /* Confirm button */
   --save-grad-1: #f7d05c;
   --save-grad-2: #eab72f;
   --save-text: #1a1400;
   --save-shadow:
-    0 7px 18px rgba(23, 107, 209, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 7px 18px rgba(245, 197, 66, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+
+  /* Locked (whole-month) cells */
+  --locked-bg: rgba(255, 255, 255, 0.018);
+  --locked-text: #7f8a9c;
+
+  /* Modal */
+  --modal-bg: #1b2330;
+  --modal-border: rgba(255, 255, 255, 0.15);
+  --modal-backdrop: rgba(6, 9, 14, 0.74);
+  --modal-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  --modal-input-bg: #141b27;
+  --modal-input-border: rgba(255, 255, 255, 0.15);
+
+  /* Warning / error inside modal */
+  --warn-bg: rgba(239, 95, 107, 0.10);
+  --warn-border: rgba(239, 95, 107, 0.38);
+  --warn-text: #ffb3ba;
+  --warn-icon: #ef5f6b;
+
+  --error-text: #ff8f96;
+  --error-bg: rgba(239, 95, 107, 0.10);
+  --error-border: rgba(239, 95, 107, 0.38);
 }
 
 /* ---------- Light theme ---------- */
@@ -218,13 +242,37 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.65),
     inset 0 -1px 0 rgba(30, 55, 85, 0.06);
 
-  /* Submit button */
+  /* Confirm button */
   --save-grad-1: #3f9cff;
   --save-grad-2: #176bd1;
   --save-text: #ffffff;
   --save-shadow:
-    0 7px 18px rgba(23, 107, 209, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 7px 18px rgba(23, 107, 209, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+
+  /* Locked (whole-month) cells */
+  --locked-bg: #eef3fa;
+  --locked-text: #8394a9;
+
+  /* Modal */
+  --modal-bg: #ffffff;
+  --modal-border: rgba(24, 61, 103, 0.18);
+  --modal-backdrop: rgba(20, 40, 65, 0.45);
+  --modal-shadow:
+    0 30px 80px rgba(20, 40, 65, 0.28),
+    0 8px 24px rgba(20, 40, 65, 0.14);
+  --modal-input-bg: #f4f9ff;
+  --modal-input-border: #a9c8ea;
+
+  /* Warning / error inside modal */
+  --warn-bg: #fff1f2;
+  --warn-border: rgba(220, 67, 85, 0.35);
+  --warn-text: #9b2c39;
+  --warn-icon: #dc4355;
+
+  --error-text: #b83142;
+  --error-bg: #fff1f2;
+  --error-border: rgba(220, 67, 85, 0.38);
 }
 
 
@@ -242,7 +290,7 @@
   -webkit-font-smoothing: antialiased;
   background: var(--bg);
   color: var(--txt);
-  padding: 22px 26px 110px;
+  padding: 22px 26px 30px;
   min-height: 100vh;
   position: relative;
 }
@@ -369,11 +417,6 @@
   height: 12px;
 }
 
-.exg-btn-save {
-  padding: 11px 22px;
-  font-size: 15px;
-}
-
 .exg-btn-amber {
   background: linear-gradient(135deg, var(--save-grad-1), var(--save-grad-2));
   color: var(--save-text);
@@ -382,11 +425,12 @@
   box-shadow: var(--save-shadow);
 }
 
-.exg-btn-amber:hover {
+.exg-btn-amber:hover:not(:disabled) {
   filter: brightness(1.06);
   transform: translateY(-1px);
 }
 
+/* Theme toggle is intentionally distinct from the rest of the controls */
 .exg-theme-toggle {
   color: var(--amber);
   border-color: var(--logo-border);
@@ -411,7 +455,7 @@
 
 .exg-scroller {
   overflow: auto;
-  max-height: calc(100vh - 215px);
+  max-height: calc(100vh - 138px);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -496,7 +540,6 @@
   color: var(--amber-dim);
 }
 
-/* Weekend header chip — the light theme recolours it further in §17. */
 .exg-daynum.exg-weekend {
   background: var(--weekend-header);
   color: var(--weekend-text);
@@ -600,11 +643,7 @@
   box-shadow: var(--cell-focus-shadow);
 }
 
-.exg-cell-def {
-  color: var(--faint);
-}
-
-/* Unsaved / edited cell */
+/* Unsaved / edited cell (subtle, local to the user) */
 .exg-cell-dirty {
   background: var(--cell-dirty-bg);
   box-shadow: inset 0 0 0 1px var(--cell-dirty-border);
@@ -626,7 +665,7 @@
   font-weight: var(--cell-nonzero-weight);
 }
 
-/* Read‑only month‑total pill (default colour, overridden per row) */
+/* Read-only month-total pill (default colour, overridden per row) */
 .exg-mtot-val {
   padding: 0 12px;
   height: 46px;
@@ -635,6 +674,33 @@
   justify-content: flex-end;
   color: var(--mtot-text);
   font-weight: 600;
+}
+
+/* ---- Locked (whole-month) cells ---- */
+.exg-cell-ro {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12.5px 10px;
+  background: var(--locked-bg);
+  color: var(--locked-text);
+  font-variant-numeric: tabular-nums;
+  cursor: not-allowed;
+  user-select: none;
+  font-weight: 500;
+}
+
+.exg-cell-ro.exg-cell-nil {
+  justify-content: center;
+  opacity: 0.65;
+}
+
+.exg-nil {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
 }
 
 
@@ -734,7 +800,7 @@
   color: var(--amber);
 }
 
-/* Employee‑mode category rows: tighter padding on the editable cells */
+/* Employee-mode category rows: tighter padding on editable cells */
 .exg-cat-row-emp .exg-cell {
   padding-left: 12px;
 }
@@ -781,20 +847,25 @@
   box-shadow: var(--bar-shadow);
 }
 
+/* Small lock next to the branch label when the branch is month-locked */
+.exg-rowlock {
+  width: 11px;
+  height: 11px;
+  margin-left: 2px;
+  color: var(--amber);
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
 
 /* ==========================================================================
    12. Weekend overlay
-   --------------------------------------------------------------------------
-   The weekend tint is applied as an inset box-shadow rather than a background,
-   so it paints over whatever the underlying row already has (--row / --row-alt
-   / cat-row wash) without the specificity games the old file needed.
    ========================================================================== */
 
 .exg-day.exg-weekend {
   box-shadow: inset 0 0 0 999px var(--weekend);
 }
 
-/* Grand TOTAL row keeps its own colour */
 .exg-total-row .exg-day.exg-weekend {
   box-shadow: none;
 }
@@ -823,33 +894,225 @@
 
 
 /* ==========================================================================
-   14. Footer
+   14. Month-total modal
    ========================================================================== */
 
-.exg-footer {
+.exg-modal-overlay {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(0deg, var(--bg) 70%, transparent);
-  padding: 16px 26px 20px;
+  inset: 0;
+  background: var(--modal-backdrop);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  animation: exg-fade-in 0.16s ease-out;
+}
+
+@keyframes exg-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.exg-modal {
+  background: var(--modal-bg);
+  border: 1px solid var(--modal-border);
+  border-radius: 18px;
+  box-shadow: var(--modal-shadow);
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px 24px 20px;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  z-index: 20;
+  animation: exg-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.exg-grand {
-  color: var(--muted);
-  font-size: 13px;
+@keyframes exg-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.exg-grand b {
-  color: var(--total);
-  font-size: 18px;
+.exg-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.exg-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
   font-weight: 800;
-  margin-left: 6px;
+  color: var(--txt);
+  letter-spacing: 0.01em;
+}
+
+.exg-modal-title svg {
+  color: var(--amber);
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.exg-modal-x {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.exg-modal-x:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.exg-modal-x:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.exg-modal-x svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- Fields ---- */
+.exg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.exg-field-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.exg-field-static {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.exg-field-static b {
+  color: var(--txt);
+  font-weight: 800;
+}
+
+.exg-select-block {
+  width: 100%;
+}
+
+.exg-input {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--modal-input-bg);
+  border: 1px solid var(--modal-input-border);
+  color: var(--txt);
+  border-radius: 10px;
+  padding: 11px 14px;
+  outline: none;
+  transition: 0.15s;
+}
+
+.exg-input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.exg-input:focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px var(--cell-focus-bg);
+}
+
+.exg-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Hide native number spinners for a cleaner field */
+.exg-input::-webkit-outer-spin-button,
+.exg-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.exg-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ---- Warning banner ---- */
+.exg-warn {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 12px;
+  color: var(--warn-text);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.exg-warn b {
+  font-weight: 800;
+}
+
+.exg-warn-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--warn-icon);
+  margin-top: 2px;
+}
+
+/* ---- Inline error ---- */
+.exg-modal-error {
+  padding: 8px 12px;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 8px;
+  color: var(--error-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* ---- Actions ---- */
+.exg-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+  padding-top: 16px;
+}
+
+.exg-modal-actions .exg-btn-amber {
+  padding: 10px 20px;
+  font-size: 14px;
 }
 
 
@@ -859,7 +1122,7 @@
 
 .exg-toast {
   position: fixed;
-  bottom: 80px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
   background: var(--toast-bg);
@@ -871,7 +1134,7 @@
   opacity: 0;
   pointer-events: none;
   transition: 0.25s;
-  z-index: 50;
+  z-index: 200;
   box-shadow: var(--shadow);
 }
 
@@ -882,7 +1145,7 @@
 
 
 /* ==========================================================================
-   16. Auth wrapper (rendered in place of the grid when logged out)
+   16. Auth wrapper
    ========================================================================== */
 
 .exg-auth-wrap {
@@ -898,10 +1161,7 @@
 
 
 /* ==========================================================================
-   17. Light‑mode refinements
-   --------------------------------------------------------------------------
-   Everything that only applies to .exg-light and can't be expressed purely
-   through the theme tokens above.
+   17. Light-mode refinements
    ========================================================================== */
 
 /* --- Table header on coloured background --- */
@@ -944,7 +1204,7 @@
 .exg-light .exg-cat-row:nth-of-type(3n + 2) td { background: #eee8fc; }
 .exg-light .exg-cat-row:nth-of-type(3n + 3) td { background: #e2f5f1; }
 
-/* --- Controls look (select / toggle / plain buttons) --- */
+/* --- Controls look (select / plain buttons) --- */
 .exg-light .exg-select {
   background: #edf5ff;
   border-color: #a9c8ea;
@@ -976,6 +1236,36 @@
   border-color: #6fa4dd;
 }
 
+/* --- Locked cells --- */
+.exg-light .exg-exp-row .exg-cell-ro {
+  background: #f1f5fa;
+  color: #8394a9;
+}
+
+.exg-light .exg-cat-row-emp .exg-cell-ro {
+  background: #f4f8fd;
+  color: #8394a9;
+}
+
+/* --- Modal polish --- */
+.exg-light .exg-modal {
+  border-color: rgba(24, 61, 103, 0.20);
+}
+
+.exg-light .exg-warn {
+  color: #8f2a38;
+}
+
+.exg-light .exg-input {
+  background: #f4f9ff;
+  border-color: #a9c8ea;
+}
+
+.exg-light .exg-input:focus {
+  border-color: #7eaddf;
+  box-shadow: 0 0 0 3px rgba(63, 156, 255, 0.18);
+}
+
 
 /* ==========================================================================
    18. Motion & responsive
@@ -985,27 +1275,60 @@
   .exg-btn,
   .exg-chev,
   .exg-cell,
-  .exg-toast {
+  .exg-toast,
+  .exg-modal,
+  .exg-modal-overlay {
+    animation: none;
     transition: none;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 980px) {
+  .exg-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 700px) {
   .exg-title {
     font-size: 20px;
   }
 
   .exg-wrap {
-    padding: 16px 12px 110px;
+    padding: 16px 12px 28px;
   }
 
-  .exg-footer {
-    padding: 12px 14px 16px;
+  .exg-controls {
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .exg-grand span {
-    display: block;
-    margin-left: 0 !important;
-    margin-top: 2px;
+  .exg-controls .exg-select,
+  .exg-controls .exg-btn {
+    flex: 1 1 auto;
+  }
+
+  .exg-modal {
+    padding: 18px 16px 16px;
+    border-radius: 16px;
+    gap: 14px;
+  }
+
+  .exg-modal-title {
+    font-size: 13.5px;
+  }
+
+  .exg-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .exg-modal-actions .exg-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .exg-scroller {
+    max-height: calc(100vh - 220px);
   }
 }
