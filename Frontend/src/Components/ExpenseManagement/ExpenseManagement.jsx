@@ -1,17 +1,20 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   FaWallet,
-  FaSave,
   FaChevronDown,
   FaChevronRight,
   FaMinus,
   FaSun,
   FaMoon,
+  FaCalendarAlt,
+  FaTimes,
+  FaExclamationTriangle,
+  FaLock,
 } from 'react-icons/fa';
 import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
 import LoginSignup from '../LoginSignup/LoginSignup';
-import './ExpenseManagement.css';
+import './ExpenseManagement2.css';
 
 /* ============================================================================
    Endpoints
@@ -45,14 +48,6 @@ const STATIONS = ['Indore', 'Raipur'];
 
 /* ============================================================================
    USER → BRANCH MAP   (LEGACY FALLBACK ONLY)
-   ---------------------------------------------------------------------------
-   The real source of truth is now `currentUser.branch`, which the backend
-   sends from the `users.branch` column:
-       Admin    -> 'All'
-       Employee -> 'Indore' | 'Raipur'
-   This map is only consulted when a user object has NO `.branch` field —
-   i.e. an old cookie stored before the column existed. You can safely
-   delete it once all sessions have refreshed.
    ========================================================================== */
 const USER_BRANCH_MAP = {
   'nmpt01': 'Indore',
@@ -88,21 +83,16 @@ function isAdminUser(user) {
 
 /* ---------------------------------------------------------------------------
    Resolve the user's branch.
-     1. Prefer `user.branch` — the value that came from the DB via the
-        /users/authenticate response.
-     2. Fall back to the legacy hardcoded map for old sessions.
    ------------------------------------------------------------------------- */
 function branchOf(user) {
   if (!user) return null;
 
-  // 1) DB-provided branch (current path).
   if (user.branch) return String(user.branch).trim();
 
-  // 2) Legacy fallback.
   const keys = [
     user.name,
     user.mobile,
-    user.mobile_number,   // <- was missing previously
+    user.mobile_number,
     user.identifier,
     user.username,
   ]
@@ -113,8 +103,28 @@ function branchOf(user) {
   return null;
 }
 
+/* ---------------------------------------------------------------------------
+   Month-total sentinel helpers.
+   A whole-month total of N is persisted as the decimal `N.01` in the
+   `others` column on the 1st of that month. Detection = integer part + 0.01.
+   ------------------------------------------------------------------------- */
+function encodeMonthTotal(total) {
+  return Number((Math.round(total) + 0.01).toFixed(2));
+}
+
+function decodeMonthTotal(rawValue) {
+  if (rawValue === null || rawValue === undefined) return null;
+  const v = parseFloat(rawValue);
+  if (!isFinite(v) || v <= 0) return null;
+  const whole = Math.floor(v);
+  const frac = v - whole;
+  if (whole <= 0) return null;
+  if (Math.abs(frac - 0.01) > 1e-6) return null;
+  return whole;
+}
+
 /* ============================================================================
-   Outer shell — handles auth. Shows LoginSignup when there is no session.
+   Outer shell — handles auth.
    ========================================================================== */
 export default function ExpenseManagement({ currentUser: propUser, isLightMode = true }) {
   const [internalUser, setInternalUser] = useState(null);
@@ -174,11 +184,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
 
   const [amounts, setAmounts] = useState({});
   const [dirtyCells, setDirtyCells] = useState(() => new Set());
+  const [monthMode, setMonthMode] = useState({});
   const [collapsed, setCollapsed] = useState({});
 
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
+  /* ---- Toast (reserved for errors + explicit month-total confirmation) ---- */
   const [toastMsg, setToastMsg] = useState('');
   const [toastShown, setToastShown] = useState(false);
   const toastTimerRef = useRef(null);
@@ -189,6 +200,20 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     toastTimerRef.current = setTimeout(() => setToastShown(false), 2600);
   }
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
+  /* ---- Month-total modal ---- */
+  const [modal, setModal] = useState({ open: false, station: '', amount: '' });
+  const [modalError, setModalError] = useState('');
+  const [savingMonth, setSavingMonth] = useState(false);
+
+  /* ---- Auto-save plumbing ------------------------------------------------ */
+  const amountsRef = useRef(amounts);
+  const dirtyRef = useRef(dirtyCells);
+  const savingRef = useRef(false);
+  const saveTimerRef = useRef(null);
+
+  useEffect(() => { amountsRef.current = amounts; }, [amounts]);
+  useEffect(() => { dirtyRef.current = dirtyCells; }, [dirtyCells]);
 
   const yearOptions = useMemo(() => {
     const base = today.getFullYear();
@@ -214,6 +239,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     return out;
   }, [curYear, curMonth, todayISO]);
 
+  const firstISO = useMemo(
+    () => `${curYear}-${pad(curMonth + 1)}-01`,
+    [curYear, curMonth]
+  );
+
+  /* ---- Value getters ---------------------------------------------------- */
   function valFor(station, catId, dISO, past) {
     const k = `${station}__${catId}__${dISO}`;
     if (k in amounts) return amounts[k];
@@ -223,6 +254,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     const n = parseFloat(valFor(station, catId, dISO, past));
     return isNaN(n) ? 0 : n;
   }
+
   function handleCellChange(station, catId, dISO, value) {
     const k = `${station}__${catId}__${dISO}`;
     setAmounts((prev) => ({ ...prev, [k]: value }));
@@ -234,12 +266,105 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
   function handleCellFocus(e) { e.target.select(); }
 
+  /* ---- Silent auto-save -------------------------------------------------- */
+  const flushSave = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    let guard = 0;
+    while (savingRef.current && guard++ < 120) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    const dirty = new Set(dirtyRef.current);
+    if (dirty.size === 0) return;
+
+    const snapshot = {};
+    const pairs = new Set();
+    dirty.forEach((k) => {
+      const parts = k.split('__');
+      if (parts.length !== 3) return;
+      snapshot[k] = amountsRef.current[k] ?? '';
+      pairs.add(`${parts[0]}__${parts[2]}`);
+    });
+    if (pairs.size === 0) { setDirtyCells(new Set()); return; }
+
+    const byStation = {};
+    pairs.forEach((pair) => {
+      const [st, date] = pair.split('__');
+      const past = date < todayISO;
+      const entry = { expense_date: date };
+      CATEGORIES.forEach((cat) => {
+        const ck = `${st}__${cat.id}__${date}`;
+        const raw = ck in amountsRef.current
+          ? amountsRef.current[ck]
+          : (past ? '0' : '');
+        const n = parseFloat(raw);
+        entry[cat.id] = isNaN(n) ? 0 : n;
+      });
+      (byStation[st] = byStation[st] || []).push(entry);
+    });
+
+    savingRef.current = true;
+    try {
+      await Promise.all(
+        Object.entries(byStation).map(async ([st, entries]) => {
+          const res = await fetch(SAVE_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ station: st, entries }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status} (${st})`);
+        })
+      );
+
+      setDirtyCells((prev) => {
+        const next = new Set(prev);
+        Object.entries(snapshot).forEach(([k, v]) => {
+          if ((amountsRef.current[k] ?? '') === v) next.delete(k);
+        });
+        return next;
+      });
+    } catch (err) {
+      toast('Auto-save failed, will retry');
+    } finally {
+      savingRef.current = false;
+      if (dirtyRef.current.size > 0 && !saveTimerRef.current) {
+        saveTimerRef.current = setTimeout(() => {
+          saveTimerRef.current = null;
+          flushSave();
+        }, 2500);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayISO]);
+
   useEffect(() => {
-    if (stationsToShow.length === 0) return;
+    if (dirtyCells.size === 0) return undefined;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      flushSave();
+    }, 900);
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [dirtyCells, flushSave]);
+
+  /* ---- Load month data --------------------------------------------------- */
+  useEffect(() => {
+    if (stationsToShow.length === 0) return undefined;
     let cancelled = false;
     (async () => {
       setLoading(true);
       const next = {};
+      const nextMonthMode = {};
       try {
         for (const st of stationsToShow) {
           const url =
@@ -249,18 +374,32 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           if (!res.ok) throw new Error(`HTTP ${res.status} for ${st}`);
           const data = await res.json();
           if (cancelled) return;
-          (data.entries || []).forEach((entry) => {
+
+          const entries = data.entries || [];
+
+          const first = entries.find(
+            (e) => isoDateOnly(e.expense_date) === firstISO
+          );
+          if (first) {
+            const decoded = decodeMonthTotal(first.others);
+            if (decoded != null) nextMonthMode[st] = decoded;
+          }
+
+          entries.forEach((entry) => {
             const dISO = isoDateOnly(entry.expense_date);
             if (!dISO) return;
             CATEGORIES.forEach((cat) => {
               const raw = entry[cat.id];
-              const v = raw === null || raw === undefined ? '' : String(parseFloat(raw));
+              const v = raw === null || raw === undefined
+                ? ''
+                : String(parseFloat(raw));
               next[`${st}__${cat.id}__${dISO}`] = v;
             });
           });
         }
         if (!cancelled) {
           setAmounts(next);
+          setMonthMode(nextMonthMode);
           setDirtyCells(new Set());
         }
       } catch (e) {
@@ -271,8 +410,9 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [curYear, curMonth, isAdmin, myBranch]);
+  }, [curYear, curMonth, isAdmin, myBranch, firstISO]);
 
+  /* ---- Totals ------------------------------------------------------------ */
   const totals = useMemo(() => {
     const dateGrand = {};
     days.forEach((d) => (dateGrand[d.iso] = 0));
@@ -288,6 +428,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       catMonthTotals[cat.id] = 0;
 
       stationsToShow.forEach((st) => {
+        const mm = monthMode[st];
+        // Locked branch: contributes nothing to any per-day cell, any
+        // category roll-up, or any station row. Its whole-month value is
+        // added once to the grand total below, so it only appears in the
+        // TOTAL row's month-total cell.
+        if (mm != null) {
+          stationMonthTotals[`${st}__${cat.id}`] = 0;
+          return;
+        }
         let stTotal = 0;
         days.forEach((day) => {
           const v = numFor(st, cat.id, day.iso, day.past);
@@ -301,9 +450,16 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       });
     });
 
-    return { dateGrand, catDayTotals, catMonthTotals, stationMonthTotals, grandMonth };
-  }, [amounts, days, stationsToShow]);
+    // Locked branches feed only the grand total.
+    stationsToShow.forEach((st) => {
+      const mm = monthMode[st];
+      if (mm != null) grandMonth += mm;
+    });
 
+    return { dateGrand, catDayTotals, catMonthTotals, stationMonthTotals, grandMonth };
+  }, [amounts, monthMode, days, stationsToShow]);
+
+  /* ---- Collapse helpers -------------------------------------------------- */
   const anyOpen = CATEGORIES.some((c) => !collapsed[c.id]);
   function toggleCat(id) {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -314,58 +470,139 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     setCollapsed(next);
   }
 
-  async function handleSave() {
-    if (dirtyCells.size === 0) {
-      toast('No changes to save');
+  /* ---- Month / year change (flush pending edits first) ------------------- */
+  async function handleMonthChange(m) {
+    await flushSave();
+    setCurMonth(m);
+  }
+  async function handleYearChange(y) {
+    await flushSave();
+    setCurYear(y);
+  }
+
+  /* ---- Month-total modal ------------------------------------------------- */
+  function openMonthModal() {
+    if (stationsToShow.length === 0) return;
+    const def =
+      stationsToShow.find((s) => monthMode[s] == null) || stationsToShow[0];
+    setModal({
+      open: true,
+      station: def,
+      amount: monthMode[def] != null ? String(monthMode[def]) : '',
+    });
+    setModalError('');
+  }
+
+  function closeMonthModal() {
+    if (savingMonth) return;
+    setModal({ open: false, station: '', amount: '' });
+    setModalError('');
+  }
+
+  function handleModalStationChange(st) {
+    setModal((m) => ({
+      ...m,
+      station: st,
+      amount: monthMode[st] != null ? String(monthMode[st]) : '',
+    }));
+    setModalError('');
+  }
+
+  useEffect(() => {
+    if (!modal.open) return undefined;
+    function onKey(e) {
+      if (e.key === 'Escape' && !savingMonth) closeMonthModal();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal.open, savingMonth]);
+
+  async function handleMonthTotalConfirm() {
+    const st = modal.station;
+    if (!st) return;
+
+    const raw = modal.amount.trim();
+    const amt = Number(raw);
+    if (!raw || !isFinite(amt) || amt <= 0 || Math.abs(amt - Math.round(amt)) > 1e-9) {
+      setModalError('Please enter a whole number greater than zero.');
       return;
     }
+    const whole = Math.round(amt);
 
-    const pairs = new Set();
-    dirtyCells.forEach((key) => {
-      const parts = key.split('__');
-      if (parts.length !== 3) return;
-      const [st, , date] = parts;
-      pairs.add(`${st}__${date}`);
-    });
-
-    const byStation = {};
-    pairs.forEach((pair) => {
-      const [st, date] = pair.split('__');
-      const past = date < todayISO;
-      const entry = { expense_date: date };
-      CATEGORIES.forEach((cat) => {
-        entry[cat.id] = numFor(st, cat.id, date, past);
-      });
-      if (!byStation[st]) byStation[st] = [];
-      byStation[st].push(entry);
-    });
-
-    setSaving(true);
+    setSavingMonth(true);
+    setModalError('');
     try {
-      const results = await Promise.all(
-        Object.entries(byStation).map(async ([st, entries]) => {
-          const res = await fetch(SAVE_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ station: st, entries }),
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status} (${st})`);
-          return res.json();
-        })
-      );
-      setDirtyCells(new Set());
-      const count = results.reduce((n, r) => n + (r.saved_count || 0), 0);
-      toast(`Saved ${count} ${count === 1 ? 'entry' : 'entries'} ✓`);
+      let guard = 0;
+      while (savingRef.current && guard++ < 120) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+
+      setDirtyCells((prev) => {
+        const next = new Set();
+        prev.forEach((k) => { if (!k.startsWith(`${st}__`)) next.add(k); });
+        return next;
+      });
+
+      const entries = days.map((day) => {
+        const e = { expense_date: day.iso };
+        CATEGORIES.forEach((cat) => { e[cat.id] = 0; });
+        if (day.d === 1) e.others = encodeMonthTotal(whole);
+        return e;
+      });
+
+      const res = await fetch(SAVE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station: st, entries }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      setAmounts((prev) => {
+        const next = {};
+        Object.keys(prev).forEach((k) => {
+          if (!k.startsWith(`${st}__`)) next[k] = prev[k];
+        });
+        next[`${st}__others__${days[0].iso}`] = String(encodeMonthTotal(whole));
+        return next;
+      });
+      setMonthMode((prev) => ({ ...prev, [st]: whole }));
+
+      setModal({ open: false, station: '', amount: '' });
+      toast(`Month total for ${st} saved and locked`);
     } catch (err) {
-      toast(`Save failed: ${err.message}`);
+      setModalError(`Save failed: ${err.message}`);
     } finally {
-      setSaving(false);
+      setSavingMonth(false);
     }
   }
 
-  function renderInputCell(station, catId, day) {
-    const key = `${station}__${catId}__${day.iso}`;
-    const rawVal = valFor(station, catId, day.iso, day.past);
+  /* ---- Cell rendering ---------------------------------------------------- */
+  function renderCell(st, cat, day) {
+    const mm = monthMode[st];
+
+    // Locked branch. Every cell is read-only; we deliberately do not surface
+    // the stored sentinel value in the grid.
+    if (mm != null) {
+      return (
+        <td
+          key={day.iso}
+          className={`exg-day${day.weekend ? ' exg-weekend' : ''}`}
+        >
+          <div className="exg-cell exg-cell-ro exg-cell-nil">
+            <span className="exg-nil">—</span>
+          </div>
+        </td>
+      );
+    }
+
+    const key = `${st}__${cat.id}__${day.iso}`;
+    const rawVal = valFor(st, cat.id, day.iso, day.past);
     const num = parseFloat(rawVal);
     const isNonZero = rawVal !== '' && !isNaN(num) && num !== 0;
     const isDirty = dirtyCells.has(key);
@@ -382,13 +619,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           className={cls}
           inputMode="decimal"
           value={rawVal}
-          onChange={(e) => handleCellChange(station, catId, day.iso, e.target.value)}
+          onChange={(e) => handleCellChange(st, cat.id, day.iso, e.target.value)}
           onFocus={handleCellFocus}
+          onBlur={() => { if (dirtyRef.current.size > 0) flushSave(); }}
         />
       </td>
     );
   }
 
+  /* ---- Branch-not-configured guard --------------------------------------- */
   if (!isAdmin && !myBranch) {
     return (
       <div className={`exg-wrap ${themeClass}`}>
@@ -411,6 +650,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
+  /* ---- Main render ------------------------------------------------------- */
   return (
     <div className={`exg-wrap ${themeClass}`}>
       <div className="exg-top">
@@ -420,13 +660,45 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
             <h1 className="exg-title">EXPENSES</h1>
             <div className="exg-sub">
               {isAdmin
-                ? 'All branches — daily costs by category'
-                : `${myBranch} branch — daily costs by category`}
+                ? 'All branches. Daily costs by category.'
+                : `${myBranch} branch. Daily costs by category.`}
             </div>
           </div>
         </div>
 
         <div className="exg-controls">
+          <select
+            className="exg-select"
+            aria-label="Month"
+            value={curMonth}
+            onChange={(e) => handleMonthChange(Number(e.target.value))}
+          >
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+
+          <select
+            className="exg-select"
+            aria-label="Year"
+            value={curYear}
+            onChange={(e) => handleYearChange(Number(e.target.value))}
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="exg-btn"
+            onClick={openMonthModal}
+            title="Enter a whole-month total for a branch"
+          >
+            <FaCalendarAlt />
+            <span>Set month total</span>
+          </button>
+
           <button
             type="button"
             className="exg-btn exg-theme-toggle"
@@ -436,33 +708,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
             {lightMode ? <FaMoon /> : <FaSun />}
             <span>{lightMode ? 'Dark' : 'Light'}</span>
           </button>
-          <select
-            className="exg-select"
-            aria-label="Month"
-            value={curMonth}
-            onChange={(e) => setCurMonth(Number(e.target.value))}
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i}>{m}</option>
-            ))}
-          </select>
-          <select
-            className="exg-select"
-            aria-label="Year"
-            value={curYear}
-            onChange={(e) => setCurYear(Number(e.target.value))}
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
 
           {isAdmin && (
             <button
               type="button"
               className="exg-btn"
               onClick={handleCollapseAll}
-              title="Collapse / expand all categories"
+              title="Collapse or expand all categories"
             >
               <FaMinus />
               <span>{anyOpen ? 'Collapse all' : 'Expand all'}</span>
@@ -509,7 +761,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                   <td key={day.iso} className={`exg-day${day.weekend ? ' exg-weekend' : ''}`}>
                     <div className="exg-tval">
                       {totals.dateGrand[day.iso]
-                        ? totals.dateGrand[day.iso].toLocaleString('en-IN')
+                        ? Math.round(totals.dateGrand[day.iso]).toLocaleString('en-IN')
                         : '0'}
                     </div>
                   </td>
@@ -530,7 +782,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             <span
                               className="exg-chev"
                               onClick={() => toggleCat(cat.id)}
-                              title="Expand / collapse"
+                              title="Expand or collapse"
                             >
                               {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
                             </span>
@@ -543,9 +795,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             key={day.iso}
                             className={`exg-day${day.weekend ? ' exg-weekend' : ''}`}
                           >
-                            <div className={`exg-cval ${totals.catDayTotals[cat.id][day.iso] ? 'exg-cval-nonzero' : 'exg-cval-zero'}`}>
+                            <div
+                              className={`exg-cval ${
+                                totals.catDayTotals[cat.id][day.iso]
+                                  ? 'exg-cval-nonzero'
+                                  : 'exg-cval-zero'
+                              }`}
+                            >
                               {totals.catDayTotals[cat.id][day.iso]
-                                ? totals.catDayTotals[cat.id][day.iso].toLocaleString('en-IN')
+                                ? Math.round(totals.catDayTotals[cat.id][day.iso]).toLocaleString('en-IN')
                                 : '0'}
                             </div>
                           </td>
@@ -564,9 +822,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             <div className="exg-namecell exg-namecell-child">
                               <span className="exg-bar" style={{ background: cat.color }} />
                               <span>{st}</span>
+                              {monthMode[st] != null && (
+                                <FaLock
+                                  className="exg-rowlock"
+                                  title="This branch uses a whole-month total"
+                                />
+                              )}
                             </div>
                           </td>
-                          {days.map((day) => renderInputCell(st, cat.id, day))}
+                          {days.map((day) => renderCell(st, cat, day))}
                           <td className="exg-mtot exg-stick-r">
                             <div className="exg-mtot-val">
                               {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
@@ -585,9 +849,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                       <div className="exg-namecell">
                         <span className="exg-dot" style={{ background: cat.color }} />
                         <span>{cat.name}</span>
+                        {monthMode[st] != null && (
+                          <FaLock
+                            className="exg-rowlock"
+                            title="This branch uses a whole-month total"
+                          />
+                        )}
                       </div>
                     </td>
-                    {days.map((day) => renderInputCell(st, cat.id, day))}
+                    {days.map((day) => renderCell(st, cat, day))}
                     <td className="exg-mtot exg-stick-r">
                       <div className="exg-mtot-val">
                         {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
@@ -601,28 +871,108 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
         </div>
       </div>
 
-      <div className="exg-footer">
-        <div className="exg-grand">
-          Month total<b>{inr(totals.grandMonth)}</b>
-          {loading && (
-            <span style={{ marginLeft: 12, color: 'var(--muted)' }}>· loading…</span>
-          )}
-          {dirtyCells.size > 0 && (
-            <span style={{ marginLeft: 12, color: 'var(--amber)' }}>
-              · {dirtyCells.size} unsaved {dirtyCells.size === 1 ? 'cell' : 'cells'}
-            </span>
-          )}
+      {/* -------- Month-total modal -------- */}
+      {modal.open && (
+        <div className="exg-modal-overlay" onClick={closeMonthModal}>
+          <div
+            className="exg-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exg-modal-head">
+              <div className="exg-modal-title">
+                <FaCalendarAlt />
+                <span>Whole-month total for {MONTHS[curMonth]} {curYear}</span>
+              </div>
+              <button
+                type="button"
+                className="exg-modal-x"
+                onClick={closeMonthModal}
+                aria-label="Close"
+                disabled={savingMonth}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            {isAdmin ? (
+              <label className="exg-field">
+                <span className="exg-field-label">Branch</span>
+                <select
+                  className="exg-select exg-select-block"
+                  value={modal.station}
+                  onChange={(e) => handleModalStationChange(e.target.value)}
+                  disabled={savingMonth}
+                >
+                  {STATIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}{monthMode[st] != null ? ` (locked at ${inr(monthMode[st])})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div className="exg-field-static">
+                Branch: <b>{modal.station}</b>
+              </div>
+            )}
+
+            <div className="exg-warn">
+              <FaExclamationTriangle className="exg-warn-icon" />
+              <div>
+                <b>This will erase all daily entries</b> for{' '}
+                <b>{modal.station}</b> in{' '}
+                <b>{MONTHS[curMonth]} {curYear}</b> and lock the grid for that
+                branch. After saving, daily cells can no longer be edited; the
+                whole-month total becomes the only record for this branch and
+                month. This cannot be undone.
+              </div>
+            </div>
+
+            <label className="exg-field">
+              <span className="exg-field-label">Whole-month total (₹)</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                step="1"
+                min="1"
+                className="exg-input"
+                placeholder="e.g. 1400"
+                value={modal.amount}
+                onChange={(e) => {
+                  setModal((m) => ({ ...m, amount: e.target.value }));
+                  setModalError('');
+                }}
+                disabled={savingMonth}
+                autoFocus
+              />
+            </label>
+
+            {modalError && <div className="exg-modal-error">{modalError}</div>}
+
+            <div className="exg-modal-actions">
+              <button
+                type="button"
+                className="exg-btn"
+                onClick={closeMonthModal}
+                disabled={savingMonth}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="exg-btn exg-btn-amber"
+                onClick={handleMonthTotalConfirm}
+                disabled={savingMonth}
+              >
+                <FaLock />
+                <span>{savingMonth ? 'Saving…' : 'Confirm and save'}</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          className="exg-btn exg-btn-amber exg-btn-save"
-          onClick={handleSave}
-          disabled={saving || dirtyCells.size === 0}
-        >
-          <FaSave />
-          <span>{saving ? 'Saving…' : 'Submit'}</span>
-        </button>
-      </div>
+      )}
 
       <div className={`exg-toast${toastShown ? ' exg-toast-show' : ''}`}>{toastMsg}</div>
     </div>
