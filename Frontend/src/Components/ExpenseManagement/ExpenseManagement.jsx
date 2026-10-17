@@ -14,7 +14,7 @@ import {
 import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
 import LoginSignup from '../LoginSignup/LoginSignup';
-import './ExpenseManagement2.css';
+import './ExpenseManagement.css';
 
 /* ============================================================================
    Endpoints
