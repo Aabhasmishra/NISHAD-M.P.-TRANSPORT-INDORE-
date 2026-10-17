@@ -126,9 +126,9 @@
 .fr-table-container {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 /* Nicer scrollbars (Chromium/Safari/Edge) */
