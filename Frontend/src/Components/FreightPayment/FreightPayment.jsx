@@ -8,6 +8,30 @@ import { FiChevronUp, FiChevronDown } from 'react-icons/fi';
 // Normalize for case/whitespace-safe matching.
 const normalizeTruckNo = (t) => (t || '').toString().trim().toUpperCase();
 
+/**
+ * Convert an ISO timestamp (e.g. "2026-10-14T18:30:00.000Z") OR a
+ * "YYYY-MM-DD" string into the "YYYY-MM-DD" string that <input type="date">
+ * expects, using the USER'S LOCAL timezone.
+ *
+ * Why this is needed:
+ *   The backend stores IST-midnight dates as UTC. So "15-10-2026 00:00 IST"
+ *   is returned as "2026-10-14T18:30:00.000Z". Splitting the ISO string on
+ *   'T' returns "2026-10-14" — one day off. Parsing with `new Date(...)`
+ *   and reading LOCAL date parts gives the correct "2026-10-15".
+ */
+const toDateInputValue = (val) => {
+  if (val === null || val === undefined || val === '') return '';
+  const str = String(val);
+  // Already a plain calendar date — pass through untouched.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const buildRowFromChallan = (challanNo, map) => {
   const data = map[challanNo];
   return {
@@ -18,9 +42,7 @@ const buildRowFromChallan = (challanNo, map) => {
     total_freight: data?.total_freight || '',
     advance_deduction: data?.advance_deduction || '',
     freight_raipur: data?.freight_raipur || '',
-    transaction_date: data?.transaction_date
-      ? String(data.transaction_date).split('T')[0]
-      : '',
+    transaction_date: toDateInputValue(data?.transaction_date),
     transaction_id: data?.transaction_id || '',
     to_pay: data?.to_pay || '',
     paid: data?.paid || '',
@@ -70,8 +92,18 @@ const FreightPayment = ({ isLightMode, currentUser }) => {
   const inputVal = (val) => cleanNum(val) ?? '';
   const displayVal = (val) => cleanNum(val) ?? '-';
 
+  /**
+   * Format for display in the Excel export.
+   * Handles BOTH:
+   *   - "YYYY-MM-DD"  → "DD-MM-YYYY"  (without touching Date → no TZ drift)
+   *   - ISO timestamp → converted to local DD-MM-YYYY
+   */
   const formatDateForDisplay = (dateStr) => {
     if (!dateStr) return '-';
+    const isoMatch = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
+    }
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     const day = String(d.getDate()).padStart(2, '0');
