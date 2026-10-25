@@ -6,21 +6,20 @@ import {
   FaMinus,
   FaSun,
   FaMoon,
-  FaCalendarAlt,
-  FaTimes,
-  FaExclamationTriangle,
   FaLock,
 } from 'react-icons/fa';
 import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
 import LoginSignup from '../LoginSignup/LoginSignup';
 import './ExpenseManagement.css';
+// TODO: set the correct import path for your PopupAlert component
+import PopupAlert from '../PopupAlert/PopupAlert';
 
 /* ============================================================================
    Endpoints
    ========================================================================== */
-const LOAD_ENDPOINT = `${BASE_URL}/expenses`;   // GET  ?station=..&year=..&month=..
-const SAVE_ENDPOINT = `${BASE_URL}/expenses`;   // POST { station, entries:[...] }
+const LOAD_ENDPOINT = `${BASE_URL}/expenses`;
+const SAVE_ENDPOINT = `${BASE_URL}/expenses`;
 
 /* ============================================================================
    Fixed categories — order matches the backend table columns in AAA.js
@@ -46,9 +45,7 @@ const CATEGORIES = [
 
 const STATIONS = ['Indore', 'Raipur'];
 
-/* ============================================================================
-   USER → BRANCH MAP   (LEGACY FALLBACK ONLY)
-   ========================================================================== */
+/* ---- Legacy fallback map ---- */
 const USER_BRANCH_MAP = {
   'nmpt01': 'Indore',
   'nmpt02': 'Raipur',
@@ -58,15 +55,9 @@ const USER_BRANCH_MAP = {
 function toISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
-function pad(n) {
-  return String(n).padStart(2, '0');
-}
-function daysInMonth(y, m) {
-  return new Date(y, m + 1, 0).getDate();
-}
-function inr(n) {
-  return '₹' + Math.round(n).toLocaleString('en-IN');
-}
+function pad(n) { return String(n).padStart(2, '0'); }
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function inr(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
 
 function isoDateOnly(v) {
   if (v == null) return '';
@@ -81,37 +72,22 @@ function isAdminUser(user) {
   return String(user?.type || '').toLowerCase() === 'admin';
 }
 
-/* ---------------------------------------------------------------------------
-   Resolve the user's branch.
-   ------------------------------------------------------------------------- */
 function branchOf(user) {
   if (!user) return null;
-
   if (user.branch) return String(user.branch).trim();
-
-  const keys = [
-    user.name,
-    user.mobile,
-    user.mobile_number,
-    user.identifier,
-    user.username,
-  ]
-    .filter(Boolean)
-    .map((s) => String(s).trim());
-
+  const keys = [user.name, user.mobile, user.mobile_number, user.identifier, user.username]
+    .filter(Boolean).map((s) => String(s).trim());
   for (const k of keys) if (USER_BRANCH_MAP[k]) return USER_BRANCH_MAP[k];
   return null;
 }
 
 /* ---------------------------------------------------------------------------
-   Month-total sentinel helpers.
-   A whole-month total of N is persisted as the decimal `N.01` in the
-   `others` column on the 1st of that month. Detection = integer part + 0.01.
+   Per-category month-total sentinel helpers.
+   A locked value N is stored as N.01 in that category's cell on the 1st.
    ------------------------------------------------------------------------- */
 function encodeMonthTotal(total) {
   return Number((Math.round(total) + 0.01).toFixed(2));
 }
-
 function decodeMonthTotal(rawValue) {
   if (rawValue === null || rawValue === undefined) return null;
   const v = parseFloat(rawValue);
@@ -123,8 +99,10 @@ function decodeMonthTotal(rawValue) {
   return whole;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 /* ============================================================================
-   Outer shell — handles auth.
+   Outer shell — auth
    ========================================================================== */
 export default function ExpenseManagement({ currentUser: propUser, isLightMode = true }) {
   const [internalUser, setInternalUser] = useState(null);
@@ -184,12 +162,28 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
 
   const [amounts, setAmounts] = useState({});
   const [dirtyCells, setDirtyCells] = useState(() => new Set());
+  /* monthMode[station][categoryId] = whole-month value when locked */
   const [monthMode, setMonthMode] = useState({});
   const [collapsed, setCollapsed] = useState({});
 
-  const [loading, setLoading] = useState(false);
+  /* ---- Manual-entry column state ---- */
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDraft, setManualDraft] = useState({});      // key: `${st}__${catId}`
+  const [savingManual, setSavingManual] = useState({});    // key: `${st}__${catId}`
+  const manualQueueRef = useRef(Promise.resolve());
 
-  /* ---- Toast (reserved for errors + explicit month-total confirmation) ---- */
+  function withManualLock(fn) {
+    const result = manualQueueRef.current.then(fn, fn);
+    manualQueueRef.current = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  /* ---- Popup ---- */
+  const [popup, setPopup] = useState({ open: false, message: '', type: 'info' });
+  function showPopup(message, type = 'info') { setPopup({ open: true, message, type }); }
+  function closePopup() { setPopup((p) => ({ ...p, open: false })); }
+
+  /* ---- Toast (background errors only) ---- */
   const [toastMsg, setToastMsg] = useState('');
   const [toastShown, setToastShown] = useState(false);
   const toastTimerRef = useRef(null);
@@ -201,12 +195,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
-  /* ---- Month-total modal ---- */
-  const [modal, setModal] = useState({ open: false, station: '', amount: '' });
-  const [modalError, setModalError] = useState('');
-  const [savingMonth, setSavingMonth] = useState(false);
-
-  /* ---- Auto-save plumbing ------------------------------------------------ */
+  /* ---- Auto-save plumbing ---- */
   const amountsRef = useRef(amounts);
   const dirtyRef = useRef(dirtyCells);
   const savingRef = useRef(false);
@@ -244,7 +233,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     [curYear, curMonth]
   );
 
-  /* ---- Value getters ---------------------------------------------------- */
+  /* ---- Value getters ---- */
   function valFor(station, catId, dISO, past) {
     const k = `${station}__${catId}__${dISO}`;
     if (k in amounts) return amounts[k];
@@ -256,6 +245,8 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
 
   function handleCellChange(station, catId, dISO, value) {
+    // Guard: a locked category-branch must never accept daily edits.
+    if (monthMode[station]?.[catId] != null) return;
     const k = `${station}__${catId}__${dISO}`;
     setAmounts((prev) => ({ ...prev, [k]: value }));
     setDirtyCells((prev) => {
@@ -266,18 +257,14 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
   function handleCellFocus(e) { e.target.select(); }
 
-  /* ---- Silent auto-save -------------------------------------------------- */
+  /* ---- Silent auto-save ---- */
   const flushSave = useCallback(async () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-
     let guard = 0;
-    while (savingRef.current && guard++ < 120) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 50));
-    }
+    while (savingRef.current && guard++ < 120) await sleep(50);
 
     const dirty = new Set(dirtyRef.current);
     if (dirty.size === 0) return;
@@ -320,7 +307,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           if (!res.ok) throw new Error(`HTTP ${res.status} (${st})`);
         })
       );
-
       setDirtyCells((prev) => {
         const next = new Set(prev);
         Object.entries(snapshot).forEach(([k, v]) => {
@@ -357,12 +343,11 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     };
   }, [dirtyCells, flushSave]);
 
-  /* ---- Load month data --------------------------------------------------- */
+  /* ---- Load month data ---- */
   useEffect(() => {
     if (stationsToShow.length === 0) return undefined;
     let cancelled = false;
     (async () => {
-      setLoading(true);
       const next = {};
       const nextMonthMode = {};
       try {
@@ -377,12 +362,18 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
 
           const entries = data.entries || [];
 
+          // Detect per-category sentinels on the 1st of the month.
           const first = entries.find(
             (e) => isoDateOnly(e.expense_date) === firstISO
           );
           if (first) {
-            const decoded = decodeMonthTotal(first.others);
-            if (decoded != null) nextMonthMode[st] = decoded;
+            CATEGORIES.forEach((cat) => {
+              const decoded = decodeMonthTotal(first[cat.id]);
+              if (decoded != null) {
+                if (!nextMonthMode[st]) nextMonthMode[st] = {};
+                nextMonthMode[st][cat.id] = decoded;
+              }
+            });
           }
 
           entries.forEach((entry) => {
@@ -401,18 +392,17 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           setAmounts(next);
           setMonthMode(nextMonthMode);
           setDirtyCells(new Set());
+          setManualDraft({});
         }
       } catch (e) {
         if (!cancelled) toast('Failed to load month data');
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curYear, curMonth, isAdmin, myBranch, firstISO]);
 
-  /* ---- Totals ------------------------------------------------------------ */
+  /* ---- Totals ---- */
   const totals = useMemo(() => {
     const dateGrand = {};
     days.forEach((d) => (dateGrand[d.iso] = 0));
@@ -428,13 +418,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       catMonthTotals[cat.id] = 0;
 
       stationsToShow.forEach((st) => {
-        const mm = monthMode[st];
-        // Locked branch: contributes nothing to any per-day cell, any
-        // category roll-up, or any station row. Its whole-month value is
-        // added once to the grand total below, so it only appears in the
-        // TOTAL row's month-total cell.
-        if (mm != null) {
-          stationMonthTotals[`${st}__${cat.id}`] = 0;
+        const locked = monthMode[st]?.[cat.id];
+        if (locked != null) {
+          // Locked category-branch: no daily contribution, but the whole-
+          // month value counts toward both the category roll-up and the
+          // grand total so nothing goes missing.
+          stationMonthTotals[`${st}__${cat.id}`] = locked;
+          catMonthTotals[cat.id] += locked;
           return;
         }
         let stTotal = 0;
@@ -446,149 +436,171 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
         });
         stationMonthTotals[`${st}__${cat.id}`] = stTotal;
         catMonthTotals[cat.id] += stTotal;
-        grandMonth += stTotal;
       });
-    });
 
-    // Locked branches feed only the grand total.
-    stationsToShow.forEach((st) => {
-      const mm = monthMode[st];
-      if (mm != null) grandMonth += mm;
+      grandMonth += catMonthTotals[cat.id];
     });
 
     return { dateGrand, catDayTotals, catMonthTotals, stationMonthTotals, grandMonth };
   }, [amounts, monthMode, days, stationsToShow]);
 
-  /* ---- Collapse helpers -------------------------------------------------- */
+  /* ---- Collapse helpers ---- */
   const anyOpen = CATEGORIES.some((c) => !collapsed[c.id]);
-  function toggleCat(id) {
-    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
+  function toggleCat(id) { setCollapsed((prev) => ({ ...prev, [id]: !prev[id] })); }
   function handleCollapseAll() {
     const next = {};
     CATEGORIES.forEach((c) => (next[c.id] = anyOpen));
     setCollapsed(next);
   }
 
-  /* ---- Month / year change (flush pending edits first) ------------------- */
-  async function handleMonthChange(m) {
-    await flushSave();
-    setCurMonth(m);
-  }
-  async function handleYearChange(y) {
-    await flushSave();
-    setCurYear(y);
-  }
+  /* ---- Month / year change ---- */
+  async function handleMonthChange(m) { await flushSave(); setCurMonth(m); }
+  async function handleYearChange(y) { await flushSave(); setCurYear(y); }
 
-  /* ---- Month-total modal ------------------------------------------------- */
-  function openMonthModal() {
-    if (stationsToShow.length === 0) return;
-    const def =
-      stationsToShow.find((s) => monthMode[s] == null) || stationsToShow[0];
-    setModal({
-      open: true,
-      station: def,
-      amount: monthMode[def] != null ? String(monthMode[def]) : '',
-    });
-    setModalError('');
-  }
-
-  function closeMonthModal() {
-    if (savingMonth) return;
-    setModal({ open: false, station: '', amount: '' });
-    setModalError('');
-  }
-
-  function handleModalStationChange(st) {
-    setModal((m) => ({
-      ...m,
-      station: st,
-      amount: monthMode[st] != null ? String(monthMode[st]) : '',
-    }));
-    setModalError('');
-  }
-
-  useEffect(() => {
-    if (!modal.open) return undefined;
-    function onKey(e) {
-      if (e.key === 'Escape' && !savingMonth) closeMonthModal();
+  /* ---- Manual-entry column toggle ---- */
+  function handleToggleManual() {
+    if (manualOpen) {
+      setManualOpen(false);
+      setManualDraft({});
+      closePopup();
+    } else {
+      setManualOpen(true);
+      // Short, plain explanation. (Point 1)
+      showPopup(
+        'Entering a total here permanently erases and locks this category\'s daily entries.',
+        'info'
+      );
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modal.open, savingMonth]);
+  }
 
-  async function handleMonthTotalConfirm() {
-    const st = modal.station;
-    if (!st) return;
+  /* ---- Commit one manual month total (0 = unlock) ---- */
+  async function commitManual(st, catId) {
+    const k = `${st}__${catId}`;
+    const draft = manualDraft[k];
+    const locked = monthMode[st]?.[catId];
 
-    const raw = modal.amount.trim();
-    const amt = Number(raw);
-    if (!raw || !isFinite(amt) || amt <= 0 || Math.abs(amt - Math.round(amt)) > 1e-9) {
-      setModalError('Please enter a whole number greater than zero.');
+    if (draft === undefined) return;
+
+    const raw = draft.trim();
+    if (raw === '') {
+      setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
       return;
     }
-    const whole = Math.round(amt);
 
-    setSavingMonth(true);
-    setModalError('');
-    try {
-      let guard = 0;
-      while (savingRef.current && guard++ < 120) {
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((r) => setTimeout(r, 50));
-      }
+    const amt = Number(raw);
+    if (!isFinite(amt) || amt < 0 || Math.abs(amt - Math.round(amt)) > 1e-9) {
+      showPopup('Please enter a whole number (0 or more).', 'error');
+      return;
+    }
+
+    const whole = Math.round(amt);
+    const isUnlock = whole === 0;
+
+    // No-op cases
+    if (!isUnlock && locked === whole) {
+      setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
+      return;
+    }
+    if (isUnlock && locked == null) {
+      // Already unlocked, nothing to save.
+      setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
+      return;
+    }
+
+    await withManualLock(async () => {
+      setSavingManual((prev) => ({ ...prev, [k]: true }));
+
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
+      let guard = 0;
+      while (savingRef.current && guard++ < 120) await sleep(50);
 
-      setDirtyCells((prev) => {
-        const next = new Set();
-        prev.forEach((k) => { if (!k.startsWith(`${st}__`)) next.add(k); });
-        return next;
-      });
+      savingRef.current = true;
+      try {
+        const base = amountsRef.current;
+        const day1 = days[0].iso;
+        // Lock → sentinel on day 1; Unlock → 0 on day 1 (removes sentinel).
+        const day1Value = isUnlock ? 0 : encodeMonthTotal(whole);
 
-      const entries = days.map((day) => {
-        const e = { expense_date: day.iso };
-        CATEGORIES.forEach((cat) => { e[cat.id] = 0; });
-        if (day.d === 1) e.others = encodeMonthTotal(whole);
-        return e;
-      });
-
-      const res = await fetch(SAVE_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ station: st, entries }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      setAmounts((prev) => {
-        const next = {};
-        Object.keys(prev).forEach((k) => {
-          if (!k.startsWith(`${st}__`)) next[k] = prev[k];
+        const entries = days.map((day) => {
+          const e = { expense_date: day.iso };
+          CATEGORIES.forEach((cat) => {
+            if (cat.id === catId) {
+              e[cat.id] = day.d === 1 ? day1Value : 0;
+            } else {
+              const ck = `${st}__${cat.id}__${day.iso}`;
+              const rawVal = ck in base ? base[ck] : (day.past ? '0' : '');
+              const n = parseFloat(rawVal);
+              e[cat.id] = isNaN(n) ? 0 : n;
+            }
+          });
+          return e;
         });
-        next[`${st}__others__${days[0].iso}`] = String(encodeMonthTotal(whole));
-        return next;
-      });
-      setMonthMode((prev) => ({ ...prev, [st]: whole }));
 
-      setModal({ open: false, station: '', amount: '' });
-      toast(`Month total for ${st} saved and locked`);
-    } catch (err) {
-      setModalError(`Save failed: ${err.message}`);
-    } finally {
-      setSavingMonth(false);
-    }
+        const res = await fetch(SAVE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ station: st, entries }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Local state: wipe the target category's daily cells.
+        const next = {};
+        Object.keys(base).forEach((k2) => {
+          if (!k2.startsWith(`${st}__${catId}__`)) next[k2] = base[k2];
+        });
+        if (!isUnlock) {
+          // Keep the sentinel so the display stays consistent with backend.
+          next[`${st}__${catId}__${day1}`] = String(day1Value);
+        }
+        // On unlock we leave the cells absent — they render as blank / "0"
+        // for past dates and become editable inputs again.
+        amountsRef.current = next;
+        setAmounts(next);
+
+        setMonthMode((prev) => {
+          const perStation = { ...(prev[st] || {}) };
+          if (isUnlock) delete perStation[catId];
+          else perStation[catId] = whole;
+          const outer = { ...prev };
+          if (Object.keys(perStation).length === 0) delete outer[st];
+          else outer[st] = perStation;
+          return outer;
+        });
+
+        setDirtyCells((prev) => {
+          const nx = new Set();
+          prev.forEach((dk) => {
+            const parts = dk.split('__');
+            if (!(parts[0] === st && parts[1] === catId)) nx.add(dk);
+          });
+          return nx;
+        });
+
+        setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
+        // No success popup — the visible state already shows the change.
+      } catch (err) {
+        showPopup(`Could not save month total: ${err.message}`, 'error');
+      } finally {
+        savingRef.current = false;
+        setSavingManual((prev) => { const n = { ...prev }; delete n[k]; return n; });
+        if (dirtyRef.current.size > 0 && !saveTimerRef.current) {
+          saveTimerRef.current = setTimeout(() => {
+            saveTimerRef.current = null;
+            flushSave();
+          }, 400);
+        }
+      }
+    });
   }
 
-  /* ---- Cell rendering ---------------------------------------------------- */
+  /* ---- Cell rendering ---- */
   function renderCell(st, cat, day) {
-    const mm = monthMode[st];
+    const locked = monthMode[st]?.[cat.id] != null;
 
-    // Locked branch. Every cell is read-only; we deliberately do not surface
-    // the stored sentinel value in the grid.
-    if (mm != null) {
+    if (locked) {
       return (
         <td
           key={day.iso}
@@ -627,7 +639,38 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
-  /* ---- Branch-not-configured guard --------------------------------------- */
+  /* ---- Manual-entry cell ---- */
+  function renderManualInput(st, cat) {
+    const k = `${st}__${cat.id}`;
+    const locked = monthMode[st]?.[cat.id];
+    const draft = manualDraft[k];
+    const value = draft !== undefined ? draft : (locked != null ? String(locked) : '');
+    const saving = !!savingManual[k];
+
+    return (
+      <td key={`manual-${st}-${cat.id}`} className="exg-mtot exg-stick-r">
+        <input
+          // `type="text"` (default) — no native up/down spinners, no key or
+          // wheel incrementing. Point 3 satisfied.
+          className="exg-cell"
+          inputMode="numeric"
+          value={value}
+          disabled={saving}
+          onChange={(e) =>
+            setManualDraft((d) => ({ ...d, [k]: e.target.value }))
+          }
+          onFocus={handleCellFocus}
+          onBlur={() => commitManual(st, cat.id)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        />
+      </td>
+    );
+  }
+
+  const mtotCellClass = `exg-mtot${manualOpen ? '' : ' exg-stick-r'}`;
+  const mtotHeadClass = `exg-colmtot${manualOpen ? '' : ' exg-stick-r'}`;
+
+  /* ---- Branch-not-configured guard ---- */
   if (!isAdmin && !myBranch) {
     return (
       <div className={`exg-wrap ${themeClass}`}>
@@ -650,7 +693,7 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
-  /* ---- Main render ------------------------------------------------------- */
+  /* ---- Main render ---- */
   return (
     <div className={`exg-wrap ${themeClass}`}>
       <div className="exg-top">
@@ -692,11 +735,10 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           <button
             type="button"
             className="exg-btn"
-            onClick={openMonthModal}
-            title="Enter a whole-month total for a branch"
+            onClick={handleToggleManual}
+            title="Enter whole-month totals per category"
           >
-            <FaCalendarAlt />
-            <span>Set month total</span>
+            <span>{manualOpen ? 'Hide manual entry' : 'Set month total'}</span>
           </button>
 
           <button
@@ -744,11 +786,19 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                   </th>
                 ))}
                 <th
-                  className="exg-colmtot exg-stick-r"
+                  className={mtotHeadClass}
                   style={{ textAlign: 'right', paddingRight: 14 }}
                 >
                   MONTH TOTAL
                 </th>
+                {manualOpen && (
+                  <th
+                    className="exg-colmtot exg-stick-r"
+                    style={{ textAlign: 'right', paddingRight: 14 }}
+                  >
+                    MANUAL ENTRY
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -766,9 +816,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                     </div>
                   </td>
                 ))}
-                <td className="exg-mtot exg-stick-r">
+                <td className={mtotCellClass}>
                   <div className="exg-mtot-val">{inr(totals.grandMonth)}</div>
                 </td>
+                {manualOpen && (
+                  // Blank — no dash (Point 2)
+                  <td className="exg-mtot exg-stick-r" />
+                )}
               </tr>
 
               {CATEGORIES.map((cat) => {
@@ -808,9 +862,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             </div>
                           </td>
                         ))}
-                        <td className="exg-mtot exg-stick-r">
+                        <td className={mtotCellClass}>
                           <div className="exg-mtot-val">{inr(totals.catMonthTotals[cat.id])}</div>
                         </td>
+                        {manualOpen && (
+                          // Blank — no dash (Point 2)
+                          <td className="exg-mtot exg-stick-r" />
+                        )}
                       </tr>
 
                       {!isCollapsed && stationsToShow.map((st, si) => (
@@ -822,20 +880,21 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             <div className="exg-namecell exg-namecell-child">
                               <span className="exg-bar" style={{ background: cat.color }} />
                               <span>{st}</span>
-                              {monthMode[st] != null && (
+                              {monthMode[st]?.[cat.id] != null && (
                                 <FaLock
                                   className="exg-rowlock"
-                                  title="This branch uses a whole-month total"
+                                  title={`${cat.name} is stored as a whole-month total for ${st}`}
                                 />
                               )}
                             </div>
                           </td>
                           {days.map((day) => renderCell(st, cat, day))}
-                          <td className="exg-mtot exg-stick-r">
+                          <td className={mtotCellClass}>
                             <div className="exg-mtot-val">
                               {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
                             </div>
                           </td>
+                          {manualOpen && renderManualInput(st, cat)}
                         </tr>
                       ))}
                     </React.Fragment>
@@ -849,20 +908,21 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                       <div className="exg-namecell">
                         <span className="exg-dot" style={{ background: cat.color }} />
                         <span>{cat.name}</span>
-                        {monthMode[st] != null && (
+                        {monthMode[st]?.[cat.id] != null && (
                           <FaLock
                             className="exg-rowlock"
-                            title="This branch uses a whole-month total"
+                            title={`${cat.name} is stored as a whole-month total`}
                           />
                         )}
                       </div>
                     </td>
                     {days.map((day) => renderCell(st, cat, day))}
-                    <td className="exg-mtot exg-stick-r">
+                    <td className={mtotCellClass}>
                       <div className="exg-mtot-val">
                         {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
                       </div>
                     </td>
+                    {manualOpen && renderManualInput(st, cat)}
                   </tr>
                 );
               })}
@@ -871,107 +931,14 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
         </div>
       </div>
 
-      {/* -------- Month-total modal -------- */}
-      {modal.open && (
-        <div className="exg-modal-overlay" onClick={closeMonthModal}>
-          <div
-            className="exg-modal"
-            role="dialog"
-            aria-modal="true"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="exg-modal-head">
-              <div className="exg-modal-title">
-                <FaCalendarAlt />
-                <span>Whole-month total for {MONTHS[curMonth]} {curYear}</span>
-              </div>
-              <button
-                type="button"
-                className="exg-modal-x"
-                onClick={closeMonthModal}
-                aria-label="Close"
-                disabled={savingMonth}
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            {isAdmin ? (
-              <label className="exg-field">
-                <span className="exg-field-label">Branch</span>
-                <select
-                  className="exg-select exg-select-block"
-                  value={modal.station}
-                  onChange={(e) => handleModalStationChange(e.target.value)}
-                  disabled={savingMonth}
-                >
-                  {STATIONS.map((st) => (
-                    <option key={st} value={st}>
-                      {st}{monthMode[st] != null ? ` (locked at ${inr(monthMode[st])})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <div className="exg-field-static">
-                Branch: <b>{modal.station}</b>
-              </div>
-            )}
-
-            <div className="exg-warn">
-              <FaExclamationTriangle className="exg-warn-icon" />
-              <div>
-                <b>This will erase all daily entries</b> for{' '}
-                <b>{modal.station}</b> in{' '}
-                <b>{MONTHS[curMonth]} {curYear}</b> and lock the grid for that
-                branch. After saving, daily cells can no longer be edited; the
-                whole-month total becomes the only record for this branch and
-                month. This cannot be undone.
-              </div>
-            </div>
-
-            <label className="exg-field">
-              <span className="exg-field-label">Whole-month total (₹)</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                step="1"
-                min="1"
-                className="exg-input"
-                placeholder="e.g. 1400"
-                value={modal.amount}
-                onChange={(e) => {
-                  setModal((m) => ({ ...m, amount: e.target.value }));
-                  setModalError('');
-                }}
-                disabled={savingMonth}
-                autoFocus
-              />
-            </label>
-
-            {modalError && <div className="exg-modal-error">{modalError}</div>}
-
-            <div className="exg-modal-actions">
-              <button
-                type="button"
-                className="exg-btn"
-                onClick={closeMonthModal}
-                disabled={savingMonth}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="exg-btn exg-btn-amber"
-                onClick={handleMonthTotalConfirm}
-                disabled={savingMonth}
-              >
-                <FaLock />
-                <span>{savingMonth ? 'Saving…' : 'Confirm and save'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {popup.open && (
+        <PopupAlert
+          message={popup.message}
+          type={popup.type}
+          isLightMode={lightMode}
+          onClose={closePopup}
+          position="top-right"
+        />
       )}
 
       <div className={`exg-toast${toastShown ? ' exg-toast-show' : ''}`}>{toastMsg}</div>
