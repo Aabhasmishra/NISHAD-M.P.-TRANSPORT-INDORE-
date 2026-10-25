@@ -14,12 +14,13 @@
      06. Table header
      07. Columns & sticky edges
      08. Editable cells (incl. locked read-only cells)
+     08b. Manual entry column (per-category month totals)   ← NEW
      09. Total row
      10. Category row
      11. Branch (station) rows
      12. Weekend overlay
      13. Empty state
-     14. Month-total modal
+     14. Month-total modal   (kept for backward compatibility)
      15. Toast
      16. Auth wrapper
      17. Light-mode refinements
@@ -127,6 +128,16 @@
   /* Locked (whole-month) cells */
   --locked-bg: rgba(255, 255, 255, 0.018);
   --locked-text: #7f8a9c;
+
+  /* Manual entry column */
+  --manual-bg: rgba(245, 197, 66, 0.045);
+  --manual-bg-focus: rgba(245, 197, 66, 0.13);
+  --manual-placeholder: #6b7688;
+  --manual-locked-text: #f5c542;
+  --manual-locked-weight: 800;
+  --manual-dash: #6b7688;
+  --manual-btn-active-bg: rgba(245, 197, 66, 0.14);
+  --manual-btn-active-border: rgba(245, 197, 66, 0.55);
 
   /* Modal */
   --modal-bg: #1b2330;
@@ -253,6 +264,16 @@
   /* Locked (whole-month) cells */
   --locked-bg: #eef3fa;
   --locked-text: #8394a9;
+
+  /* Manual entry column */
+  --manual-bg: rgba(255, 244, 216, 0.55);
+  --manual-bg-focus: rgba(255, 234, 175, 0.85);
+  --manual-placeholder: #94a8bf;
+  --manual-locked-text: #a86100;
+  --manual-locked-weight: 800;
+  --manual-dash: #94a8bf;
+  --manual-btn-active-bg: #fff4d8;
+  --manual-btn-active-border: #e9bd55;
 
   /* Modal */
   --modal-bg: #ffffff;
@@ -437,6 +458,19 @@
 }
 
 .exg-theme-toggle:hover {
+  border-color: var(--amber);
+}
+
+/* NEW: active state for the "Set month total" toggle button */
+.exg-btn-active {
+  background: var(--manual-btn-active-bg);
+  border-color: var(--manual-btn-active-border);
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.exg-btn-active:hover {
+  background: var(--manual-btn-active-bg);
   border-color: var(--amber);
 }
 
@@ -705,6 +739,79 @@
 
 
 /* ==========================================================================
+   08b. Manual entry column  (per-category month totals)   — NEW
+   ==========================================================================
+   The manual column reuses .exg-mtot for the <td> chrome so it aligns
+   pixel-perfectly with the Month Total column. Only the input styling and
+   the non-editable dash are new here.
+   ========================================================================== */
+
+/* Subtle amber tint so it reads as the "entry" column, not a display column */
+.exg-mtot .exg-manual-input,
+.exg-mtot .exg-manual-na {
+  background: var(--manual-bg);
+}
+
+/* Input field for each branch × category row */
+.exg-manual-input {
+  width: 100%;
+  height: 46px;
+  background: transparent;
+  border: none;
+  color: var(--txt);
+  text-align: right;
+  padding: 12.5px 12px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: 0.12s;
+}
+
+.exg-manual-input::placeholder {
+  color: var(--manual-placeholder);
+  font-weight: 500;
+}
+
+.exg-manual-input:hover:not(:disabled) {
+  background: var(--cell-hover-bg);
+}
+
+.exg-manual-input:focus {
+  background: var(--manual-bg-focus);
+  box-shadow: var(--cell-focus-shadow);
+}
+
+.exg-manual-input:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/* Hide native number spinners */
+.exg-manual-input::-webkit-outer-spin-button,
+.exg-manual-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.exg-manual-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Non-editable dash shown on TOTAL and category-summary rows */
+.exg-manual-na {
+  padding: 0 12px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--manual-dash);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  user-select: none;
+}
+
+
+/* ==========================================================================
    09. Total row
    ========================================================================== */
 
@@ -847,7 +954,7 @@
   box-shadow: var(--bar-shadow);
 }
 
-/* Small lock next to the branch label when the branch is month-locked */
+/* Small lock next to the branch label when the category is month-locked */
 .exg-rowlock {
   width: 11px;
   height: 11px;
@@ -894,7 +1001,7 @@
 
 
 /* ==========================================================================
-   14. Month-total modal
+   14. Month-total modal   (kept for backward compatibility)
    ========================================================================== */
 
 .exg-modal-overlay {
@@ -1236,6 +1343,14 @@
   border-color: #6fa4dd;
 }
 
+/* NEW: keep the "Set month total" active state visible in light mode */
+.exg-light .exg-controls .exg-btn.exg-btn-active {
+  background: #fff4d8;
+  border-color: #e9bd55;
+  color: #9a6100;
+  font-weight: 700;
+}
+
 /* --- Locked cells --- */
 .exg-light .exg-exp-row .exg-cell-ro {
   background: #f1f5fa;
@@ -1245,6 +1360,16 @@
 .exg-light .exg-cat-row-emp .exg-cell-ro {
   background: #f4f8fd;
   color: #8394a9;
+}
+
+/* NEW: manual column polish in light mode */
+.exg-light .exg-mtot .exg-manual-input,
+.exg-light .exg-mtot .exg-manual-na {
+  background: var(--manual-bg);
+}
+
+.exg-light .exg-exp-row-alt .exg-mtot .exg-manual-input {
+  background: rgba(255, 244, 216, 0.75);
 }
 
 /* --- Modal polish --- */
@@ -1275,6 +1400,7 @@
   .exg-btn,
   .exg-chev,
   .exg-cell,
+  .exg-manual-input,
   .exg-toast,
   .exg-modal,
   .exg-modal-overlay {
