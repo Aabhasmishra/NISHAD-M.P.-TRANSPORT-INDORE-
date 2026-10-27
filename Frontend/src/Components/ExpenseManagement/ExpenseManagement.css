@@ -1,37 +1,3 @@
-/* ==========================================================================
-   Expense Management — spreadsheet grid
-   --------------------------------------------------------------------------
-   Themes are chosen by adding .exg-dark or .exg-light next to .exg-wrap.
-   Every colour in this file resolves from a CSS variable defined once per
-   theme in section 01. Do not use colour literals anywhere else.
-
-   Table of contents
-     01. Theme tokens
-     02. Base wrap + reset
-     03. Header
-     04. Controls & buttons
-     05. Card & scroller
-     06. Table header
-     07. Columns & sticky edges
-     08. Editable cells (incl. locked read-only cells)
-     08b. Manual entry column (per-category month totals)   ← NEW
-     09. Total row
-     10. Category row
-     11. Branch (station) rows
-     12. Weekend overlay
-     13. Empty state
-     14. Month-total modal   (kept for backward compatibility)
-     15. Toast
-     16. Auth wrapper
-     17. Light-mode refinements
-     18. Motion & responsive
-   ========================================================================== */
-
-
-/* ==========================================================================
-   01. Theme tokens
-   ========================================================================== */
-
 /* ---------- Dark theme (default) ---------- */
 .exg-dark {
   /* Page & surfaces */
@@ -1289,6 +1255,21 @@
 .exg-light .exg-table thead .exg-stick-l,
 .exg-light .exg-table thead .exg-stick-r {
   background: #3c70ae;
+}
+
+/* Stacked sticky-right: Month Total sits just left of Manual Entry.
+   Only used when the Manual Entry column is open. */
+.exg-stick-r-2 {
+  position: sticky;
+  right: var(--mtot-w);          /* offset by one manual-column width */
+  z-index: 2;
+  background: var(--panel);
+  border-left: 1px solid var(--border-strong);
+}
+
+.exg-table thead .exg-stick-r-2 {
+  z-index: 5;
+  background: var(--thead-bg);
 }
 
 /* --- Weekend header chip --- */
