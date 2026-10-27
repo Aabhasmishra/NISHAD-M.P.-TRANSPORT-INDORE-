@@ -12,7 +12,6 @@ import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
 import LoginSignup from '../LoginSignup/LoginSignup';
 import './ExpenseManagement.css';
-// TODO: set the correct import path for your PopupAlert component
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 /* ============================================================================
@@ -162,14 +161,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
 
   const [amounts, setAmounts] = useState({});
   const [dirtyCells, setDirtyCells] = useState(() => new Set());
-  /* monthMode[station][categoryId] = whole-month value when locked */
   const [monthMode, setMonthMode] = useState({});
   const [collapsed, setCollapsed] = useState({});
 
   /* ---- Manual-entry column state ---- */
   const [manualOpen, setManualOpen] = useState(false);
-  const [manualDraft, setManualDraft] = useState({});      // key: `${st}__${catId}`
-  const [savingManual, setSavingManual] = useState({});    // key: `${st}__${catId}`
+  const [manualDraft, setManualDraft] = useState({});
+  const [savingManual, setSavingManual] = useState({});
   const manualQueueRef = useRef(Promise.resolve());
 
   function withManualLock(fn) {
@@ -245,7 +243,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
 
   function handleCellChange(station, catId, dISO, value) {
-    // Guard: a locked category-branch must never accept daily edits.
     if (monthMode[station]?.[catId] != null) return;
     const k = `${station}__${catId}__${dISO}`;
     setAmounts((prev) => ({ ...prev, [k]: value }));
@@ -361,8 +358,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           if (cancelled) return;
 
           const entries = data.entries || [];
-
-          // Detect per-category sentinels on the 1st of the month.
           const first = entries.find(
             (e) => isoDateOnly(e.expense_date) === firstISO
           );
@@ -420,9 +415,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       stationsToShow.forEach((st) => {
         const locked = monthMode[st]?.[cat.id];
         if (locked != null) {
-          // Locked category-branch: no daily contribution, but the whole-
-          // month value counts toward both the category roll-up and the
-          // grand total so nothing goes missing.
           stationMonthTotals[`${st}__${cat.id}`] = locked;
           catMonthTotals[cat.id] += locked;
           return;
@@ -465,7 +457,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       closePopup();
     } else {
       setManualOpen(true);
-      // Short, plain explanation. (Point 1)
       showPopup(
         'Entering a total here permanently erases and locks this category\'s daily entries.',
         'info'
@@ -496,13 +487,11 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     const whole = Math.round(amt);
     const isUnlock = whole === 0;
 
-    // No-op cases
     if (!isUnlock && locked === whole) {
       setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
       return;
     }
     if (isUnlock && locked == null) {
-      // Already unlocked, nothing to save.
       setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
       return;
     }
@@ -521,7 +510,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
       try {
         const base = amountsRef.current;
         const day1 = days[0].iso;
-        // Lock → sentinel on day 1; Unlock → 0 on day 1 (removes sentinel).
         const day1Value = isUnlock ? 0 : encodeMonthTotal(whole);
 
         const entries = days.map((day) => {
@@ -546,17 +534,13 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        // Local state: wipe the target category's daily cells.
         const next = {};
         Object.keys(base).forEach((k2) => {
           if (!k2.startsWith(`${st}__${catId}__`)) next[k2] = base[k2];
         });
         if (!isUnlock) {
-          // Keep the sentinel so the display stays consistent with backend.
           next[`${st}__${catId}__${day1}`] = String(day1Value);
         }
-        // On unlock we leave the cells absent — they render as blank / "0"
-        // for past dates and become editable inputs again.
         amountsRef.current = next;
         setAmounts(next);
 
@@ -580,7 +564,6 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
         });
 
         setManualDraft((d) => { const n = { ...d }; delete n[k]; return n; });
-        // No success popup — the visible state already shows the change.
       } catch (err) {
         showPopup(`Could not save month total: ${err.message}`, 'error');
       } finally {
@@ -648,10 +631,8 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     const saving = !!savingManual[k];
 
     return (
-      <td key={`manual-${st}-${cat.id}`} className="exg-mtot exg-stick-r">
+      <td key={`manual-${st}-${cat.id}`} className="exg-mtot exg-stick-r-2">
         <input
-          // `type="text"` (default) — no native up/down spinners, no key or
-          // wheel incrementing. Point 3 satisfied.
           className="exg-cell"
           inputMode="numeric"
           value={value}
@@ -667,8 +648,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
     );
   }
 
-  const mtotCellClass = `exg-mtot${manualOpen ? '' : ' exg-stick-r'}`;
-  const mtotHeadClass = `exg-colmtot${manualOpen ? '' : ' exg-stick-r'}`;
+  /* ---- Sticky stacking: Month Total sits just left of Manual Entry ---- */
+  //  • manual closed → Month Total alone at right edge (exg-stick-r)
+  //  • manual open   → Month Total stacked at right: var(--mtot-w) (exg-stick-r-2)
+  //                    Manual Entry at right: 0 (exg-stick-r)
+  const mtotCellClass = 'exg-mtot exg-stick-r';
+  const mtotHeadClass = 'exg-colmtot exg-stick-r';
 
   /* ---- Branch-not-configured guard ---- */
   if (!isAdmin && !myBranch) {
@@ -734,11 +719,11 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
 
           <button
             type="button"
-            className="exg-btn"
+            className={`exg-btn${manualOpen ? ' exg-btn-active' : ''}`}
             onClick={handleToggleManual}
             title="Enter whole-month totals per category"
           >
-            <span>{manualOpen ? 'Hide manual entry' : 'Set month total'}</span>
+            <span>{manualOpen ? 'Monthly' : 'Daily'}</span>
           </button>
 
           <button
@@ -785,20 +770,20 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                     <span className="exg-dow">{day.dow.toUpperCase()}</span>
                   </th>
                 ))}
+                {manualOpen && (
+                  <th
+                    className="exg-colmtot exg-stick-r-2"
+                    style={{ textAlign: 'right', paddingRight: 14 }}
+                  >
+                    MANUAL ENTRY
+                  </th>
+                )}
                 <th
                   className={mtotHeadClass}
                   style={{ textAlign: 'right', paddingRight: 14 }}
                 >
                   MONTH TOTAL
                 </th>
-                {manualOpen && (
-                  <th
-                    className="exg-colmtot exg-stick-r"
-                    style={{ textAlign: 'right', paddingRight: 14 }}
-                  >
-                    MANUAL ENTRY
-                  </th>
-                )}
               </tr>
             </thead>
 
@@ -816,13 +801,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                     </div>
                   </td>
                 ))}
+                {manualOpen && (
+                  <td className="exg-mtot exg-stick-r-2" />
+                )}
                 <td className={mtotCellClass}>
                   <div className="exg-mtot-val">{inr(totals.grandMonth)}</div>
                 </td>
-                {manualOpen && (
-                  // Blank — no dash (Point 2)
-                  <td className="exg-mtot exg-stick-r" />
-                )}
               </tr>
 
               {CATEGORIES.map((cat) => {
@@ -862,13 +846,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             </div>
                           </td>
                         ))}
+                        {manualOpen && (
+                          <td className="exg-mtot exg-stick-r-2" />
+                        )}
                         <td className={mtotCellClass}>
                           <div className="exg-mtot-val">{inr(totals.catMonthTotals[cat.id])}</div>
                         </td>
-                        {manualOpen && (
-                          // Blank — no dash (Point 2)
-                          <td className="exg-mtot exg-stick-r" />
-                        )}
                       </tr>
 
                       {!isCollapsed && stationsToShow.map((st, si) => (
@@ -889,12 +872,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                             </div>
                           </td>
                           {days.map((day) => renderCell(st, cat, day))}
+                          {manualOpen && renderManualInput(st, cat)}
                           <td className={mtotCellClass}>
                             <div className="exg-mtot-val">
                               {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
                             </div>
                           </td>
-                          {manualOpen && renderManualInput(st, cat)}
                         </tr>
                       ))}
                     </React.Fragment>
@@ -917,12 +900,12 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
                       </div>
                     </td>
                     {days.map((day) => renderCell(st, cat, day))}
+                    {manualOpen && renderManualInput(st, cat)}
                     <td className={mtotCellClass}>
                       <div className="exg-mtot-val">
                         {inr(totals.stationMonthTotals[`${st}__${cat.id}`] || 0)}
                       </div>
                     </td>
-                    {manualOpen && renderManualInput(st, cat)}
                   </tr>
                 );
               })}
