@@ -11,7 +11,7 @@ import {
 import BASE_URL from '../../config';
 import Cookies from 'js-cookie';
 import LoginSignup from '../LoginSignup/LoginSignup';
-import './ExpenseManagement.css';
+import './ExpenseManagement3.css';
 import PopupAlert from '../PopupAlert/PopupAlert';
 
 /* ============================================================================
@@ -243,7 +243,8 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   }
 
   function handleCellChange(station, catId, dISO, value) {
-    if (monthMode[station]?.[catId] != null) return;
+    if (manualOpen) return;
+    if (monthMode[station]?.[catId] != null) return;      
     const k = `${station}__${catId}__${dISO}`;
     setAmounts((prev) => ({ ...prev, [k]: value }));
     setDirtyCells((prev) => {
@@ -450,12 +451,15 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
   async function handleYearChange(y) { await flushSave(); setCurYear(y); }
 
   /* ---- Manual-entry column toggle ---- */
-  function handleToggleManual() {
+  async function handleToggleManual() {
     if (manualOpen) {
+      // Monthly → Daily: also flush any manual drafts by blurring
       setManualOpen(false);
       setManualDraft({});
       closePopup();
     } else {
+      // Daily → Monthly: persist any pending daily edits first
+      await flushSave();
       setManualOpen(true);
       showPopup(
         'Entering a total here permanently erases and locks this category\'s daily entries.',
@@ -614,8 +618,10 @@ function ExpenseGrid({ currentUser, lightMode, onToggleTheme }) {
           className={cls}
           inputMode="decimal"
           value={rawVal}
+          readOnly={manualOpen}
+          tabIndex={manualOpen ? -1 : undefined}
           onChange={(e) => handleCellChange(st, cat.id, day.iso, e.target.value)}
-          onFocus={handleCellFocus}
+          onFocus={manualOpen ? undefined : handleCellFocus}
           onBlur={() => { if (dirtyRef.current.size > 0) flushSave(); }}
         />
       </td>
