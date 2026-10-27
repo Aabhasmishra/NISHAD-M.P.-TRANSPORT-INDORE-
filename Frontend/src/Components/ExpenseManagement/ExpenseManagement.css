@@ -1439,3 +1439,16 @@
     max-height: calc(100vh - 220px);
   }
 }
+
+/* Daily cells are read-only while Monthly mode is active */
+.exg-cell[readonly] {
+  cursor: not-allowed;
+}
+
+.exg-cell[readonly]:hover {
+  background: transparent;
+}
+
+.exg-cell[readonly]:focus {
+  box-shadow: none;
+}
