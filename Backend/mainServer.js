@@ -55,6 +55,36 @@ async function sendChallanNotification(challanData) {
   }
 }
 
+const formatINR = (n) => Number(n || 0).toLocaleString('en-IN');
+
+async function sendPaymentNotification(summary) {
+  const { challan_no, total_to_pay, total_paid, total_collected } = summary;
+  try {
+    await getMessaging().send({
+      notification: {
+        title: `💰 Payment Received · ${challan_no}`,
+        body: `To Pay ₹${formatINR(total_to_pay)}  |  Paid ₹${formatINR(total_paid)}  |  Collected ₹${formatINR(total_collected)}`,
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'challan-alerts',
+          sound: 'default',
+          color: '#38a169',
+        },
+      },
+      data: {
+        challan_no: String(challan_no),
+        type: 'payment_received',
+      },
+      topic: 'challan-alerts',
+    });
+    console.log(`✅ Payment notification sent: ${challan_no}`);
+  } catch (err) {
+    console.error('❌ Payment notification error:', err.message);
+  }
+}
+
 // Initialize all databases
 async function initialize() {
   try {
@@ -89,7 +119,7 @@ const transportRoutes = require("./transportRoutes")(transportDB);
 const customerRoutes = require("./customerRoutes")(customersDB);
 const transporterRoutes = require("./transporterRoutes")(transporterDB);
 const userRoutes = require("./userRoutes")(userDB);
-const challanRoutes = require("./challanRoutes")(challanDB, sendChallanNotification);
+const challanRoutes = require("./challanRoutes")(challanDB, sendChallanNotification, sendPaymentNotification);
 const crossingRoutes = require("./crossingRoutes")(crossingDB);
 const otherRoutes = require("./otherRoutes")(otherDB);
 const expenseRoutes = require("./expenseRoutes")(expenseDB);
