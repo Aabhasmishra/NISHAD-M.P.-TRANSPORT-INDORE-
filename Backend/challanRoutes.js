@@ -1,4 +1,4 @@
-module.exports = (challanDB, sendChallanNotification) => {
+module.exports = (challanDB, sendChallanNotification, sendPaymentNotification) => {
   const router = require('express').Router();
 
   // Save challan – now accepts advance_deduction, to_pay, paid, plpl (optional)
@@ -32,6 +32,18 @@ module.exports = (challanDB, sendChallanNotification) => {
         success: false, 
         error: err.message 
       });
+    }
+  });
+
+  // Called once by the app after payments for a whole challan are saved
+  router.post('/challan/:challan_no/payment-notify', async (req, res) => {
+    try {
+      const summary = await challanDB.getPaymentSummary(req.params.challan_no);
+      if (!summary) return res.status(404).json({ error: "Challan not found" });
+      sendPaymentNotification(summary);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
     }
   });
 
