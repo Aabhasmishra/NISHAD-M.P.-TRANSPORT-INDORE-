@@ -139,6 +139,31 @@ async function getChallan(challanNo) {
   return rows[0];
 }
 
+// Sum to_pay / paid / collected across all builties of a challan
+async function getPaymentSummary(challanNo) {
+  const challan = await getChallan(challanNo);
+  if (!challan) return null;
+
+  const grNos = challan.builty_no.split('|').map(s => s.trim()).filter(Boolean);
+
+  const { rows } = await pool.query(
+    `SELECT
+       COALESCE(SUM(to_pay::numeric), 0)                      AS total_to_pay,
+       COALESCE(SUM(paid::numeric), 0)                        AS total_paid,
+       COALESCE(SUM(COALESCE(amount_collected::numeric, 0)), 0) AS total_collected
+     FROM transport_records
+     WHERE gr_no = ANY($1)`,
+    [grNos]
+  );
+
+  return {
+    challan_no: challanNo,
+    total_to_pay: parseFloat(rows[0].total_to_pay),
+    total_paid: parseFloat(rows[0].total_paid),
+    total_collected: parseFloat(rows[0].total_collected),
+  };
+}
+
 // Get all challans (all fields)
 async function getAllChallans() {
   const { rows } = await pool.query(`SELECT * FROM challan ORDER BY created_at DESC`);
@@ -273,6 +298,7 @@ module.exports = {
   initialize,
   saveChallan,
   getChallan,
+  getPaymentSummary,
   getAllChallans,
   updateChallan,
   deleteChallan,
