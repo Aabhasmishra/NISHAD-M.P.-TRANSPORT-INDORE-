@@ -30,7 +30,6 @@
 
 .pm-header h1 {
   font-size: 28px;
-  /* margin: 0 0 15px 0; */
   font-weight: 600;
   color: #2d3748;
 }
@@ -406,6 +405,108 @@
   color: #cbd5e0;
 }
 
+/* ══════════════════════════════════════════════
+   PAYMENT SUMMARY  (Integrated Table Footer Style)
+══════════════════════════════════════════════ */
+
+/* The main wrapper matching the table container */
+.pm-totals-section {
+  margin-top: 5px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  overflow: hidden; /* Ensures child borders don't poke out */
+}
+
+.pm-dark-mode .pm-totals-section {
+  background-color: #2d3748;
+  border-color: #4a5568;
+}
+
+/* Title row styled like a table header */
+.pm-totals-section-title {
+  padding: 15px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  color: #4a5568;
+}
+
+.pm-dark-mode .pm-totals-section-title {
+  background-color: #1a202c;
+  border-bottom-color: #4a5568;
+  color: #a0aec0;
+}
+
+/* 4-Column Grid (acts like the table body) */
+.pm-totals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Individual stat items styled like table cells */
+.pm-total-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.pm-dark-mode .pm-total-stat {
+  border-right-color: #4a5568;
+}
+
+/* Remove border from the last item */
+.pm-total-stat:last-child {
+  border-right: none;
+}
+
+.pm-total-stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: #718096;
+}
+
+.pm-dark-mode .pm-total-stat-label {
+  color: #a0aec0;
+}
+
+.pm-total-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.pm-dark-mode .pm-total-stat-value {
+  color: #f7fafc;
+}
+
+/* Colored labels to differentiate categories */
+.pm-total-stat-topay .pm-total-stat-label { color: #3182ce; }
+.pm-dark-mode .pm-total-stat-topay .pm-total-stat-label { color: #63b3ed; }
+
+.pm-total-stat-paid .pm-total-stat-label { color: #4a5568; }
+.pm-dark-mode .pm-total-stat-paid .pm-total-stat-label { color: #cbd5e0; }
+
+.pm-total-stat-crossing .pm-total-stat-label { color: #dd6b20; }
+.pm-dark-mode .pm-total-stat-crossing .pm-total-stat-label { color: #f6ad55; }
+
+.pm-total-stat-collected .pm-total-stat-label { color: #38a169; }
+.pm-dark-mode .pm-total-stat-collected .pm-total-stat-label { color: #68d391; }
+
+/* Highlight the 'Collected' value in green since it's actual money received */
+.pm-total-stat-collected .pm-total-stat-value {
+  color: #2f855a;
+}
+.pm-dark-mode .pm-total-stat-collected .pm-total-stat-value {
+  color: #68d391;
+}
+
 @media (max-width: 768px) {
   .pm-container {
     padding: 15px;
@@ -431,5 +532,26 @@
   .pm-form-actions,
   .pm-confirm-actions {
     flex-direction: column;
+  }
+
+  /* Payment summary stacks into a 2x2 grid */
+  .pm-totals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Add bottom borders for the top row when stacked */
+  .pm-total-stat:nth-child(1),
+  .pm-total-stat:nth-child(2) {
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .pm-dark-mode .pm-total-stat:nth-child(1),
+  .pm-dark-mode .pm-total-stat:nth-child(2) {
+    border-bottom-color: #4a5568;
+  }
+
+  /* Fix right borders on 2nd and 4th items */
+  .pm-total-stat:nth-child(2),
+  .pm-total-stat:nth-child(4) {
+    border-right: none;
   }
 }
