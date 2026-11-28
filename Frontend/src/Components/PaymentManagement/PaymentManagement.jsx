@@ -394,20 +394,41 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
     return () => timeouts.forEach(t => t && clearTimeout(t));
   }, [rows]);
 
-  // Calculate totals for the current rows (only those with builty_no)
+  // ── Totals calculation ────────────────────────────────────────────
+  // To Pay    = sum of all to_pay values
+  // Paid      = sum of all paid values
+  // Crossing  = sum of to_pay for TO PAY type builties (paid === 0) with crossing === 'YES'
+  // Collected = sum of Amount Collected entered by user, only for TO PAY type
+  //             builties (paid === 0) with crossing === 'NO'
+  // Note: To Pay (total) = Collected + Crossing (for TO PAY type builties)
   const calculateTotals = () => {
-    let totalToPay = 0;
-    let totalPaid = 0;
-    let totalAmountCollected = 0;
+    let toPay = 0;
+    let paid = 0;
+    let crossing = 0;
+    let collected = 0;
 
     rows.forEach(row => {
-      if (row.builty_no) {
-        totalToPay += parseFloat(row.to_pay) || 0;
-        totalPaid += parseFloat(row.paid) || 0;
-        totalAmountCollected += parseFloat(row.amount_collected) || 0;
+      if (!row.builty_no) return;
+      const rowToPay = parseFloat(row.to_pay) || 0;
+      const rowPaid = parseFloat(row.paid) || 0;
+
+      toPay += rowToPay;
+      paid += rowPaid;
+
+      const isToPayType = rowPaid === 0;
+      if (isToPayType) {
+        if (row.crossing === 'YES') {
+          crossing += rowToPay;
+        } else {
+          const amountCollected = parseFloat(row.amount_collected);
+          if (!isNaN(amountCollected)) {
+            collected += amountCollected;
+          }
+        }
       }
     });
-    return { totalToPay, totalPaid, totalAmountCollected };
+
+    return { toPay, paid, collected, crossing };
   };
 
   // Submit multiple payments (add mode)
@@ -458,7 +479,6 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
     if (successCount > 0) {
       showAlert(`Payments recorded for ${successCount} builty(s).`, 'success');
-      // Return to search after successful save
       setRows([]);
       setChallanFetched(false);
       setChallanSearchTerm('');
@@ -489,7 +509,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
     const tableRowsHtml = printRows.map((row, idx) => {
       const modeOfCollectionDisplay = '';
-      
+
       return `
       <tr style="border: 1px solid #000;">
         <td style="padding: 6px; text-align: center;">${idx + 1}</td>
@@ -514,8 +534,8 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
         <td style="padding: 6px; text-align: center;"></td>
         <td style="padding: 6px; text-align: center;"></td>
         <td style="padding: 6px; text-align: center;"></td>
-        <td style="padding: 6px; text-align: center;">${formatNumericValue(totals.totalToPay)}</td>
-        <td style="padding: 6px; text-align: center;">${formatNumericValue(totals.totalPaid)}</td>
+        <td style="padding: 6px; text-align: center;">${formatNumericValue(totals.toPay)}</td>
+        <td style="padding: 6px; text-align: center;">${formatNumericValue(totals.paid)}</td>
         <td style="padding: 6px; text-align: center;"></td>
         <td style="padding: 6px; text-align: center;"></td>
       </tr>
@@ -527,65 +547,17 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
       <head>
         <title>Challan Payment Print</title>
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: white;
-          }
-          .print-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-          }
-          /* Centered header */
-          .header-box {
-            text-align: center;
-            border: 2px solid #000;
-            padding: 15px;
-            margin-bottom: 20px;
-          }
-          .company-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-          }
-          .tagline {
-            font-size: 12px;
-            font-style: italic;
-            margin-bottom: 10px;
-          }
-          .details-line {
-            font-size: 13px;
-            margin-top: 5px;
-          }
-          .details-line strong {
-            font-weight: bold;
-          }
-          /* Table styles */
-          .payment-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-          }
-          .payment-table th,
-          .payment-table td {
-            border: 1px solid #000;
-            padding: 6px;
-            text-align: center;
-            font-size: 11px;
-            line-height: 1.3;
-            height: 28px;
-          }
-          .payment-table th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-          }
-          /* Fixed column widths */
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; margin: 20px; background: white; }
+          .print-container { max-width: 1200px; margin: 0 auto; background: white; }
+          .header-box { text-align: center; border: 2px solid #000; padding: 15px; margin-bottom: 20px; }
+          .company-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+          .tagline { font-size: 12px; font-style: italic; margin-bottom: 10px; }
+          .details-line { font-size: 13px; margin-top: 5px; }
+          .details-line strong { font-weight: bold; }
+          .payment-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          .payment-table th, .payment-table td { border: 1px solid #000; padding: 6px; text-align: center; font-size: 11px; line-height: 1.3; height: 28px; }
+          .payment-table th { background-color: #f0f0f0; font-weight: bold; }
           .payment-table th:nth-child(1) { width: 5%; }
           .payment-table th:nth-child(2) { width: 10%; }
           .payment-table th:nth-child(3) { width: 9%; }
@@ -596,15 +568,7 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
           .payment-table th:nth-child(8) { width: 8%; }
           .payment-table th:nth-child(9) { width: 10%; }
           .payment-table th:nth-child(10) { width: 16%; }
-          @media print {
-            body {
-              margin: 0;
-              padding: 0.5cm;
-            }
-            .no-print {
-              display: none;
-            }
-          }
+          @media print { body { margin: 0; padding: 0.5cm; } .no-print { display: none; } }
         </style>
       </head>
       <body>
@@ -615,7 +579,6 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
             <div class="details-line"><strong>Challan No:</strong> ${formattedChallanNo}</div>
             <div class="details-line"><strong>Truck No:</strong> ${challanTruckNo}</div>
           </div>
-
           <table class="payment-table">
             <thead>
               <tr>
@@ -649,6 +612,38 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
 
     printWindow.document.write(printHtml);
     printWindow.document.close();
+  };
+
+  // ----- NEW: Aesthetic totals section (separate card below the table) -----
+  const renderTotalsSection = () => {
+    const totals = calculateTotals();
+
+    return (
+      <div className={`pm-totals-section ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
+        <div className="pm-totals-section-title">
+          <span className="pm-totals-section-dot"></span>
+          Payment Summary
+        </div>
+        <div className="pm-totals-grid">
+          <div className="pm-total-stat pm-total-stat-topay">
+            <span className="pm-total-stat-label">To Pay</span>
+            <span className="pm-total-stat-value">₹{Number(formatNumericValue(totals.toPay)).toLocaleString('en-IN')}</span>
+          </div>
+          <div className="pm-total-stat pm-total-stat-paid">
+            <span className="pm-total-stat-label">Paid</span>
+            <span className="pm-total-stat-value">₹{Number(formatNumericValue(totals.paid)).toLocaleString('en-IN')}</span>
+          </div>
+          <div className="pm-total-stat pm-total-stat-crossing">
+            <span className="pm-total-stat-label">Crossing</span>
+            <span className="pm-total-stat-value">₹{Number(formatNumericValue(totals.crossing)).toLocaleString('en-IN')}</span>
+          </div>
+          <div className="pm-total-stat pm-total-stat-collected">
+            <span className="pm-total-stat-label">Collected</span>
+            <span className="pm-total-stat-value">₹{Number(formatNumericValue(totals.collected)).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // ----- Render functions -----
@@ -842,11 +837,9 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
   };
 
   const renderAddTable = () => {
-    const totals = calculateTotals();
-
     return (
       <div className="pm-add-table-container">
-        <div className="challan-table-container" style={{ overflowX: 'auto' }}>
+        <div className="challan-table-container" style={{ overflowX: 'auto', marginBottom: '10px' }}>
           <table className={`challan-table ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
             <thead>
               <tr className="challan-table-header">
@@ -922,25 +915,14 @@ const PaymentManagement = ({ isLightMode, modeOfView }) => {
                   </td>
                 </tr>
               ))}
-              {/* Total Row */}
-              <tr className={`challan-table-total-row ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
-                <td className="text-center" style={{ fontWeight: 'bold' }}>Total</td>
-                <td className="text-center"></td>
-                <td className="text-center"></td>
-                <td className="text-center"></td>
-                <td className="text-center"></td>
-                <td className="text-center"></td>
-                <td className="text-center">{formatNumericValue(totals.totalToPay)}</td>
-                <td className="text-center">{formatNumericValue(totals.totalPaid)}</td>
-                <td className="text-center">{formatNumericValue(totals.totalAmountCollected)}</td>
-                <td className="text-center"></td>
-                <td className="text-center"></td>
-              </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="challan-add-more-container">
+        {/* ✨ NEW: separate aesthetic totals section below the table */}
+        {renderTotalsSection()}
+
+        <div className="challan-add-more-container" style={{ overflowX: 'auto', marginTop: '25px'}}>
           <button type="button" onClick={addMoreRows} className={`challan-add-more-button improved-button ${isLightMode ? 'light-mode' : 'dark-mode'}`}>
             <IoAdd /> Add 5 More Rows
           </button>
